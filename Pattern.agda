@@ -68,7 +68,7 @@ data Pat α where
 Pats = All Pat
 
 ∙* : Pats αs
-∙* {[]}    = []
+∙* {[]} = []
 ∙* {_ ∷ _} = ∙ ∷ ∙*
 
 --------------------------------------------------------------------------------
@@ -167,7 +167,7 @@ p ∣ q ≼? v = Dec.map ∣≼↔ ((p ≼? v) ⊎-dec (q ≼? v))
 p ∷ ps ≼*? v ∷ vs = Dec.map ∷↔ ((p ≼? v) ×-dec (ps ≼*? vs))
 
 Match : Vals αs → List (Pats αs) → Set
-Match vs pss = First (λ ps → ¬ ps ≼* vs) (_≼* vs) pss
+Match vs = First (λ ps → ¬ ps ≼* vs) (_≼* vs)
 
 match? : (vs : Vals αs) (pss : List (Pats αs)) → Dec (Match vs pss)
 match? vs = cofirst? (_≼*? vs)
@@ -180,8 +180,14 @@ Useful ps pss = ∃[ vs ] (ps ≼* vs) × All (∁ (_≼* vs)) pss
 Exhaustive : List (Pats αs) → Set
 Exhaustive pss = ∀ vs → Match vs pss
 
+NonExhaustive : List (Pats αs) → Set
+NonExhaustive pss = ∃[ vs ] ¬ Match vs pss
+
+NonExhaustive′ : List (Pats αs) → Set
+NonExhaustive′ = Useful ∙*
+
 Exhaustive′ : List (Pats αs) → Set
-Exhaustive′ pss = ¬ Useful ∙* pss
+Exhaustive′ pss = ¬ NonExhaustive′ pss
 
 ¬First⇒All : ∀ {a p q} {A : Set a} {P : Pred A p} {Q : Pred A q}
   → ∁ Q ⊆ P
@@ -192,6 +198,15 @@ Exhaustive′ pss = ¬ Useful ∙* pss
   px ∷ ¬First⇒All ¬q⇒p (¬pqxxs ∘ (px ∷_))
 
 module _ {pss : List (Pats αs)} where
+
+  NonExhaustive′→NonExhaustive : NonExhaustive′ pss → NonExhaustive pss
+  NonExhaustive′→NonExhaustive (vs , _ , ¬∙*ps≼vs) = vs , All⇒¬First id ¬∙*ps≼vs
+
+  NonExhaustive→NonExhaustive′ : NonExhaustive pss → NonExhaustive′ pss
+  NonExhaustive→NonExhaustive′ (vs , ¬pss≼vs) = vs , ∙*≼ , ¬First⇒All id ¬pss≼vs
+
+  NonExhaustive′↔NonExhaustive : NonExhaustive′ pss ⇔ NonExhaustive pss
+  NonExhaustive′↔NonExhaustive = mk⇔ NonExhaustive′→NonExhaustive NonExhaustive→NonExhaustive′
 
   Exhaustive→Exhaustive′ : Exhaustive pss → Exhaustive′ pss
   Exhaustive→Exhaustive′ exh (vs , _ , ¬pss≼vs) = All⇒¬First id ¬pss≼vs (exh vs)
@@ -264,7 +279,7 @@ module _ {c} {us : Vals (args α c)} {vs : Vals αs} where
   𝒮-aux-pres-¬≼ {ps = ∙ ∷ ps} ¬∙ps≼cusvs =
     (λ ∙*ps≼usvs → ¬∙ps≼cusvs (∙≼ ∷ ++≼⁻ ∙* ∙*ps≼usvs .proj₂)) ∷ []
   𝒮-aux-pres-¬≼ {ps = con d rs ∷ ps} ¬drsps≼cusvs with c Fin.≟ d
-  ... | no _     = []
+  ... | no _ = []
   ... | yes refl =
         (λ rsps≼usvs →
           let rs≼us , ps≼vs = ++≼⁻ rs rsps≼usvs in
@@ -356,8 +371,10 @@ useful? (con c rs ∷ ps) pss =
 useful? (r₁ ∣ r₂ ∷ ps) pss =
   Dec.map useful-∣↔ (useful? (r₁ ∷ ps) pss ⊎-dec useful? (r₂ ∷ ps) pss)
 
-exhaustive? : (pss : List (Pats αs)) → Dec (Exhaustive pss)
-exhaustive? pss = Dec.map Exhaustive′↔Exhaustive (¬? (useful? ∙* pss))
+exhaustive? : (pss : List (Pats αs)) → Exhaustive pss ⊎ NonExhaustive pss
+exhaustive? pss with useful? ∙* pss
+... | yes h = inj₂ (NonExhaustive′→NonExhaustive h)
+... | no h = inj₁ (Exhaustive′→Exhaustive h)
 
 --------------------------------------------------------------------------------
 
