@@ -58,9 +58,12 @@ data Pat (α : Ty) : Set
 Pats : List Ty → Set
 
 data Pat α where
-  ∙   : Pat α                          -- Wildcard pattern
-  con : ∀ c → Pats (args α c) → Pat α  -- Constructor pattern
-  _∣_ : Pat α → Pat α → Pat α          -- Or pattern
+  -- Wildcard pattern
+  ∙ : Pat α
+  -- Constructor pattern
+  con : ∀ c → Pats (args α c) → Pat α
+  -- Or pattern
+  _∣_ : Pat α → Pat α → Pat α
 
 Pats = All Pat
 
@@ -74,72 +77,68 @@ data _≼_ {α} : Pat α → Val α → Set
 data _≼*_ : Pats αs → Vals αs → Set
 
 data _≼_ {α} where
-  ∙≼  : ∀ {v} →
-        ∙ ≼ v
-  c≼c : ∀ {c ps vs} →
-        ps ≼* vs →
-        con c ps ≼ con c vs
-  ∣≼ₗ : ∀ {p q v} →
-        p ≼ v →
-        (p ∣ q) ≼ v
-  ∣≼ᵣ : ∀ {p q v} →
-        q ≼ v →
-        (p ∣ q) ≼ v
+  ∙≼ : ∀ {v} → ∙ ≼ v
+  c≼c : ∀ {c ps vs} → ps ≼* vs → con c ps ≼ con c vs
+  ∣≼ˡ : ∀ {p q v} → p ≼ v → p ∣ q ≼ v
+  ∣≼ʳ : ∀ {p q v} → q ≼ v → p ∣ q ≼ v
 
 data _≼*_ where
   []  : [] ≼* []
-  _∷_ : ∀ {p : Pat α} {ps : Pats αs} {v vs} →
-        p ≼ v →
-        ps ≼* vs →
-        p ∷ ps ≼* v ∷ vs
+  _∷_ : ∀ {p : Pat α} {ps : Pats αs} {v vs}
+    → p ≼ v
+    → ps ≼* vs
+    → p ∷ ps ≼* v ∷ vs
 
 ∙*≼ : {vs : Vals αs} → ∙* ≼* vs
-∙*≼ {vs = []}    = []
+∙*≼ {vs = []} = []
 ∙*≼ {vs = _ ∷ _} = ∙≼ ∷ ∙*≼
 
 --------------------------------------------------------------------------------
 
-∣≼⁻ : ∀ {p q : Pat α} {v} → (p ∣ q) ≼ v → (p ≼ v) ⊎ (q ≼ v)
-∣≼⁻ (∣≼ₗ h) = inj₁ h
-∣≼⁻ (∣≼ᵣ h) = inj₂ h
+module _ {p q : Pat α} {v} where
 
-∣≼↔ : ∀ {p q : Pat α} {v} → (p ≼ v ⊎ q ≼ v) ⇔ (p ∣ q) ≼ v
-∣≼↔ = mk⇔ [ ∣≼ₗ , ∣≼ᵣ ] ∣≼⁻
+  ∣≼⁻ : p ∣ q ≼ v → (p ≼ v) ⊎ (q ≼ v)
+  ∣≼⁻ (∣≼ˡ h) = inj₁ h
+  ∣≼⁻ (∣≼ʳ h) = inj₂ h
 
-c≼c⁻ : ∀ {c} {ps : Pats (args α c)} {vs} →
-       con {α} c ps ≼ con c vs →
-       ps ≼* vs
-c≼c⁻ (c≼c h) = h
+  ∣≼↔ : (p ≼ v ⊎ q ≼ v) ⇔ p ∣ q ≼ v
+  ∣≼↔ = mk⇔ [ ∣≼ˡ , ∣≼ʳ ] ∣≼⁻
 
-c≼c↔ : ∀ {c} {ps : Pats (args α c)} {vs} →
-       ps ≼* vs ⇔ con {α} c ps ≼ con c vs
-c≼c↔ = mk⇔ c≼c c≼c⁻
 
-∷⁻ : ∀ {p : Pat α} {ps : Pats αs} {v vs} →
-     p ∷ ps ≼* v ∷ vs →
-     p ≼ v × ps ≼* vs
-∷⁻ (h ∷ hs) = h , hs
+module _ {c} {ps : Pats (args α c)} {vs} where
 
-∷↔ : ∀ {p : Pat α} {ps : Pats αs} {v vs} →
-     (p ≼ v × ps ≼* vs) ⇔ p ∷ ps ≼* v ∷ vs
-∷↔ = mk⇔ (uncurry _∷_) ∷⁻
+  c≼c⁻ : con {α} c ps ≼ con c vs → ps ≼* vs
+  c≼c⁻ (c≼c h) = h
 
-++≼⁺ : ∀ {ps : Pats αs} {qs : Pats βs} {vs us} →
-       ps ≼* vs →
-       qs ≼* us →
-       ++⁺ ps qs ≼* ++⁺ vs us
-++≼⁺ []            qs≼us = qs≼us
+  c≼c↔ : ps ≼* vs ⇔ con {α} c ps ≼ con c vs
+  c≼c↔ = mk⇔ c≼c c≼c⁻
+
+
+module _ {p : Pat α} {ps : Pats αs} {v vs} where
+
+  ∷⁻ : p ∷ ps ≼* v ∷ vs → p ≼ v × ps ≼* vs
+  ∷⁻ (h ∷ hs) = h , hs
+
+  ∷↔ : (p ≼ v × ps ≼* vs) ⇔ p ∷ ps ≼* v ∷ vs
+  ∷↔ = mk⇔ (uncurry _∷_) ∷⁻
+
+
+++≼⁺ : ∀ {ps : Pats αs} {qs : Pats βs} {vs us}
+  → ps ≼* vs
+  → qs ≼* us
+  → ++⁺ ps qs ≼* ++⁺ vs us
+++≼⁺ [] qs≼us = qs≼us
 ++≼⁺ (p≼v ∷ ps≼vs) qs≼us = p≼v ∷ ++≼⁺ ps≼vs qs≼us
 
-++≼⁻ : ∀ (ps : Pats αs) {qs : Pats βs} {vs us} →
-       ++⁺ ps qs ≼* ++⁺ vs us →
-       ps ≼* vs × qs ≼* us
-++≼⁻ []       {vs = []}     qs≼us             = [] , qs≼us
+++≼⁻ : ∀ (ps : Pats αs) {qs : Pats βs} {vs us}
+  → ++⁺ ps qs ≼* ++⁺ vs us
+  → ps ≼* vs × qs ≼* us
+++≼⁻ [] {vs = []} qs≼us = [] , qs≼us
 ++≼⁻ (p ∷ ps) {vs = v ∷ vs} (p≼v ∷ psqs≼vsus) =
   Product.map₁ (p≼v ∷_) (++≼⁻ ps psqs≼vsus)
 
-++≼↔ : ∀ {ps : Pats αs} {qs : Pats βs} {vs us} →
-       (ps ≼* vs × qs ≼* us) ⇔ ++⁺ ps qs ≼* ++⁺ vs us
+++≼↔ : ∀ {ps : Pats αs} {qs : Pats βs} {vs us}
+  → (ps ≼* vs × qs ≼* us) ⇔ ++⁺ ps qs ≼* ++⁺ vs us
 ++≼↔ = mk⇔ (uncurry ++≼⁺) (++≼⁻ _)
 
 split≼ : ∀ (ps : Pats αs) {qs : Pats βs} {us}
@@ -150,22 +149,22 @@ split≼ (p ∷ ps) {us = u ∷ us} (p≼u ∷ ps≼us) =
   let vs , ws , p1 , p2 , p3 = split≼ ps {us = us} ps≼us
    in u ∷ vs , ws , cong (u ∷_) p1 , p≼u ∷ p2 , p3
 
-c≢d→¬c≼d : ∀ {c d} {ps : Pats (args α c)} {vs : Vals (args α d)} →
-           c ≢ d →
-           ¬ con {α} c ps ≼ con d vs
+c≢d→¬c≼d : ∀ {c d} {ps : Pats (args α c)} {vs : Vals (args α d)}
+  → c ≢ d
+  → ¬ con {α} c ps ≼ con d vs
 c≢d→¬c≼d h (c≼c _) = h refl
 
 _≼?_ : (p : Pat α) (v : Val α) → Dec (p ≼ v)
 _≼*?_ : (ps : Pats αs) (vs : Vals αs) → Dec (ps ≼* vs)
 
-∙        ≼? v        = yes ∙≼
+∙ ≼? v = yes ∙≼
 con c ps ≼? con d vs with c Fin.≟ d
 ... | yes refl = Dec.map c≼c↔ (ps ≼*? vs)
-... | no c≢d   = no (c≢d→¬c≼d c≢d)
-(p ∣ q)  ≼? v        = Dec.map ∣≼↔ ((p ≼? v) ⊎-dec (q ≼? v))
+... | no c≢d = no (c≢d→¬c≼d c≢d)
+p ∣ q ≼? v = Dec.map ∣≼↔ ((p ≼? v) ⊎-dec (q ≼? v))
 
-[]       ≼*? []       = yes []
-(p ∷ ps) ≼*? (v ∷ vs) = Dec.map ∷↔ ((p ≼? v) ×-dec (ps ≼*? vs))
+[] ≼*? [] = yes []
+p ∷ ps ≼*? v ∷ vs = Dec.map ∷↔ ((p ≼? v) ×-dec (ps ≼*? vs))
 
 Match : Vals αs → List (Pats αs) → Set
 Match vs pss = First (λ ps → ¬ ps ≼* vs) (_≼* vs) pss
@@ -184,36 +183,33 @@ Exhaustive pss = ∀ vs → Match vs pss
 Exhaustive′ : List (Pats αs) → Set
 Exhaustive′ pss = ¬ Useful ∙* pss
 
-¬First⇒All : ∀ {a p q} {A : Set a} {P : Pred A p} {Q : Pred A q} →
-             (∁ Q ⊆ P) →
-             ∁ (First P Q) ⊆ All P
-¬First⇒All ¬q⇒p {[]}     _      = []
+¬First⇒All : ∀ {a p q} {A : Set a} {P : Pred A p} {Q : Pred A q}
+  → ∁ Q ⊆ P
+  → ∁ (First P Q) ⊆ All P
+¬First⇒All ¬q⇒p {[]} _ = []
 ¬First⇒All ¬q⇒p {x ∷ xs} ¬pqxxs =
   let px = ¬q⇒p (¬pqxxs ∘ First.[_]) in
   px ∷ ¬First⇒All ¬q⇒p (¬pqxxs ∘ (px ∷_))
 
-Exhaustive→Exhaustive′ : {pss : List (Pats αs)} →
-                         Exhaustive pss →
-                         Exhaustive′ pss
-Exhaustive→Exhaustive′ exh (vs , _ , ¬pss≼vs) = All⇒¬First id ¬pss≼vs (exh vs)
+module _ {pss : List (Pats αs)} where
 
-Exhaustive′→Exhaustive : {pss : List (Pats αs)} →
-                         Exhaustive′ pss →
-                         Exhaustive pss
-Exhaustive′→Exhaustive {pss = pss} exh vs with match? vs pss
-... | yes pss≼vs = pss≼vs
-... | no ¬pss≼vs = contradiction (vs , ∙*≼ , ¬First⇒All id ¬pss≼vs) exh
+  Exhaustive→Exhaustive′ : Exhaustive pss → Exhaustive′ pss
+  Exhaustive→Exhaustive′ exh (vs , _ , ¬pss≼vs) = All⇒¬First id ¬pss≼vs (exh vs)
 
-Exhaustive′↔Exhaustive : {pss : List (Pats αs)} →
-                         Exhaustive′ pss ⇔ Exhaustive pss
-Exhaustive′↔Exhaustive = mk⇔ Exhaustive′→Exhaustive Exhaustive→Exhaustive′
+  Exhaustive′→Exhaustive : Exhaustive′ pss → Exhaustive pss
+  Exhaustive′→Exhaustive exh vs with match? vs pss
+  ... | yes pss≼vs = pss≼vs
+  ... | no ¬pss≼vs = contradiction (vs , ∙*≼ , ¬First⇒All id ¬pss≼vs) exh
+
+  Exhaustive′↔Exhaustive : Exhaustive′ pss ⇔ Exhaustive pss
+  Exhaustive′↔Exhaustive = mk⇔ Exhaustive′→Exhaustive Exhaustive→Exhaustive′
 
 --------------------------------------------------------------------------------
 
 𝒮-aux : ∀ c → Pats (α ∷ αs) → List (Pats (args α c ++ αs))
-𝒮-aux c (∙ ∷ ps)        = ++⁺ ∙* ps ∷ []
+𝒮-aux c (∙ ∷ ps) = ++⁺ ∙* ps ∷ []
 𝒮-aux c (con d rs ∷ ps) with c Fin.≟ d
-... | no _     = []
+... | no _ = []
 ... | yes refl = ++⁺ rs ps ∷ []
 𝒮-aux c (r₁ ∣ r₂ ∷ ps)  =
   𝒮-aux c (r₁ ∷ ps) ++ 𝒮-aux c (r₂ ∷ ps)
@@ -222,7 +218,7 @@ Exhaustive′↔Exhaustive = mk⇔ Exhaustive′→Exhaustive Exhaustive→Exhau
 𝒮 c = concatMap (𝒮-aux c)
 
 𝒟-aux : Pats (α ∷ αs) → List (Pats αs)
-𝒟-aux (∙ ∷ ps)       = ps ∷ []
+𝒟-aux (∙ ∷ ps) = ps ∷ []
 𝒟-aux (con _ _ ∷ ps) = []
 𝒟-aux (r₁ ∣ r₂ ∷ ps) = 𝒟-aux (r₁ ∷ ps) ++ 𝒟-aux (r₂ ∷ ps)
 
@@ -231,132 +227,133 @@ Exhaustive′↔Exhaustive = mk⇔ Exhaustive′→Exhaustive Exhaustive→Exhau
 
 --------------------------------------------------------------------------------
 
-useful-[]-[] : Useful [] []
-useful-[]-[] = [] , [] , []
-
-¬useful-[]-∷ : ∀ {ps : Pats []} {pss} → ¬ Useful [] (ps ∷ pss)
-¬useful-[]-∷ {ps = []} ([] , _ , ¬[] ∷ _) = ¬[] []
-
-useful-∣⁺ : ∀ {r₁ r₂ : Pat α} {ps : Pats αs} {pss} →
-            Useful (r₁ ∷ ps) pss ⊎ Useful (r₂ ∷ ps) pss →
-            Useful (r₁ ∣ r₂ ∷ ps) pss
-useful-∣⁺ (inj₁ (vvs , r₁≼v ∷ ps≼vs , ¬pss≼vvs)) =
-  vvs , ∣≼ₗ r₁≼v ∷ ps≼vs , ¬pss≼vvs
-useful-∣⁺ (inj₂ (vvs , r₂≼v ∷ ps≼vs , ¬pss≼vvs)) =
-  vvs , ∣≼ᵣ r₂≼v ∷ ps≼vs , ¬pss≼vvs
-
-useful-∣⁻ : ∀ {r₁ r₂ : Pat α} {ps : Pats αs} {pss} →
-            Useful (r₁ ∣ r₂ ∷ ps) pss →
-            Useful (r₁ ∷ ps) pss ⊎ Useful (r₂ ∷ ps) pss
-useful-∣⁻ (vvs , ∣≼ₗ r₁≼v ∷ ps≼vs , ¬pss≼vvs) =
-  inj₁ (vvs , r₁≼v ∷ ps≼vs , ¬pss≼vvs)
-useful-∣⁻ (vvs , ∣≼ᵣ r₂≼v ∷ ps≼vs , ¬pss≼vvs) =
-  inj₂ (vvs , r₂≼v ∷ ps≼vs , ¬pss≼vvs)
-
-useful-∣↔ : ∀ {r₁ r₂ : Pat α} {ps : Pats αs} {pss} →
-            (Useful (r₁ ∷ ps) pss ⊎ Useful (r₂ ∷ ps) pss) ⇔ Useful (r₁ ∣ r₂ ∷ ps) pss
-useful-∣↔ = mk⇔ useful-∣⁺ useful-∣⁻
-
-𝒮-aux-pres-¬≼ : ∀ {c} {us : Vals (args α c)} {vs : Vals αs} {ps : Pats (α ∷ αs)} →
-                ¬ ps ≼* con c us ∷ vs →
-                All (∁ (_≼* ++⁺ us vs)) (𝒮-aux c ps)
-𝒮-aux-pres-¬≼ {c = c} {ps = ∙ ∷ ps}        ¬∙ps≼cusvs     =
-  (λ ∙*ps≼usvs → ¬∙ps≼cusvs (∙≼ ∷ ++≼⁻ ∙* ∙*ps≼usvs .proj₂)) ∷ []
-𝒮-aux-pres-¬≼ {c = c} {ps = con d rs ∷ ps} ¬drsps≼cusvs   with c Fin.≟ d
-... | no _     = []
-... | yes refl =
-      (λ rsps≼usvs →
-        let rs≼us , ps≼vs = ++≼⁻ rs rsps≼usvs in
-        ¬drsps≼cusvs (c≼c rs≼us ∷ ps≼vs))
-      ∷ []
-𝒮-aux-pres-¬≼ {c = c} {ps = r₁ ∣ r₂ ∷ ps}  ¬r₁∣r₂ps≼cusvs =
-  ++⁺
-    (𝒮-aux-pres-¬≼
-      {ps = r₁ ∷ ps}
-      λ { (r₁≼cus ∷ ps≼vs) → ¬r₁∣r₂ps≼cusvs (∣≼ₗ r₁≼cus ∷ ps≼vs) })
-    (𝒮-aux-pres-¬≼
-      {ps = r₂ ∷ ps}
-      λ { (r₂≼cus ∷ ps≼vs) → ¬r₁∣r₂ps≼cusvs (∣≼ᵣ r₂≼cus ∷ ps≼vs) })
-
-𝒮-pres-¬≼ : ∀ {c} {us : Vals (args α c)} {vs : Vals αs} {pss : List (Pats (α ∷ αs))} →
-            All (∁ (_≼* con c us ∷ vs)) pss →
-            All (∁ (_≼* ++⁺ us vs)) (𝒮 c pss)
-𝒮-pres-¬≼ = All.concat⁺ ∘ All.gmap⁺ 𝒮-aux-pres-¬≼
-
 ≟-refl : ∀ {n} (i : Fin n) → (i Fin.≟ i) ≡ yes refl
 ≟-refl i with i Fin.≟ i
 ... | yes refl = refl
 ... | no ¬refl = contradiction refl ¬refl
 
-𝒮-aux-pres-¬≼⁻ : ∀ {c} {us : Vals (args α c)} {vs : Vals αs} {ps : Pats (α ∷ αs)} →
-                 All (∁ (_≼* ++⁺ us vs)) (𝒮-aux c ps) →
-                 ¬ ps ≼* con c us ∷ vs
-𝒮-aux-pres-¬≼⁻ {ps = ∙ ∷ ps}        (¬∙*ps≼usvs ∷ []) (∙≼ ∷ ps≼vs) =
-  ¬∙*ps≼usvs (++≼⁺ ∙*≼ ps≼vs)
-𝒮-aux-pres-¬≼⁻ {ps = con c rs ∷ ps} ¬sᶜps≼usvs        (c≼c rs≼us ∷ ps≼vs) with c Fin.≟ c | ≟-refl c
-𝒮-aux-pres-¬≼⁻ {ps = con c rs ∷ ps} (¬rsps≼usvs ∷ []) (c≼c rs≼us ∷ ps≼vs)    | _         | refl =
-  ¬rsps≼usvs (++≼⁺ rs≼us ps≼vs)
-𝒮-aux-pres-¬≼⁻ {ps = r₁ ∣ r₂ ∷ ps} ¬sᶜ[r₁ps]sᶜ[r₂ps]≼usvs (∣≼ₗ r₁≼cus ∷ ps≼vs) =
-  𝒮-aux-pres-¬≼⁻ (++⁻ˡ _ ¬sᶜ[r₁ps]sᶜ[r₂ps]≼usvs) (r₁≼cus ∷ ps≼vs)
-𝒮-aux-pres-¬≼⁻ {ps = r₁ ∣ r₂ ∷ ps} ¬sᶜ[r₁ps]sᶜ[r₂ps]≼usvs (∣≼ᵣ r₂≼cus ∷ ps≼vs) =
-  𝒮-aux-pres-¬≼⁻ (++⁻ʳ _ ¬sᶜ[r₁ps]sᶜ[r₂ps]≼usvs) (r₂≼cus ∷ ps≼vs)
+useful-[]-[] : Useful [] []
+useful-[]-[] = [] , [] , []
 
-𝒮-pres-¬≼⁻ : ∀ {c} {us : Vals (args α c)} {vs : Vals αs} {pss : List (Pats (α ∷ αs))} →
-             All (∁ (_≼* ++⁺ us vs)) (𝒮 c pss) →
-             All (∁ (_≼* con c us ∷ vs)) pss
-𝒮-pres-¬≼⁻ = All.gmap⁻ 𝒮-aux-pres-¬≼⁻ ∘ All.concat⁻
+¬useful-[]-∷ : ∀ {ps pss} → ¬ Useful [] (ps ∷ pss)
+¬useful-[]-∷ {ps = []} ([] , _ , ¬[] ∷ _) = ¬[] []
 
-useful-con⁺ : ∀ {c} {rs : Pats (args α c)} {ps : Pats αs} {pss} →
-              Useful (++⁺ rs ps) (𝒮 c pss) →
-              Useful (con {α} c rs ∷ ps) pss
-useful-con⁺ {c = c} {rs} (usvs , rsps≼usvs , ¬sᶜpss≼usvs)
-  with us , vs , refl , rs≼us , ps≼vs ← split≼ rs rsps≼usvs =
-  con c us ∷ vs ,
-  c≼c rs≼us ∷ ps≼vs ,
-  𝒮-pres-¬≼⁻ ¬sᶜpss≼usvs
+module _ {r₁ r₂ : Pat α} {ps : Pats αs} {pss} where
 
-useful-con⁻ : ∀ {c} {rs : Pats (args α c)} {ps : Pats αs} {pss} →
-              Useful (con {α} c rs ∷ ps) pss →
-              Useful (++⁺ rs ps) (𝒮 c pss)
-useful-con⁻ (con c vs ∷ us , c≼c rs≼vs ∷ ps≼us , ¬pss≼c[vs]∷us) =
-  ++⁺ vs us ,
-  ++≼⁺ rs≼vs ps≼us ,
-  𝒮-pres-¬≼ ¬pss≼c[vs]∷us
+  useful-∣⁺ : Useful (r₁ ∷ ps) pss ⊎ Useful (r₂ ∷ ps) pss → Useful (r₁ ∣ r₂ ∷ ps) pss
+  useful-∣⁺ (inj₁ (vvs , r₁≼v ∷ ps≼vs , ¬pss≼vvs)) =
+    vvs , ∣≼ˡ r₁≼v ∷ ps≼vs , ¬pss≼vvs
+  useful-∣⁺ (inj₂ (vvs , r₂≼v ∷ ps≼vs , ¬pss≼vvs)) =
+    vvs , ∣≼ʳ r₂≼v ∷ ps≼vs , ¬pss≼vvs
 
-useful-con↔ : ∀ {c} {rs : Pats (args α c)} {ps : Pats αs} {pss} →
-              Useful (++⁺ rs ps) (𝒮 c pss) ⇔ Useful (con {α} c rs ∷ ps) pss
-useful-con↔ = mk⇔ useful-con⁺ useful-con⁻
+  useful-∣⁻ : Useful (r₁ ∣ r₂ ∷ ps) pss → Useful (r₁ ∷ ps) pss ⊎ Useful (r₂ ∷ ps) pss
+  useful-∣⁻ (vvs , ∣≼ˡ r₁≼v ∷ ps≼vs , ¬pss≼vvs) =
+    inj₁ (vvs , r₁≼v ∷ ps≼vs , ¬pss≼vvs)
+  useful-∣⁻ (vvs , ∣≼ʳ r₂≼v ∷ ps≼vs , ¬pss≼vvs) =
+    inj₂ (vvs , r₂≼v ∷ ps≼vs , ¬pss≼vvs)
 
-𝒟-aux-pres-¬≼ : ∀ {ps : Pats (α ∷ αs)} {v vs} →
-                ¬ ps ≼* v ∷ vs →
-                All (∁ (_≼* vs)) (𝒟-aux ps)
-𝒟-aux-pres-¬≼ {ps = ∙ ∷ ps}       ¬∙ps≼vvs     =
-  (λ ps≼vs → ¬∙ps≼vvs (∙≼ ∷ ps≼vs)) ∷ []
-𝒟-aux-pres-¬≼ {ps = con _ _ ∷ ps} _            = []
-𝒟-aux-pres-¬≼ {ps = r₁ ∣ r₂ ∷ ps} ¬r₁∣r₂ps≼vvs =
-  ++⁺
-    (𝒟-aux-pres-¬≼
-      {ps = r₁ ∷ ps}
-      λ { (r₁≼v ∷ ps≼vs) → ¬r₁∣r₂ps≼vvs (∣≼ₗ r₁≼v ∷ ps≼vs) })
-    (𝒟-aux-pres-¬≼
-      {ps = r₂ ∷ ps}
-      λ { (r₂≼v ∷ ps≼vs) → ¬r₁∣r₂ps≼vvs (∣≼ᵣ r₂≼v ∷ ps≼vs) })
+  useful-∣↔ : (Useful (r₁ ∷ ps) pss ⊎ Useful (r₂ ∷ ps) pss) ⇔ Useful (r₁ ∣ r₂ ∷ ps) pss
+  useful-∣↔ = mk⇔ useful-∣⁺ useful-∣⁻
 
-𝒟-pres-¬≼ : ∀ {pss : List (Pats (α ∷ αs))} {v vs} →
-            All (∁ (_≼* v ∷ vs)) pss →
-            All (∁ (_≼* vs)) (𝒟 pss)
-𝒟-pres-¬≼ = All.concat⁺ ∘ All.gmap⁺ 𝒟-aux-pres-¬≼
+
+module _ {c} {us : Vals (args α c)} {vs : Vals αs} where
+
+  𝒮-aux-pres-¬≼ : ∀ {ps}
+    → ¬ ps ≼* con {α} c us ∷ vs
+    → All (∁ (_≼* ++⁺ us vs)) (𝒮-aux c ps)
+  𝒮-aux-pres-¬≼ {ps = ∙ ∷ ps} ¬∙ps≼cusvs =
+    (λ ∙*ps≼usvs → ¬∙ps≼cusvs (∙≼ ∷ ++≼⁻ ∙* ∙*ps≼usvs .proj₂)) ∷ []
+  𝒮-aux-pres-¬≼ {ps = con d rs ∷ ps} ¬drsps≼cusvs with c Fin.≟ d
+  ... | no _     = []
+  ... | yes refl =
+        (λ rsps≼usvs →
+          let rs≼us , ps≼vs = ++≼⁻ rs rsps≼usvs in
+          ¬drsps≼cusvs (c≼c rs≼us ∷ ps≼vs))
+        ∷ []
+  𝒮-aux-pres-¬≼ {ps = r₁ ∣ r₂ ∷ ps} ¬r₁∣r₂ps≼cusvs =
+    ++⁺
+      (𝒮-aux-pres-¬≼
+        {ps = r₁ ∷ ps}
+        λ { (r₁≼cus ∷ ps≼vs) → ¬r₁∣r₂ps≼cusvs (∣≼ˡ r₁≼cus ∷ ps≼vs) })
+      (𝒮-aux-pres-¬≼
+        {ps = r₂ ∷ ps}
+        λ { (r₂≼cus ∷ ps≼vs) → ¬r₁∣r₂ps≼cusvs (∣≼ʳ r₂≼cus ∷ ps≼vs) })
+
+  𝒮-pres-¬≼ : ∀ {pss}
+    → All (∁ (_≼* con c us ∷ vs)) pss
+    → All (∁ (_≼* ++⁺ us vs)) (𝒮 c pss)
+  𝒮-pres-¬≼ = All.concat⁺ ∘ All.gmap⁺ 𝒮-aux-pres-¬≼
+
+  𝒮-aux-pres-¬≼⁻ : ∀ {ps}
+    → All (∁ (_≼* ++⁺ us vs)) (𝒮-aux c ps)
+    → ¬ ps ≼* con {α} c us ∷ vs
+  𝒮-aux-pres-¬≼⁻ {ps = ∙ ∷ ps} (¬∙*ps≼usvs ∷ []) (∙≼ ∷ ps≼vs) =
+    ¬∙*ps≼usvs (++≼⁺ ∙*≼ ps≼vs)
+  𝒮-aux-pres-¬≼⁻ {ps = con c rs ∷ ps} ¬sᶜps≼usvs        (c≼c rs≼us ∷ ps≼vs) with c Fin.≟ c | ≟-refl c
+  𝒮-aux-pres-¬≼⁻ {ps = con c rs ∷ ps} (¬rsps≼usvs ∷ []) (c≼c rs≼us ∷ ps≼vs)    | _         | refl =
+    ¬rsps≼usvs (++≼⁺ rs≼us ps≼vs)
+  𝒮-aux-pres-¬≼⁻ {ps = r₁ ∣ r₂ ∷ ps} ¬sᶜ[r₁ps]sᶜ[r₂ps]≼usvs (∣≼ˡ r₁≼cus ∷ ps≼vs) =
+    𝒮-aux-pres-¬≼⁻ (++⁻ˡ _ ¬sᶜ[r₁ps]sᶜ[r₂ps]≼usvs) (r₁≼cus ∷ ps≼vs)
+  𝒮-aux-pres-¬≼⁻ {ps = r₁ ∣ r₂ ∷ ps} ¬sᶜ[r₁ps]sᶜ[r₂ps]≼usvs (∣≼ʳ r₂≼cus ∷ ps≼vs) =
+    𝒮-aux-pres-¬≼⁻ (++⁻ʳ _ ¬sᶜ[r₁ps]sᶜ[r₂ps]≼usvs) (r₂≼cus ∷ ps≼vs)
+
+  𝒮-pres-¬≼⁻ : ∀ {pss}
+    → All (∁ (_≼* ++⁺ us vs)) (𝒮 c pss)
+    → All (∁ (_≼* con c us ∷ vs)) pss
+  𝒮-pres-¬≼⁻ = All.gmap⁻ 𝒮-aux-pres-¬≼⁻ ∘ All.concat⁻
+
+  𝒮-pres-¬≼↔ : ∀ {pss}
+    → All (∁ (_≼* ++⁺ us vs)) (𝒮 c pss) ⇔ All (∁ (_≼* con c us ∷ vs)) pss
+  𝒮-pres-¬≼↔ = mk⇔ 𝒮-pres-¬≼⁻ 𝒮-pres-¬≼
+
+
+module _ {c} {rs : Pats (args α c)} {ps : Pats αs} {pss : List (Pats (α ∷ αs))} where
+
+  useful-con⁺ : Useful (++⁺ rs ps) (𝒮 c pss) → Useful (con c rs ∷ ps) pss
+  useful-con⁺ (usvs , rsps≼usvs , ¬sᶜpss≼usvs)
+    with us , vs , refl , rs≼us , ps≼vs ← split≼ rs rsps≼usvs =
+    con c us ∷ vs ,
+    c≼c rs≼us ∷ ps≼vs ,
+    𝒮-pres-¬≼⁻ ¬sᶜpss≼usvs
+
+  useful-con⁻ : Useful (con c rs ∷ ps) pss → Useful (++⁺ rs ps) (𝒮 c pss)
+  useful-con⁻ (con c vs ∷ us , c≼c rs≼vs ∷ ps≼us , ¬pss≼c[vs]∷us) =
+    ++⁺ vs us ,
+    ++≼⁺ rs≼vs ps≼us ,
+    𝒮-pres-¬≼ ¬pss≼c[vs]∷us
+
+  useful-con↔ : Useful (++⁺ rs ps) (𝒮 c pss) ⇔ Useful (con c rs ∷ ps) pss
+  useful-con↔ = mk⇔ useful-con⁺ useful-con⁻
+
+
+module _ {v : Val α} {vs : Vals αs} where
+
+  𝒟-aux-pres-¬≼ : ∀ {ps} → ¬ ps ≼* v ∷ vs → All (∁ (_≼* vs)) (𝒟-aux ps)
+  𝒟-aux-pres-¬≼ {ps = ∙ ∷ ps} ¬∙ps≼vvs =
+    (λ ps≼vs → ¬∙ps≼vvs (∙≼ ∷ ps≼vs)) ∷ []
+  𝒟-aux-pres-¬≼ {ps = con _ _ ∷ ps} _ = []
+  𝒟-aux-pres-¬≼ {ps = r₁ ∣ r₂ ∷ ps} ¬r₁∣r₂ps≼vvs =
+    ++⁺
+      (𝒟-aux-pres-¬≼
+        {ps = r₁ ∷ ps}
+        λ { (r₁≼v ∷ ps≼vs) → ¬r₁∣r₂ps≼vvs (∣≼ˡ r₁≼v ∷ ps≼vs) })
+      (𝒟-aux-pres-¬≼
+        {ps = r₂ ∷ ps}
+        λ { (r₂≼v ∷ ps≼vs) → ¬r₁∣r₂ps≼vvs (∣≼ʳ r₂≼v ∷ ps≼vs) })
+
+  𝒟-pres-¬≼ : ∀ {pss} → All (∁ (_≼* v ∷ vs)) pss → All (∁ (_≼* vs)) (𝒟 pss)
+  𝒟-pres-¬≼ = All.concat⁺ ∘ All.gmap⁺ 𝒟-aux-pres-¬≼
 
 --------------------------------------------------------------------------------
 
 {-# TERMINATING #-}
 useful? : (ps : Pats αs) (pss : List (Pats αs)) → Dec (Useful ps pss)
-useful? []              []      = yes useful-[]-[]
-useful? []              (_ ∷ _) = no ¬useful-[]-∷
-useful? (∙ ∷ ps)        pss     = {!   !}
-useful? (con c rs ∷ ps) pss     =
+useful? [] [] = yes useful-[]-[]
+useful? [] (_ ∷ _) = no ¬useful-[]-∷
+useful? (∙ ∷ ps) pss = {!   !}
+useful? (con c rs ∷ ps) pss =
   Dec.map useful-con↔ (useful? (++⁺ rs ps) (𝒮 c pss))
-useful? (r₁ ∣ r₂ ∷ ps)  pss     =
+useful? (r₁ ∣ r₂ ∷ ps) pss =
   Dec.map useful-∣↔ (useful? (r₁ ∷ ps) pss ⊎-dec useful? (r₂ ∷ ps) pss)
 
 exhaustive? : (pss : List (Pats αs)) → Dec (Exhaustive pss)
