@@ -35,7 +35,7 @@ record Ty where
     numCons : ℕ
     args : Fin numCons → List Ty
     inhabCon : Fin numCons
-    inhac∉pss→𝒟-pres-⋠⁻gs : Vals (args inhabCon)
+    inhabArgs : Vals (args inhabCon)
 
   Con : Set
   Con = Fin numCons
@@ -57,7 +57,7 @@ Vals = All Val
 
 -- All types are inhabited
 inhab : ∀ α → Val α
-inhab α = con (inhabCon α) (inhac∉pss→𝒟-pres-⋠⁻gs α)
+inhab α = con (inhabCon α) (inhabArgs α)
 
 inhabOf : Con α → Val α
 inhabOf c = con c (All.tabulate λ {α} _ → inhab α)
@@ -449,15 +449,30 @@ module _ {c} {us : Vals (args α c)} {vs : Vals αs} where
 
 module _ {α} {ps : Pats αs} {pss} where
 
-  c∉pss→useful-∙⁺ :
+  useful-∙-𝒟⁺ :
       Nonempty (Subset.∁ (⋃ (List.map (rootCons ∘ All.head) pss)))
     → Useful ps (𝒟 pss)
     → Useful (∙ {α} ∷ ps) pss
-  c∉pss→useful-∙⁺ (c , c∈∁pss) (vs , ps≼vs , 𝒟pss⋠vs) =
+  useful-∙-𝒟⁺ (c , c∈∁pss) (vs , ps≼vs , 𝒟pss⋠vs) =
     inhabOf c ∷ vs , ∙≼ ∷ ps≼vs , c∉pss→𝒟-pres-⋠⁻ (x∈∁p⇒x∉p c∈∁pss) 𝒟pss⋠vs
 
-  useful-∙⁻ : Useful (∙ {α} ∷ ps) pss → Useful ps (𝒟 pss)
-  useful-∙⁻ (v ∷ vs , ∙≼ ∷ ps≼vs , pss⋠vvs) = vs , ps≼vs , 𝒟-pres-⋠ pss⋠vvs
+  useful-∙-𝒟⁻ : Useful (∙ {α} ∷ ps) pss → Useful ps (𝒟 pss)
+  useful-∙-𝒟⁻ (v ∷ vs , ∙≼ ∷ ps≼vs , pss⋠vvs) = vs , ps≼vs , 𝒟-pres-⋠ pss⋠vvs
+
+
+module _ {α αs} {ps : Pats αs} {pss} where
+
+  useful-∙-𝒮⁺ : ∃[ c ] Useful (++⁺ ∙* ps) (𝒮 c pss) → Useful (∙ {α} ∷ ps) pss
+  useful-∙-𝒮⁺ (c , usvs , ∙*ps≼usvs , 𝒮pss⋠usvs)
+    with us , vs , refl , _ , ps≼vs ← split≼ {args α c} ∙* ∙*ps≼usvs =
+    con c us ∷ vs , ∙≼ ∷ ps≼vs , 𝒮-pres-⋠⁻ 𝒮pss⋠usvs
+
+  useful-∙-𝒮⁻ : Useful (∙ {α} ∷ ps) pss → ∃[ c ] Useful (++⁺ ∙* ps) (𝒮 c pss)
+  useful-∙-𝒮⁻ (con c us ∷ vs , ∙≼ ∷ ps≼vs , pss⋠cusvs) =
+    c , ++⁺ us vs , ++≼⁺ ∙*≼ ps≼vs , 𝒮-pres-⋠ pss⋠cusvs
+
+  useful-∙-𝒮⇔ : (∃[ c ] Useful (++⁺ ∙* ps) (𝒮 c pss)) ⇔ Useful (∙ {α} ∷ ps) pss
+  useful-∙-𝒮⇔ = mk⇔ useful-∙-𝒮⁺ useful-∙-𝒮⁻
 
 --------------------------------------------------------------------------------
 -- Usefulness checking algorithm
@@ -468,12 +483,9 @@ useful? [] [] = yes useful-[]-[]
 useful? [] (_ ∷ _) = no ¬useful-[]-∷
 useful? (_∷_ {α} ∙ ps) pss with nonempty? (Subset.∁ (⋃ (List.map (rootCons ∘ All.head) pss)))
 ... | yes ∃c∈∁pss =
-      Dec.map′ (c∉pss→useful-∙⁺ ∃c∈∁pss) useful-∙⁻ (useful? ps (𝒟 pss))
+      Dec.map′ (useful-∙-𝒟⁺ ∃c∈∁pss) useful-∙-𝒟⁻ (useful? ps (𝒟 pss))
 ... | no _ =
-      Dec.map′
-        {!   !}
-        {!   !}
-        (any? {n = numCons α} λ c → useful? (++⁺ ∙* ps) (𝒮 c pss))
+      Dec.map useful-∙-𝒮⇔ (any? λ c → useful? (++⁺ ∙* ps) (𝒮 c pss))
 useful? (con c rs ∷ ps) pss =
   Dec.map useful-con⇔ (useful? (++⁺ rs ps) (𝒮 c pss))
 useful? (r₁ ∣ r₂ ∷ ps) pss =
@@ -491,16 +503,24 @@ nat .numCons = 2
 nat .args zero = []
 nat .args (suc zero) = nat ∷ []
 nat .inhabCon = zero
-nat .inhac∉pss→𝒟-pres-⋠⁻gs = []
+nat .inhabArgs = []
 
 pattern zero′ = con zero []
 pattern suc′ n = con (suc zero) (n ∷ [])
 
-patmat : List (Pats (nat ∷ nat ∷ []))
-patmat =
+patmat₁ : List (Pats (nat ∷ nat ∷ []))
+patmat₁ =
   (zero′ ∷ zero′ ∷ []) ∷
   (suc′ ∙ ∷ zero′ ∷ []) ∷
   (zero′ ∷ suc′ ∙ ∷ []) ∷
+  []
+
+patmat₂ : List (Pats (nat ∷ nat ∷ []))
+patmat₂ =
+  (zero′ ∷ zero′ ∷ []) ∷
+  (suc′ ∙ ∷ zero′ ∷ []) ∷
+  (zero′ ∷ suc′ ∙ ∷ []) ∷
+  (suc′ ∙ ∷ suc′ ∙ ∷ []) ∷
   []
 
 vals₁ : Vals (nat ∷ nat ∷ [])
@@ -509,8 +529,14 @@ vals₁ = suc′ zero′ ∷ suc′ zero′ ∷ []
 vals₂ : Vals (nat ∷ nat ∷ [])
 vals₂ = suc′ zero′ ∷ zero′ ∷ []
 
-_ : match? vals₁ patmat ≡ no _
+_ : match? vals₁ patmat₁ ≡ no _
 _ = refl
 
-_ : match? vals₂ patmat ≡ yes _
+_ : match? vals₂ patmat₁ ≡ yes _
+_ = refl
+
+_ : exhaustive? patmat₁ ≡ inj₂ (suc′ zero′ ∷ suc′ zero′ ∷ [] , _)
+_ = refl
+
+_ : exhaustive? patmat₂ ≡ inj₁ _
 _ = refl
