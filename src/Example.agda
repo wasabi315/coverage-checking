@@ -1,6 +1,8 @@
 module Example where
 
 open import Data.Fin using (zero; suc)
+open import Data.Fin.Subset using (∁)
+open import Data.Fin.Subset.Properties using (nonempty?)
 open import Data.Nat using (zero; suc)
 open import Data.List using ([]; _∷_)
 open import Data.List.Relation.Unary.All using ([]; _∷_)
@@ -10,49 +12,48 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Relation.Nullary.Decidable using (yes; no)
 
 open import Pattern
-open import Usefulness
+open import Exhaustiveness
+
+private
+  variable
+    α β : Ty
 
 --------------------------------------------------------------------------------
+-- Example from the paper (but made polymorphic)
 
-nat : Ty
-nat .numCons = 2
-nat .args zero = []
-nat .args (suc zero) = nat ∷ []
-nat .inhabCon = zero
-nat .inhabArgs = []
+-- type 'a mylist = Nil | One of 'a | Cons of 'a * 'a mylist
+mylist : Ty → Ty
+mylist α .numCons = 3
+mylist α .args zero = []
+mylist α .args (suc zero) = α ∷ []
+mylist α .args (suc (suc zero)) = α ∷ mylist α ∷ []
+mylist α .inhabCon = zero
+mylist α .inhabArgs = []
 
-pattern zero′ = con zero []
-pattern suc′ n = con (suc zero) (n ∷ [])
+pattern nil = con zero []
+pattern one x = con (suc zero) (x ∷ [])
+pattern cons x xs = con (suc (suc zero)) (x ∷ xs ∷ [])
 
-patmat₁ : PatMat (nat ∷ nat ∷ [])
-patmat₁ =
-  (zero′ ∷ zero′ ∷ []) ∷
-  (suc′ ∙ ∷ zero′ ∷ []) ∷
-  (zero′ ∷ suc′ ∙ ∷ []) ∷
+P : PatMat (mylist α ∷ mylist β ∷ [])
+P =
+  (nil ∷ ∙   ∷ []) ∷
+  (∙   ∷ nil ∷ []) ∷
   []
 
-patmat₂ : PatMat (nat ∷ nat ∷ [])
-patmat₂ =
-  (zero′ ∷ zero′ ∷ []) ∷
-  (suc′ ∙ ∷ zero′ ∷ []) ∷
-  (zero′ ∷ suc′ ∙ ∷ []) ∷
-  (suc′ ∙ ∷ suc′ ∙ ∷ []) ∷
+Q : PatMat (mylist α ∷ mylist β ∷ [])
+Q =
+  (nil      ∷ ∙        ∷ []) ∷
+  (∙        ∷ nil      ∷ []) ∷
+  (one ∙    ∷ ∙        ∷ []) ∷
+  (∙        ∷ one ∙    ∷ []) ∷
+  (cons ∙ ∙ ∷ ∙        ∷ []) ∷
+  (∙        ∷ cons ∙ ∙ ∷ []) ∷
   []
 
-vals₁ : Vals (nat ∷ nat ∷ [])
-vals₁ = suc′ zero′ ∷ suc′ zero′ ∷ []
-
-vals₂ : Vals (nat ∷ nat ∷ [])
-vals₂ = suc′ zero′ ∷ zero′ ∷ []
-
-_ : match? vals₁ patmat₁ ≡ no _
+-- P is non-exhaustive, witnessed by one (inhab α) ∷ one (inhab β) ∷ []
+_ : exhaustive? (P {α} {β}) ≡ inj₂ (one (inhab α) ∷ one (inhab β) ∷ [] , _)
 _ = refl
 
-_ : match? vals₂ patmat₁ ≡ yes _
-_ = refl
-
-_ : exhaustive? patmat₁ ≡ inj₂ (suc′ zero′ ∷ suc′ zero′ ∷ [] , _)
-_ = refl
-
-_ : exhaustive? patmat₂ ≡ inj₁ _
+-- Q is exhaustive, so we got a function of type `(vs : Vals (mylist α ∷ mylist β ∷ [])) → Match vs Q` inside the inj₁
+_ : exhaustive? (Q {α} {β}) ≡ inj₁ _
 _ = refl

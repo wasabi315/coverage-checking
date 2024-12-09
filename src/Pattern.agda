@@ -36,9 +36,9 @@ record Ty where
     numCons : ℕ
     -- Mapping from constructor to its argument types
     args : Fin numCons → List Ty
-    -- Constructor of the inhabited value
+    -- Constructor of the inhabitant
     inhabCon : Fin numCons
-    -- Arguments of the inhabited value
+    -- Constructor arguments of the inhabitant
     inhabArgs : Vals (args inhabCon)
 
   Con : Set
@@ -58,14 +58,14 @@ private
 data Val α where
   con : ∀ c → Vals (args α c) → Val α
 
--- (Heterogeneous) List of values
+-- (Heterogeneous) list of values
 Vals = All Val
 
--- The inhabitant of a datatype
+-- The inhabitant
 inhab : ∀ α → Val α
 inhab α = con (inhabCon α) (inhabArgs α)
 
--- Value that has the given constructor
+-- There is an inhabitant for every variant
 inhabOf : Con α → Val α
 inhabOf c = con c (All.tabulate λ {α} _ → inhab α)
 
@@ -81,7 +81,7 @@ data Pat α where
   -- Or pattern
   _∣_ : Pat α → Pat α → Pat α
 
--- (Heterogeneous) List of patterns
+-- (Heterogeneous) list of patterns
 Pats = All Pat
 
 -- Matrix of patterns
