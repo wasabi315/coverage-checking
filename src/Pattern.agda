@@ -5,6 +5,7 @@ open import Data.Fin.Subset using (Subset)
 open import Data.List as List using (List; []; _∷_)
 open import Data.List.Relation.Unary.All as All using (All; []; _∷_)
 import Data.List.Relation.Unary.All.Properties as All
+open import Data.List.Relation.Unary.Any as Any using (Any; here; there)
 open import Data.List.Relation.Unary.First as First using (First; _∷_)
 open import Data.List.Relation.Unary.First.Properties as First using (cofirst?)
 open import Data.Nat using (ℕ; zero; suc)
@@ -13,13 +14,13 @@ open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_])
 open import Function using (id; _∘_; _⇔_; mk⇔)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong)
 open import Relation.Nullary.Decidable as Dec using (Dec; yes; no; _×-dec_; _⊎-dec_)
-open import Relation.Nullary.Negation using (¬_)
+open import Relation.Nullary.Negation using (¬_; contraposition)
 
 open import Extra
 
 infixr 6 _∣_
 infixr 5 _∷_
-infix 4 _≼_ _≼*_ _⋠_ _⋠*_ _≼?_ _≼*?_
+infix 4 _≼_ _≼*_ _≼**_ _⋠_ _⋠*_ _⋠**_ _≼?_ _≼*?_
 
 --------------------------------------------------------------------------------
 -- Datatypes, values, and patterns
@@ -114,11 +115,17 @@ data _≼*_ where
     → ps ≼* vs
     → p ∷ ps ≼* v ∷ vs
 
+_≼**_ : PatMat αs → Vals αs → Set
+P ≼** vs = Any (_≼* vs) P
+
 _⋠_ : Pat α → Val α → Set
 p ⋠ v = ¬ p ≼ v
 
 _⋠*_ : Pats αs → Vals αs → Set
 ps ⋠* vs = ¬ ps ≼* vs
+
+_⋠**_ : PatMat αs → Vals αs → Set
+P ⋠** vs = ¬ P ≼** vs
 
 --------------------------------------------------------------------------------
 -- Lemmas about the instance relation
@@ -231,11 +238,10 @@ module _ {c} {rs : Pats (args α c)} {ps : Pats αs} {us vs} where
   con≼*⇔ = mk⇔ con≼*⁺ con≼*⁻
 
 
--- does not match if the constructor is different
-c≢d→c⋠d : ∀ {c d} {ps : Pats (args α c)} {vs : Vals (args α d)}
-  → c ≢ d
-  → con {α} c ps ⋠ con d vs
-c≢d→c⋠d c≢c (con≼ _) = c≢c refl
+c≼d→c≡d : ∀ {c d} {ps : Pats (args α c)} {vs : Vals (args α d)}
+  → con {α} c ps ≼ con d vs
+  → c ≡ d
+c≼d→c≡d (con≼ _) = refl
 
 --------------------------------------------------------------------------------
 -- Pattern matching
@@ -246,7 +252,7 @@ _≼*?_ : (ps : Pats αs) (vs : Vals αs) → Dec (ps ≼* vs)
 ∙ ≼? v = yes ∙≼
 con c ps ≼? con d vs with c Fin.≟ d
 ... | yes refl = Dec.map con≼⇔ (ps ≼*? vs)
-... | no c≢d = no (c≢d→c⋠d c≢d)
+... | no c≢d = no (contraposition c≼d→c≡d c≢d)
 p ∣ q ≼? v = Dec.map ∣≼⇔ ((p ≼? v) ⊎-dec (q ≼? v))
 
 [] ≼*? [] = yes []
@@ -256,5 +262,5 @@ p ∷ ps ≼*? v ∷ vs = Dec.map ∷⇔ ((p ≼? v) ×-dec (ps ≼*? vs))
 Match : Vals αs → PatMat αs → Set
 Match vs = First (_⋠* vs) (_≼* vs)
 
-match? : (vs : Vals αs) (pss : PatMat αs) → Dec (Match vs pss)
+match? : (vs : Vals αs) (P : PatMat αs) → Dec (Match vs P)
 match? vs = cofirst? (_≼*? vs)

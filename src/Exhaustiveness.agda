@@ -3,18 +3,20 @@ module Exhaustiveness where
 open import Data.Bool using (true; false; _∧_)
 open import Data.Fin as Fin using (zero; suc)
 open import Data.Fin.Subset using (Subset; _∈_; _∉_; ⊥; ⁅_⁆; _∪_; ∁; ⋃; Nonempty; Empty)
-open import Data.Fin.Subset.Properties using (x∉⁅y⁆⇒x≢y; x∈∁p⇒x∉p; x∉p⇒x∈∁p; ∉⊥; x∈⁅x⁆; nonempty?)
+open import Data.Fin.Subset.Properties using (x∈∁p⇒x∉p; x∉p⇒x∈∁p; ∉⊥; x∈⁅x⁆; x∈⁅y⁆⇔x≡y; nonempty?)
 open import Data.Fin.Properties using (any?)
 open import Data.List as List using (List; []; _∷_; _++_; concatMap)
 open import Data.List.Relation.Unary.All as All using (All; []; _∷_)
 import Data.List.Relation.Unary.All.Properties as All
-open import Data.List.Relation.Unary.First as First using (First)
+open import Data.List.Relation.Unary.Any as Any using (Any; here; there)
+open import Data.List.Relation.Unary.Any.Properties as Any using (¬Any[])
+open import Data.List.Relation.Unary.First as First using (First; toAny)
 open import Data.List.Relation.Unary.First.Properties as First using (All⇒¬First)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product as Product using (∃-syntax; _×_; _,_; proj₁; proj₂)
-open import Data.Sum as Sum using (_⊎_; inj₁; inj₂; [_,_])
-open import Function using (id; _∘_; _⇔_; mk⇔)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; ≢-sym)
+open import Data.Sum as Sum using (_⊎_; inj₁; inj₂)
+open import Function using (id; _∘_; _⇔_; mk⇔; Equivalence)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; ≢-sym)
 open import Relation.Nullary.Decidable as Dec using (Dec; yes; no; _⊎-dec_; _×-dec_)
 open import Relation.Nullary.Negation using (¬_; contradiction; contraposition)
 
@@ -29,52 +31,52 @@ private
 --------------------------------------------------------------------------------
 -- Exhaustiveness and usefulness
 
--- There is a matching row in pss for every list of values
+-- There is a matching row in P for every list of values
 Exhaustive : PatMat αs → Set
-Exhaustive pss = ∀ vs → Match vs pss
+Exhaustive P = ∀ vs → Match vs P
 
--- There is a list of values that does not match any row in pss
+-- There is a list of values that does not match any row in P
 NonExhaustive : PatMat αs → Set
-NonExhaustive pss = ∃[ vs ] ¬ Match vs pss
+NonExhaustive P = ∃[ vs ] ¬ Match vs P
 
--- ps is useful with respect to pss if
+-- ps is useful with respect to P if
 --   1. there is a list of values that matches ps (say vs)
---   2. vs does not match any row in pss
+--   2. vs does not match any row in P
 -- Usefulness can also be used to formulate redundancy
 Useful : Pats αs → PatMat αs → Set
-Useful ps pss = ∃[ vs ] ps ≼* vs × All (_⋠* vs) pss
+Useful ps P = ∃[ vs ] ps ≼* vs × P ⋠** vs
 
 -- non-exhaustiveness defined in terms of usefulness:
--- pss is non-exhaustive if ∙* is useful with respect to pss
+-- P is non-exhaustive if ∙* is useful with respect to P
 NonExhaustive′ : PatMat αs → Set
 NonExhaustive′ = Useful ∙*
 
--- pss is exhaustive if ∙* is not useful with respect to pss
+-- P is exhaustive if ∙* is not useful with respect to P
 Exhaustive′ : PatMat αs → Set
-Exhaustive′ pss = ¬ NonExhaustive′ pss
+Exhaustive′ P = ¬ NonExhaustive′ P
 
-module _ {pss : PatMat αs} where
+module _ {P : PatMat αs} where
 
-  NonExhaustive′→NonExhaustive : NonExhaustive′ pss → NonExhaustive pss
-  NonExhaustive′→NonExhaustive (vs , _ , ∙*ps⋠vs) = vs , All⇒¬First id ∙*ps⋠vs
+  NonExhaustive′→NonExhaustive : NonExhaustive′ P → NonExhaustive P
+  NonExhaustive′→NonExhaustive (vs , _ , ∙*ps⋠vs) = vs , contraposition toAny ∙*ps⋠vs
 
-  NonExhaustive→NonExhaustive′ : NonExhaustive pss → NonExhaustive′ pss
-  NonExhaustive→NonExhaustive′ (vs , pss⋠vs) = vs , ∙*≼ , ¬First⇒All id pss⋠vs
+  NonExhaustive→NonExhaustive′ : NonExhaustive P → NonExhaustive′ P
+  NonExhaustive→NonExhaustive′ (vs , P⋠vs) = vs , ∙*≼ , ¬First⇒¬Any id P⋠vs
 
   -- The two definitions of non-exhaustiveness are equivalent
-  NonExhaustive′⇔NonExhaustive : NonExhaustive′ pss ⇔ NonExhaustive pss
+  NonExhaustive′⇔NonExhaustive : NonExhaustive′ P ⇔ NonExhaustive P
   NonExhaustive′⇔NonExhaustive = mk⇔ NonExhaustive′→NonExhaustive NonExhaustive→NonExhaustive′
 
-  Exhaustive→Exhaustive′ : Exhaustive pss → Exhaustive′ pss
-  Exhaustive→Exhaustive′ exh (vs , _ , pss⋠vs) = All⇒¬First id pss⋠vs (exh vs)
+  Exhaustive→Exhaustive′ : Exhaustive P → Exhaustive′ P
+  Exhaustive→Exhaustive′ exh (vs , _ , P⋠vs) = P⋠vs (toAny (exh vs))
 
-  Exhaustive′→Exhaustive : Exhaustive′ pss → Exhaustive pss
-  Exhaustive′→Exhaustive exh vs with match? vs pss
-  ... | yes pss≼vs = pss≼vs
-  ... | no pss⋠vs = contradiction (vs , ∙*≼ , ¬First⇒All id pss⋠vs) exh
+  Exhaustive′→Exhaustive : Exhaustive′ P → Exhaustive P
+  Exhaustive′→Exhaustive exh vs with match? vs P
+  ... | yes P≼vs = P≼vs
+  ... | no P⋠vs = contradiction (vs , ∙*≼ , ¬First⇒¬Any id P⋠vs) exh
 
   -- The two definitions of exhaustiveness are equivalent
-  Exhaustive′⇔Exhaustive : Exhaustive′ pss ⇔ Exhaustive pss
+  Exhaustive′⇔Exhaustive : Exhaustive′ P ⇔ Exhaustive P
   Exhaustive′⇔Exhaustive = mk⇔ Exhaustive′→Exhaustive Exhaustive→Exhaustive′
 
 --------------------------------------------------------------------------------
@@ -94,25 +96,25 @@ emptyRootCons? ∙ = yes (∉⊥ ∘ proj₂)
 emptyRootCons? (con c _) = no λ empty⁅c⁆ → empty⁅c⁆ (c , x∈⁅x⁆ c)
 emptyRootCons? (p ∣ q) = Dec.map Empty∪⇔ (emptyRootCons? p ×-dec emptyRootCons? q)
 
-emptyΣ? : (pss : PatMat (α ∷ αs)) → Dec (Empty (Σ pss))
+emptyΣ? : (P : PatMat (α ∷ αs)) → Dec (Empty (Σ P))
 emptyΣ? [] = yes (∉⊥ ∘ proj₂)
-emptyΣ? (ps ∷ pss) = Dec.map Empty∪⇔ (emptyRootCons? (All.head ps) ×-dec emptyΣ? pss)
+emptyΣ? (ps ∷ P) = Dec.map Empty∪⇔ (emptyRootCons? (All.head ps) ×-dec emptyΣ? P)
 
-∃missingCon? : (pss : PatMat (α ∷ αs)) → Dec (∃[ c ] c ∉ Σ pss)
-∃missingCon? {α = α} pss with emptyΣ? pss
+∃missingCon? : (P : PatMat (α ∷ αs)) → Dec (∃[ c ] c ∉ Σ P)
+∃missingCon? {α = α} P with emptyΣ? P
 ... | yes emptyΣ = yes (inhabCon α , emptyΣ ∘ (inhabCon α ,_))
 ... | no _ =
       Dec.map′
         (Product.map₂ x∈∁p⇒x∉p)
         (Product.map₂ x∉p⇒x∈∁p)
-        (nonempty? (∁ (Σ pss)))
+        (nonempty? (∁ (Σ P)))
 {-
 -- The above definition has better decidability than the following one;
 -- When α is abstract, you can't decide how many constructors there are in α, therefore you can't decide if there is a missing constructor.
 -- The definition above exploits the fact that you can decide if the set is empty without knowing the number of constructors.
 
 ∃missingCon? =
-  Dec.map′ (Product.map₂ x∈∁p⇒x∉p) (Product.map₂ x∉p⇒x∈∁p) (nonempty? (∁ (Σ pss)))
+  Dec.map′ (Product.map₂ x∈∁p⇒x∉p) (Product.map₂ x∉p⇒x∈∁p) (nonempty? (∁ (Σ P)))
 -}
 
 -- Specialization: filters out clauses whose first pattern does not match a value of the form `con c -`.
@@ -139,185 +141,177 @@ emptyΣ? (ps ∷ pss) = Dec.map Empty∪⇔ (emptyRootCons? (All.head ps) ×-dec
 
 -- [] is useful wrt []
 useful-[]-[] : Useful [] []
-useful-[]-[] = [] , [] , []
+useful-[]-[] = [] , [] , ¬Any[]
 
 -- [] is not wrt any non-empty matrix
-¬useful-[]-∷ : ∀ {ps pss} → ¬ Useful [] (ps ∷ pss)
-¬useful-[]-∷ {ps = []} ([] , _ , ¬[] ∷ _) = ¬[] []
+¬useful-[]-∷ : ∀ {ps P} → ¬ Useful [] (ps ∷ P)
+¬useful-[]-∷ {ps = []} ([] , _ , []P⋠[]) = []P⋠[] (here [])
 
-module _ {r₁ r₂ : Pat α} {ps : Pats αs} {pss} where
+module _ {r₁ r₂ : Pat α} {ps : Pats αs} {P} where
 
-  useful-∣⁺ : Useful (r₁ ∷ ps) pss ⊎ Useful (r₂ ∷ ps) pss → Useful (r₁ ∣ r₂ ∷ ps) pss
-  useful-∣⁺ (inj₁ (vvs , r₁≼v ∷ ps≼vs , pss⋠vvs)) =
-    vvs , ∣≼ˡ r₁≼v ∷ ps≼vs , pss⋠vvs
-  useful-∣⁺ (inj₂ (vvs , r₂≼v ∷ ps≼vs , pss⋠vvs)) =
-    vvs , ∣≼ʳ r₂≼v ∷ ps≼vs , pss⋠vvs
+  useful-∣⁺ : Useful (r₁ ∷ ps) P ⊎ Useful (r₂ ∷ ps) P → Useful (r₁ ∣ r₂ ∷ ps) P
+  useful-∣⁺ (inj₁ (vvs , r₁≼v ∷ ps≼vs , P⋠vvs)) =
+    vvs , ∣≼ˡ r₁≼v ∷ ps≼vs , P⋠vvs
+  useful-∣⁺ (inj₂ (vvs , r₂≼v ∷ ps≼vs , P⋠vvs)) =
+    vvs , ∣≼ʳ r₂≼v ∷ ps≼vs , P⋠vvs
 
-  useful-∣⁻ : Useful (r₁ ∣ r₂ ∷ ps) pss → Useful (r₁ ∷ ps) pss ⊎ Useful (r₂ ∷ ps) pss
-  useful-∣⁻ (vvs , ∣≼ˡ r₁≼v ∷ ps≼vs , pss⋠vvs) =
-    inj₁ (vvs , r₁≼v ∷ ps≼vs , pss⋠vvs)
-  useful-∣⁻ (vvs , ∣≼ʳ r₂≼v ∷ ps≼vs , pss⋠vvs) =
-    inj₂ (vvs , r₂≼v ∷ ps≼vs , pss⋠vvs)
+  useful-∣⁻ : Useful (r₁ ∣ r₂ ∷ ps) P → Useful (r₁ ∷ ps) P ⊎ Useful (r₂ ∷ ps) P
+  useful-∣⁻ (vvs , ∣≼ˡ r₁≼v ∷ ps≼vs , P⋠vvs) =
+    inj₁ (vvs , r₁≼v ∷ ps≼vs , P⋠vvs)
+  useful-∣⁻ (vvs , ∣≼ʳ r₂≼v ∷ ps≼vs , P⋠vvs) =
+    inj₂ (vvs , r₂≼v ∷ ps≼vs , P⋠vvs)
 
-  -- (r₁ ∣ r₂ ∷ ps) is useful wrt pss iff (r₁ ∷ ps) or (r₂ ∷ ps) is useful wrt pss
-  useful-∣⇔ : (Useful (r₁ ∷ ps) pss ⊎ Useful (r₂ ∷ ps) pss) ⇔ Useful (r₁ ∣ r₂ ∷ ps) pss
+  -- (r₁ ∣ r₂ ∷ ps) is useful wrt P iff (r₁ ∷ ps) or (r₂ ∷ ps) is useful wrt P
+  useful-∣⇔ : (Useful (r₁ ∷ ps) P ⊎ Useful (r₂ ∷ ps) P) ⇔ Useful (r₁ ∣ r₂ ∷ ps) P
   useful-∣⇔ = mk⇔ useful-∣⁺ useful-∣⁻
 
 
 module _ {c} {us : Vals (args α c)} {vs : Vals αs} where
 
-  𝒮-aux-pres-⋠ : ∀ {ps}
-    → ps ⋠* con {α} c us ∷ vs
-    → All (_⋠* All.++⁺ us vs) (𝒮-aux c ps)
-  𝒮-aux-pres-⋠ {∙ ∷ ps} ∙ps⋠cusvs = contraposition ∙≼*⁺ ∙ps⋠cusvs ∷ []
-  𝒮-aux-pres-⋠ {con d rs ∷ ps} drsps⋠cusvs with c Fin.≟ d
-  ... | no _ = []
-  ... | yes refl = contraposition con≼*⁺ drsps⋠cusvs ∷ []
-  𝒮-aux-pres-⋠ {r₁ ∣ r₂ ∷ ps} r₁₂ps⋠cusvs =
-    All.++⁺
-      (𝒮-aux-pres-⋠ (contraposition (∣≼*⁺ ∘ inj₁) r₁₂ps⋠cusvs))
-      (𝒮-aux-pres-⋠ (contraposition (∣≼*⁺ ∘ inj₂) r₁₂ps⋠cusvs))
+  𝒮-aux-pres-≼ : ∀ {ps}
+    → ps ≼* con {α} c us ∷ vs
+    → 𝒮-aux c ps ≼** All.++⁺ us vs
+  𝒮-aux-pres-≼ {∙ ∷ ps} ∙ps≼cusvs = here (∙≼*⁻ ∙ps≼cusvs)
+  𝒮-aux-pres-≼ {con d rs ∷ ps} drsps≼cusvs with c Fin.≟ d
+  ... | no c≢d = contradiction (sym (c≼d→c≡d (∷⁻ drsps≼cusvs .proj₁))) c≢d
+  ... | yes refl = here (con≼*⁻ drsps≼cusvs)
+  𝒮-aux-pres-≼ {r₁ ∣ r₂ ∷ ps} (∣≼ˡ r₁≼cus ∷ ps≼vs) =
+    Any.++⁺ˡ (𝒮-aux-pres-≼ (r₁≼cus ∷ ps≼vs))
+  𝒮-aux-pres-≼ {r₁ ∣ r₂ ∷ ps} (∣≼ʳ r₂≼cus ∷ ps≼vs) =
+    Any.++⁺ʳ _ (𝒮-aux-pres-≼ (r₂≼cus ∷ ps≼vs))
 
-  -- 𝒮 preserves ⋠: if all rows in `pss` do not match `con c us ∷ vs`, all rows in the specialized matrix do not match `𝒮 c (con c us ∷ vs) = us ++ vs`.
-  𝒮-pres-⋠ : ∀ {pss}
-    → All (_⋠* con c us ∷ vs) pss
-    → All (_⋠* All.++⁺ us vs) (𝒮 c pss)
-  𝒮-pres-⋠ = All.concat⁺ ∘ All.gmap⁺ 𝒮-aux-pres-⋠
+  -- 𝒮 preserves ≼
+  𝒮-pres-≼ : ∀ {P}
+    → P ≼** con {α} c us ∷ vs
+    → 𝒮 c P ≼** All.++⁺ us vs
+  𝒮-pres-≼ = Any.concat⁺ ∘ Any.gmap 𝒮-aux-pres-≼
 
-  𝒮-aux-pres-⋠⁻ : ∀ {ps}
-    → All (_⋠* All.++⁺ us vs) (𝒮-aux c ps)
-    → ps ⋠* con {α} c us ∷ vs
-  𝒮-aux-pres-⋠⁻ {∙ ∷ ps} (∙*ps⋠usvs ∷ []) (∙≼ ∷ ps≼vs) =
-    ∙*ps⋠usvs (++⁺ ∙*≼ ps≼vs)
-  𝒮-aux-pres-⋠⁻ {con c rs ∷ ps} 𝒮rsps⋠usvs (con≼ rs≼us ∷ ps≼vs) with c Fin.≟ c | ≟-refl c
-  𝒮-aux-pres-⋠⁻ {con c rs ∷ ps} (rsps⋠usvs ∷ []) (con≼ rs≼us ∷ ps≼vs) | _ | refl =
-    rsps⋠usvs (++⁺ rs≼us ps≼vs)
-  𝒮-aux-pres-⋠⁻ {r₁ ∣ r₂ ∷ ps} 𝒮r₁ps𝒮r₂ps⋠usvs (∣≼ˡ r₁≼cus ∷ ps≼vs) =
-    𝒮-aux-pres-⋠⁻ (All.++⁻ˡ _ 𝒮r₁ps𝒮r₂ps⋠usvs) (r₁≼cus ∷ ps≼vs)
-  𝒮-aux-pres-⋠⁻ {r₁ ∣ r₂ ∷ ps} 𝒮r₁ps𝒮r₂ps⋠usvs (∣≼ʳ r₂≼cus ∷ ps≼vs) =
-    𝒮-aux-pres-⋠⁻ (All.++⁻ʳ _ 𝒮r₁ps𝒮r₂ps⋠usvs) (r₂≼cus ∷ ps≼vs)
+  𝒮-aux-pres-≼⁻ : ∀ {ps}
+    → 𝒮-aux c ps ≼** All.++⁺ us vs
+    → ps ≼* con {α} c us ∷ vs
+  𝒮-aux-pres-≼⁻ {∙ ∷ ps} (here ∙*ps≼usvs) = ∙≼*⁺ ∙*ps≼usvs
+  𝒮-aux-pres-≼⁻ {con d rs ∷ ps} _ with c Fin.≟ d
+  𝒮-aux-pres-≼⁻ {con d rs ∷ ps} (here drsps≼cusvs) | yes refl = con≼*⁺ drsps≼cusvs
+  𝒮-aux-pres-≼⁻ {r₁ ∣ r₂ ∷ ps} =
+    ∣≼*⁺ ∘ Sum.map 𝒮-aux-pres-≼⁻ 𝒮-aux-pres-≼⁻ ∘ Any.++⁻ _
 
-  -- The inverse of 𝒮-pres-⋠: if all rows in the specialized matrix do not match `us ++ vs`, all rows the "unspecialized" matrix do not match `con c us ∷ vs` (unspecialized values).
-  𝒮-pres-⋠⁻ : ∀ {pss}
-    → All (_⋠* All.++⁺ us vs) (𝒮 c pss)
-    → All (_⋠* con c us ∷ vs) pss
-  𝒮-pres-⋠⁻ = All.gmap⁻ 𝒮-aux-pres-⋠⁻ ∘ All.concat⁻
+  -- "Unspecializing" preserves ≼
+  𝒮-pres-≼⁻ : ∀ {P}
+    → 𝒮 c P ≼** All.++⁺ us vs
+    → P ≼** con {α} c us ∷ vs
+  𝒮-pres-≼⁻ = Any.map 𝒮-aux-pres-≼⁻ ∘ Any.map⁻ ∘ Any.concat⁻ _
 
-  -- Specialization and unspecialization preserve ⋠
-  𝒮-pres-⋠⇔ : ∀ {pss}
-    → All (_⋠* All.++⁺ us vs) (𝒮 c pss) ⇔ All (_⋠* con c us ∷ vs) pss
-  𝒮-pres-⋠⇔ = mk⇔ 𝒮-pres-⋠⁻ 𝒮-pres-⋠
+  𝒮-pres-≼⇔ : ∀ {P}
+    → P ≼** con {α} c us ∷ vs ⇔ 𝒮 c P ≼** All.++⁺ us vs
+  𝒮-pres-≼⇔ = mk⇔ 𝒮-pres-≼ 𝒮-pres-≼⁻
 
 
-module _ {c} {rs : Pats (args α c)} {ps : Pats αs} {pss : PatMat (α ∷ αs)} where
+module _ {c} {rs : Pats (args α c)} {ps : Pats αs} {P : PatMat (α ∷ αs)} where
 
-  useful-con⁺ : Useful (All.++⁺ rs ps) (𝒮 c pss) → Useful (con c rs ∷ ps) pss
-  useful-con⁺ (usvs , rsps≼usvs , 𝒮pss⋠usvs)
+  useful-con⁺ : Useful (All.++⁺ rs ps) (𝒮 c P) → Useful (con c rs ∷ ps) P
+  useful-con⁺ (usvs , rsps≼usvs , 𝒮P⋠usvs)
     with us , vs , refl , rs≼us , ps≼vs ← split rs rsps≼usvs =
-    con c us ∷ vs , con≼ rs≼us ∷ ps≼vs , 𝒮-pres-⋠⁻ 𝒮pss⋠usvs
+    con c us ∷ vs , con≼ rs≼us ∷ ps≼vs , contraposition 𝒮-pres-≼ 𝒮P⋠usvs
 
-  useful-con⁻ : Useful (con c rs ∷ ps) pss → Useful (All.++⁺ rs ps) (𝒮 c pss)
-  useful-con⁻ (con c vs ∷ us , con≼ rs≼vs ∷ ps≼us , pss⋠cvsus) =
-    All.++⁺ vs us , ++⁺ rs≼vs ps≼us , 𝒮-pres-⋠ pss⋠cvsus
+  useful-con⁻ : Useful (con c rs ∷ ps) P → Useful (All.++⁺ rs ps) (𝒮 c P)
+  useful-con⁻ (con c vs ∷ us , con≼ rs≼vs ∷ ps≼us , P⋠cvsus) =
+    All.++⁺ vs us , ++⁺ rs≼vs ps≼us , contraposition 𝒮-pres-≼⁻ P⋠cvsus
 
-  -- con c rs ∷ ps is useful wrt pss iff rs ++ ps is useful wrt 𝒮 c pss
-  useful-con⇔ : Useful (All.++⁺ rs ps) (𝒮 c pss) ⇔ Useful (con c rs ∷ ps) pss
+  -- con c rs ∷ ps is useful wrt P iff rs ++ ps is useful wrt 𝒮 c P
+  useful-con⇔ : Useful (All.++⁺ rs ps) (𝒮 c P) ⇔ Useful (con c rs ∷ ps) P
   useful-con⇔ = mk⇔ useful-con⁺ useful-con⁻
 
 
-module _ {α αs} {ps : Pats αs} {pss} where
+module _ {α αs} {ps : Pats αs} {P} where
 
-  -- If there exists a constructor c such that `∙* ++ ps` is useful wrt `𝒮 c pss`, `∙ ∷ ps` is also useful wrt pss
-  useful-∙-𝒮⁺ : ∃[ c ] Useful (All.++⁺ ∙* ps) (𝒮 c pss) → Useful (∙ {α} ∷ ps) pss
-  useful-∙-𝒮⁺ (c , usvs , ∙*ps≼usvs , 𝒮pss⋠usvs)
+  -- If there exists a constructor c such that `∙* ++ ps` is useful wrt `𝒮 c P`, `∙ ∷ ps` is also useful wrt P
+  useful-∙-𝒮⁺ : ∃[ c ] Useful (All.++⁺ ∙* ps) (𝒮 c P) → Useful (∙ {α} ∷ ps) P
+  useful-∙-𝒮⁺ (c , usvs , ∙*ps≼usvs , 𝒮P⋠usvs)
     with us , vs , refl , _ , ps≼vs ← split {args α c} ∙* ∙*ps≼usvs =
-    con c us ∷ vs , ∙≼ ∷ ps≼vs , 𝒮-pres-⋠⁻ 𝒮pss⋠usvs
+    con c us ∷ vs , ∙≼ ∷ ps≼vs , contraposition 𝒮-pres-≼ 𝒮P⋠usvs
 
-  -- If `∙ ∷ ps` is useful wrt pss, there exists a constructor c such that `∙* ++ ps` is useful wrt `𝒮 c pss`
-  useful-∙-𝒮⁻ : Useful (∙ {α} ∷ ps) pss → ∃[ c ] Useful (All.++⁺ ∙* ps) (𝒮 c pss)
-  useful-∙-𝒮⁻ (con c us ∷ vs , ∙≼ ∷ ps≼vs , pss⋠cusvs) =
-    c , All.++⁺ us vs , ++⁺ ∙*≼ ps≼vs , 𝒮-pres-⋠ pss⋠cusvs
+  -- If `∙ ∷ ps` is useful wrt P, there exists a constructor c such that `∙* ++ ps` is useful wrt `𝒮 c P`
+  useful-∙-𝒮⁻ : Useful (∙ {α} ∷ ps) P → ∃[ c ] Useful (All.++⁺ ∙* ps) (𝒮 c P)
+  useful-∙-𝒮⁻ (con c us ∷ vs , ∙≼ ∷ ps≼vs , P⋠cusvs) =
+    c , All.++⁺ us vs , ++⁺ ∙*≼ ps≼vs , contraposition 𝒮-pres-≼⁻ P⋠cusvs
 
-  -- ∙ ∷ ps is useful wrt pss iff ∙* ++ ps is useful wrt 𝒮 c pss
-  useful-∙-𝒮⇔ : (∃[ c ] Useful (All.++⁺ ∙* ps) (𝒮 c pss)) ⇔ Useful (∙ {α} ∷ ps) pss
+  -- ∙ ∷ ps is useful wrt P iff ∙* ++ ps is useful wrt 𝒮 c P
+  useful-∙-𝒮⇔ : (∃[ c ] Useful (All.++⁺ ∙* ps) (𝒮 c P)) ⇔ Useful (∙ {α} ∷ ps) P
   useful-∙-𝒮⇔ = mk⇔ useful-∙-𝒮⁺ useful-∙-𝒮⁻
-
-
-module _ {v : Val α} {vs : Vals αs} where
-
-  𝒟-aux-pres-⋠ : ∀ {ps} → ps ⋠* v ∷ vs → All (_⋠* vs) (𝒟-aux ps)
-  𝒟-aux-pres-⋠ {∙ ∷ ps} ∙ps⋠vvs =
-    contraposition (∙≼ ∷_) ∙ps⋠vvs ∷ []
-  𝒟-aux-pres-⋠ {con _ _ ∷ ps} _ = []
-  𝒟-aux-pres-⋠ {r₁ ∣ r₂ ∷ ps} r₁₂ps⋠vvs =
-    All.++⁺
-      (𝒟-aux-pres-⋠ (contraposition (∣≼*⁺ ∘ inj₁) r₁₂ps⋠vvs))
-      (𝒟-aux-pres-⋠ (contraposition (∣≼*⁺ ∘ inj₂) r₁₂ps⋠vvs))
-
-  -- 𝒟 preserves ⋠: if all rows in `pss` do not match `v ∷ vs`, all rows in the default matrix do not match `vs`
-  𝒟-pres-⋠ : ∀ {pss} → All (_⋠* v ∷ vs) pss → All (_⋠* vs) (𝒟 pss)
-  𝒟-pres-⋠ = All.concat⁺ ∘ All.gmap⁺ 𝒟-aux-pres-⋠
 
 
 module _ {c} {us : Vals (args α c)} {vs : Vals αs} where
 
-  𝒟-aux-pres-⋠⁻ : ∀ {ps}
+  𝒟-aux-pres-≼ : ∀ {ps}
     → c ∉ rootCons (All.head ps)
-    → All (_⋠* vs) (𝒟-aux ps)
-    → ps ⋠* con {α} c us ∷ vs
-  𝒟-aux-pres-⋠⁻ {∙ ∷ ps} c∉Σps (ps⋠vs ∷ []) (∙≼ ∷ ps≼vs) = ps⋠vs ps≼vs
-  𝒟-aux-pres-⋠⁻ {con d _ ∷ ps} c∉⁅d⁆ [] (d≼c ∷ ps≼vs) =
-    c≢d→c⋠d (≢-sym (x∉⁅y⁆⇒x≢y c∉⁅d⁆)) d≼c
-  𝒟-aux-pres-⋠⁻ {r₁ ∣ r₂ ∷ ps} c∉Σr₁∪r₂ 𝒟r₁ps𝒟r₂ps⋠vs (∣≼ˡ r₁≼cus ∷ ps≼vs) =
-    𝒟-aux-pres-⋠⁻ (x∉p∪q⁻ˡ c∉Σr₁∪r₂) (All.++⁻ˡ _  𝒟r₁ps𝒟r₂ps⋠vs) (r₁≼cus ∷ ps≼vs)
-  𝒟-aux-pres-⋠⁻ {r₁ ∣ r₂ ∷ ps} c∉Σr₁∪r₂ 𝒟r₁ps𝒟r₂ps⋠vs (∣≼ʳ r₂≼cus ∷ ps≼vs) =
-    𝒟-aux-pres-⋠⁻ (x∉p∪q⁻ʳ c∉Σr₁∪r₂) (All.++⁻ʳ _  𝒟r₁ps𝒟r₂ps⋠vs) (r₂≼cus ∷ ps≼vs)
+    → ps ≼* con {α} c us ∷ vs
+    → 𝒟-aux ps ≼** vs
+  𝒟-aux-pres-≼ {∙ ∷ ps} _ ∙ps≼cusvs = here (∷⁻ ∙ps≼cusvs .proj₂)
+  𝒟-aux-pres-≼ {con d rs ∷ ps} c∉⁅d⁆ drsps≼cusvs =
+    contradiction (Equivalence.from x∈⁅y⁆⇔x≡y (sym (c≼d→c≡d (∷⁻ drsps≼cusvs .proj₁)))) c∉⁅d⁆
+  𝒟-aux-pres-≼ {r₁ ∣ r₂ ∷ ps} c∉Σr₁∪r₂ (∣≼ˡ r₁≼cus ∷ ps≼vs) =
+    Any.++⁺ˡ (𝒟-aux-pres-≼ (x∉p∪q⁻ˡ c∉Σr₁∪r₂) (r₁≼cus ∷ ps≼vs))
+  𝒟-aux-pres-≼ {r₁ ∣ r₂ ∷ ps} c∉Σr₁∪r₂ (∣≼ʳ r₂≼cus ∷ ps≼vs) =
+    Any.++⁺ʳ _ (𝒟-aux-pres-≼ (x∉p∪q⁻ʳ c∉Σr₁∪r₂) (r₂≼cus ∷ ps≼vs))
 
-  -- If c is not one of the root constructors of the first pattern in ps, and all rows in the default matrix do not match `vs`, all rows in the original matrix do not match `con c us ∷ vs`
-  𝒟-pres-⋠⁻ : ∀ {pss}
-    → c ∉ Σ pss
-    → All (_⋠* vs) (𝒟 pss)
-    → All (_⋠* con {α} c us ∷ vs) pss
-  𝒟-pres-⋠⁻ {[]} c∉Σpss [] = []
-  𝒟-pres-⋠⁻ {ps ∷ pss} c∉Σps∪pss 𝒟ps𝒟pss⋠vs =
-    let 𝒟ps⋠vs , 𝒟pss⋠vs = All.++⁻ (𝒟-aux ps) 𝒟ps𝒟pss⋠vs
-        c∉Σps , c∉Σpss = x∉p∪q⁻ c∉Σps∪pss
-     in 𝒟-aux-pres-⋠⁻ c∉Σps 𝒟ps⋠vs ∷ 𝒟-pres-⋠⁻ c∉Σpss 𝒟pss⋠vs
+  -- If c is not in Σ P, 𝒟 preserves ≼
+  𝒟-pres-≼ : ∀ {P}
+    → c ∉ Σ P
+    → P ≼** con {α} c us ∷ vs
+    → 𝒟 P ≼** vs
+  𝒟-pres-≼ {[]} _ ()
+  𝒟-pres-≼ {ps ∷ P} c∉Σps∪P (here ps≼cusvs) =
+    Any.++⁺ˡ (𝒟-aux-pres-≼ (x∉p∪q⁻ˡ c∉Σps∪P) ps≼cusvs)
+  𝒟-pres-≼ {ps ∷ P} c∉Σps∪P (there P≼cusvs) =
+    Any.++⁺ʳ _ (𝒟-pres-≼ (x∉p∪q⁻ʳ c∉Σps∪P) P≼cusvs)
 
 
-module _ {α} {ps : Pats αs} {pss} where
+module _ {v : Val α} {vs : Vals αs} where
 
-  -- If Σ pss is not complete, and ps is useful wrt 𝒟 pss, ∙ ∷ ps is also useful wrt pss.
-  -- That means, it suffices to check for usefulness of ps wrt 𝒟 pss if Σ pss is not complete.
+  𝒟-aux-pres-≼⁻ : ∀ {ps} → 𝒟-aux ps ≼** vs → ps ≼* v ∷ vs
+  𝒟-aux-pres-≼⁻ {∙ ∷ ps} (here ∙ps≼vvs) = ∙≼ ∷ ∙ps≼vvs
+  𝒟-aux-pres-≼⁻ {r₁ ∣ r₂ ∷ ps} =
+    ∣≼*⁺ ∘ Sum.map 𝒟-aux-pres-≼⁻ 𝒟-aux-pres-≼⁻ ∘ Any.++⁻ _
+
+  -- The "inverse" of 𝒟 preserves ≼ (with no condition on v unlike 𝒟-pres-≼)
+  𝒟-pres-≼⁻ : ∀ {P} → 𝒟 P ≼** vs → P ≼** v ∷ vs
+  𝒟-pres-≼⁻ = Any.map 𝒟-aux-pres-≼⁻ ∘ Any.map⁻ ∘ Any.concat⁻ _
+
+
+module _ {α} {ps : Pats αs} {P} where
+
+  -- If Σ P is not complete, and ps is useful wrt 𝒟 P, ∙ ∷ ps is also useful wrt P.
+  -- That means, it suffices to check for usefulness of ps wrt 𝒟 P if Σ P is not complete.
   useful-∙-𝒟⁺ :
-      ∃[ c ] c ∉ Σ pss
-    → Useful ps (𝒟 pss)
-    → Useful (∙ {α} ∷ ps) pss
-  useful-∙-𝒟⁺ (c , c∉Σpss) (vs , ps≼vs , 𝒟pss⋠vs) =
-    inhabOf c ∷ vs , ∙≼ ∷ ps≼vs , 𝒟-pres-⋠⁻ c∉Σpss 𝒟pss⋠vs
+      ∃[ c ] c ∉ Σ P
+    → Useful ps (𝒟 P)
+    → Useful (∙ {α} ∷ ps) P
+  useful-∙-𝒟⁺ (c , c∉ΣP) (vs , ps≼vs , 𝒟P⋠vs) =
+    inhabOf c ∷ vs , ∙≼ ∷ ps≼vs , contraposition (𝒟-pres-≼ c∉ΣP) 𝒟P⋠vs
 
-  -- ps is useful wrt (𝒟 pss) if (∙ ∷ ps) is useful wrt pss
-  useful-∙-𝒟⁻ : Useful (∙ {α} ∷ ps) pss → Useful ps (𝒟 pss)
-  useful-∙-𝒟⁻ (v ∷ vs , ∙≼ ∷ ps≼vs , pss⋠vvs) = vs , ps≼vs , 𝒟-pres-⋠ pss⋠vvs
+  -- ps is useful wrt (𝒟 P) if (∙ ∷ ps) is useful wrt P
+  useful-∙-𝒟⁻ : Useful (∙ {α} ∷ ps) P → Useful ps (𝒟 P)
+  useful-∙-𝒟⁻ (v ∷ vs , ∙≼ ∷ ps≼vs , P⋠vvs) =
+    vs , ps≼vs , contraposition 𝒟-pres-≼⁻ P⋠vvs
 
 --------------------------------------------------------------------------------
 -- Usefulness checking algorithm
 
 {-# TERMINATING #-}
-useful? : (ps : Pats αs) (pss : PatMat αs) → Dec (Useful ps pss)
+useful? : (ps : Pats αs) (P : PatMat αs) → Dec (Useful ps P)
 useful? [] [] = yes useful-[]-[]
 useful? [] (_ ∷ _) = no ¬useful-[]-∷
-useful? (∙ ∷ ps) pss with ∃missingCon? pss
-... | yes ∃c∉Σpss =
-      Dec.map′ (useful-∙-𝒟⁺ ∃c∉Σpss) useful-∙-𝒟⁻ (useful? ps (𝒟 pss))
+useful? (∙ ∷ ps) P with ∃missingCon? P
+... | yes ∃c∉ΣP =
+      Dec.map′ (useful-∙-𝒟⁺ ∃c∉ΣP) useful-∙-𝒟⁻ (useful? ps (𝒟 P))
 ... | no _ =
-      Dec.map useful-∙-𝒮⇔ (any? λ c → useful? (All.++⁺ ∙* ps) (𝒮 c pss))
-useful? (con c rs ∷ ps) pss =
-  Dec.map useful-con⇔ (useful? (All.++⁺ rs ps) (𝒮 c pss))
-useful? (r₁ ∣ r₂ ∷ ps) pss =
-  Dec.map useful-∣⇔ (useful? (r₁ ∷ ps) pss ⊎-dec useful? (r₂ ∷ ps) pss)
+      Dec.map useful-∙-𝒮⇔ (any? λ c → useful? (All.++⁺ ∙* ps) (𝒮 c P))
+useful? (con c rs ∷ ps) P =
+  Dec.map useful-con⇔ (useful? (All.++⁺ rs ps) (𝒮 c P))
+useful? (r₁ ∣ r₂ ∷ ps) P =
+  Dec.map useful-∣⇔ (useful? (r₁ ∷ ps) P ⊎-dec useful? (r₂ ∷ ps) P)
 
-exhaustive? : (pss : PatMat αs) → Exhaustive pss ⊎ NonExhaustive pss
-exhaustive? pss with useful? ∙* pss
+exhaustive? : (P : PatMat αs) → Exhaustive P ⊎ NonExhaustive P
+exhaustive? P with useful? ∙* P
 ... | yes h = inj₂ (NonExhaustive′→NonExhaustive h)
 ... | no h = inj₁ (Exhaustive′→Exhaustive h)
