@@ -18,37 +18,40 @@ module _ where
   ¬First⇒¬Any ¬q⇒p ¬pqxxs (there qxs) =
     ¬First⇒¬Any ¬q⇒p (¬pqxxs ∘ (¬q⇒p (¬pqxxs ∘ [_]) ∷_)) qxs
 
-module _ {n} where
+
+module _ where
   open import Data.Fin using (Fin)
   open import Data.Fin.Subset using (Subset; _∉_; _∪_; Empty)
   open import Data.Fin.Subset.Properties using (x∈p∪q⁺; x∈p∪q⁻)
+  open import Data.Nat using (ℕ)
   open import Data.Product using (_×_; _,_; uncurry)
   open import Data.Sum using (inj₁; inj₂)
   open import Relation.Nullary.Negation using (¬_; contraposition)
 
-  module _ {x : Fin n} {p q} where
+  private
+    variable
+      n : ℕ
+      x : Fin n
+      p q : Subset n
 
-    x∉p∪q⁻ˡ : x ∉ p ∪ q → x ∉ p
-    x∉p∪q⁻ˡ = contraposition (x∈p∪q⁺ ∘ inj₁)
+  x∉p∪q⁻ˡ : x ∉ p ∪ q → x ∉ p
+  x∉p∪q⁻ˡ = contraposition (x∈p∪q⁺ ∘ inj₁)
 
-    x∉p∪q⁻ʳ : x ∉ p ∪ q → x ∉ q
-    x∉p∪q⁻ʳ = contraposition (x∈p∪q⁺ ∘ inj₂)
+  x∉p∪q⁻ʳ : x ∉ p ∪ q → x ∉ q
+  x∉p∪q⁻ʳ = contraposition (x∈p∪q⁺ ∘ inj₂)
 
-    x∉p∪q⁻ : x ∉ p ∪ q → x ∉ p × x ∉ q
-    x∉p∪q⁻ x∉p∪q = x∉p∪q⁻ˡ x∉p∪q , x∉p∪q⁻ʳ x∉p∪q
+  x∉p∪q⁻ : x ∉ p ∪ q → x ∉ p × x ∉ q
+  x∉p∪q⁻ x∉p∪q = x∉p∪q⁻ˡ x∉p∪q , x∉p∪q⁻ʳ x∉p∪q
 
+  Empty∪⁺ : Empty p → Empty q → Empty (p ∪ q)
+  Empty∪⁺ emptyP emptyQ (x , x∈p∪q) with x∈p∪q⁻ _ _ x∈p∪q
+  ... | inj₁ x∈p = emptyP (x , x∈p)
+  ... | inj₂ x∈q = emptyQ (x , x∈q)
 
-  module _ {p q : Subset n} where
+  Empty∪⁻ : Empty (p ∪ q) → Empty p × Empty q
+  Empty∪⁻ emptyP∪Q =
+    (λ (x , x∈p) → emptyP∪Q (x , x∈p∪q⁺ (inj₁ x∈p))) ,
+    (λ (x , x∈q) → emptyP∪Q (x , x∈p∪q⁺ (inj₂ x∈q)))
 
-    Empty∪⁺ : Empty p → Empty q → Empty (p ∪ q)
-    Empty∪⁺ emptyP emptyQ (x , x∈p∪q) with x∈p∪q⁻ _ _ x∈p∪q
-    ... | inj₁ x∈p = emptyP (x , x∈p)
-    ... | inj₂ x∈q = emptyQ (x , x∈q)
-
-    Empty∪⁻ : Empty (p ∪ q) → Empty p × Empty q
-    Empty∪⁻ emptyP∪Q =
-      (λ (x , x∈p) → emptyP∪Q (x , x∈p∪q⁺ (inj₁ x∈p))) ,
-      (λ (x , x∈q) → emptyP∪Q (x , x∈p∪q⁺ (inj₂ x∈q)))
-
-    Empty∪⇔ : (Empty p × Empty q) ⇔ Empty (p ∪ q)
-    Empty∪⇔ = mk⇔ (uncurry Empty∪⁺) Empty∪⁻
+  Empty∪⇔ : (Empty p × Empty q) ⇔ Empty (p ∪ q)
+  Empty∪⇔ = mk⇔ (uncurry Empty∪⁺) Empty∪⁻

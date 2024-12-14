@@ -259,8 +259,8 @@ p ∣ q ≼? v = Dec.map ∣≼⇔ ((p ≼? v) ⊎-dec (q ≼? v))
 p ∷ ps ≼*? v ∷ vs = Dec.map ∷⇔ ((p ≼? v) ×-dec (ps ≼*? vs))
 
 -- First match
-Match : Vals αs → PatMat αs → Set
-Match vs = First (_⋠* vs) (_≼* vs)
+Match : PatMat αs → Vals αs → Set
+Match P vs = First (_⋠* vs) (_≼* vs) P
 
-match? : (vs : Vals αs) (P : PatMat αs) → Dec (Match vs P)
-match? vs = cofirst? (_≼*? vs)
+match? : (P : PatMat αs) (vs : Vals αs) → Dec (Match P vs)
+match? P vs = cofirst? (_≼*? vs) P

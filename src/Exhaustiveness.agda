@@ -33,23 +33,23 @@ private
 
 -- There is a matching row in P for every list of values
 Exhaustive : PatMat αs → Set
-Exhaustive P = ∀ vs → Match vs P
+Exhaustive P = ∀ vs → Match P vs
 
 -- There is a list of values that does not match any row in P
 NonExhaustive : PatMat αs → Set
-NonExhaustive P = ∃[ vs ] ¬ Match vs P
+NonExhaustive P = ∃[ vs ] ¬ Match P vs
 
 -- ps is useful with respect to P if
 --   1. there is a list of values that matches ps (say vs)
 --   2. vs does not match any row in P
 -- Usefulness can also be used to formulate redundancy
-Useful : Pats αs → PatMat αs → Set
-Useful ps P = ∃[ vs ] ps ≼* vs × P ⋠** vs
+Useful : PatMat αs → Pats αs → Set
+Useful P ps = ∃[ vs ] P ⋠** vs × ps ≼* vs
 
 -- non-exhaustiveness defined in terms of usefulness:
 -- P is non-exhaustive if ∙* is useful with respect to P
 NonExhaustive′ : PatMat αs → Set
-NonExhaustive′ = Useful ∙*
+NonExhaustive′ P = Useful P ∙*
 
 -- P is exhaustive if ∙* is not useful with respect to P
 Exhaustive′ : PatMat αs → Set
@@ -58,22 +58,22 @@ Exhaustive′ P = ¬ NonExhaustive′ P
 module _ {P : PatMat αs} where
 
   NonExhaustive′→NonExhaustive : NonExhaustive′ P → NonExhaustive P
-  NonExhaustive′→NonExhaustive (vs , _ , ∙*ps⋠vs) = vs , contraposition toAny ∙*ps⋠vs
+  NonExhaustive′→NonExhaustive (vs , ∙*ps⋠vs , _) = vs , contraposition toAny ∙*ps⋠vs
 
   NonExhaustive→NonExhaustive′ : NonExhaustive P → NonExhaustive′ P
-  NonExhaustive→NonExhaustive′ (vs , P⋠vs) = vs , ∙*≼ , ¬First⇒¬Any id P⋠vs
+  NonExhaustive→NonExhaustive′ (vs , P⋠vs) = vs , ¬First⇒¬Any id P⋠vs , ∙*≼
 
   -- The two definitions of non-exhaustiveness are equivalent
   NonExhaustive′⇔NonExhaustive : NonExhaustive′ P ⇔ NonExhaustive P
   NonExhaustive′⇔NonExhaustive = mk⇔ NonExhaustive′→NonExhaustive NonExhaustive→NonExhaustive′
 
   Exhaustive→Exhaustive′ : Exhaustive P → Exhaustive′ P
-  Exhaustive→Exhaustive′ exh (vs , _ , P⋠vs) = P⋠vs (toAny (exh vs))
+  Exhaustive→Exhaustive′ exh (vs , P⋠vs , _) = P⋠vs (toAny (exh vs))
 
   Exhaustive′→Exhaustive : Exhaustive′ P → Exhaustive P
-  Exhaustive′→Exhaustive exh vs with match? vs P
+  Exhaustive′→Exhaustive exh vs with match? P vs
   ... | yes P≼vs = P≼vs
-  ... | no P⋠vs = contradiction (vs , ∙*≼ , ¬First⇒¬Any id P⋠vs) exh
+  ... | no P⋠vs = contradiction (vs , ¬First⇒¬Any id P⋠vs , ∙*≼ ) exh
 
   -- The two definitions of exhaustiveness are equivalent
   Exhaustive′⇔Exhaustive : Exhaustive′ P ⇔ Exhaustive P
@@ -141,28 +141,28 @@ emptyΣ? (ps ∷ P) = Dec.map Empty∪⇔ (emptyRootCons? (All.head ps) ×-dec e
 
 -- [] is useful wrt []
 useful-[]-[] : Useful [] []
-useful-[]-[] = [] , [] , ¬Any[]
+useful-[]-[] = [] , ¬Any[] , []
 
 -- [] is not wrt any non-empty matrix
-¬useful-[]-∷ : ∀ {ps P} → ¬ Useful [] (ps ∷ P)
-¬useful-[]-∷ {ps = []} ([] , _ , []P⋠[]) = []P⋠[] (here [])
+¬useful-∷-[] : ∀ {P ps} → ¬ Useful (ps ∷ P) []
+¬useful-∷-[] {ps = []} ([] , []P⋠[] , _) = []P⋠[] (here [])
 
 module _ {r₁ r₂ : Pat α} {ps : Pats αs} {P} where
 
-  useful-∣⁺ : Useful (r₁ ∷ ps) P ⊎ Useful (r₂ ∷ ps) P → Useful (r₁ ∣ r₂ ∷ ps) P
-  useful-∣⁺ (inj₁ (vvs , r₁≼v ∷ ps≼vs , P⋠vvs)) =
-    vvs , ∣≼ˡ r₁≼v ∷ ps≼vs , P⋠vvs
-  useful-∣⁺ (inj₂ (vvs , r₂≼v ∷ ps≼vs , P⋠vvs)) =
-    vvs , ∣≼ʳ r₂≼v ∷ ps≼vs , P⋠vvs
+  useful-∣⁺ : Useful P (r₁ ∷ ps) ⊎ Useful P (r₂ ∷ ps) → Useful P (r₁ ∣ r₂ ∷ ps)
+  useful-∣⁺ (inj₁ (vvs , P⋠vvs , r₁≼v ∷ ps≼vs)) =
+    vvs , P⋠vvs , ∣≼ˡ r₁≼v ∷ ps≼vs
+  useful-∣⁺ (inj₂ (vvs , P⋠vvs , r₂≼v ∷ ps≼vs)) =
+    vvs , P⋠vvs , ∣≼ʳ r₂≼v ∷ ps≼vs
 
-  useful-∣⁻ : Useful (r₁ ∣ r₂ ∷ ps) P → Useful (r₁ ∷ ps) P ⊎ Useful (r₂ ∷ ps) P
-  useful-∣⁻ (vvs , ∣≼ˡ r₁≼v ∷ ps≼vs , P⋠vvs) =
-    inj₁ (vvs , r₁≼v ∷ ps≼vs , P⋠vvs)
-  useful-∣⁻ (vvs , ∣≼ʳ r₂≼v ∷ ps≼vs , P⋠vvs) =
-    inj₂ (vvs , r₂≼v ∷ ps≼vs , P⋠vvs)
+  useful-∣⁻ : Useful P (r₁ ∣ r₂ ∷ ps) → Useful P (r₁ ∷ ps) ⊎ Useful P (r₂ ∷ ps)
+  useful-∣⁻ (vvs , P⋠vvs , ∣≼ˡ r₁≼v ∷ ps≼vs) =
+    inj₁ (vvs , P⋠vvs , r₁≼v ∷ ps≼vs)
+  useful-∣⁻ (vvs , P⋠vvs , ∣≼ʳ r₂≼v ∷ ps≼vs) =
+    inj₂ (vvs , P⋠vvs , r₂≼v ∷ ps≼vs)
 
   -- (r₁ ∣ r₂ ∷ ps) is useful wrt P iff (r₁ ∷ ps) or (r₂ ∷ ps) is useful wrt P
-  useful-∣⇔ : (Useful (r₁ ∷ ps) P ⊎ Useful (r₂ ∷ ps) P) ⇔ Useful (r₁ ∣ r₂ ∷ ps) P
+  useful-∣⇔ : (Useful P (r₁ ∷ ps) ⊎ Useful P (r₂ ∷ ps)) ⇔ Useful P (r₁ ∣ r₂ ∷ ps)
   useful-∣⇔ = mk⇔ useful-∣⁺ useful-∣⁻
 
 
@@ -208,35 +208,35 @@ module _ {c} {us : Vals (args α c)} {vs : Vals αs} where
 
 module _ {c} {rs : Pats (args α c)} {ps : Pats αs} {P : PatMat (α ∷ αs)} where
 
-  useful-con⁺ : Useful (All.++⁺ rs ps) (𝒮 c P) → Useful (con c rs ∷ ps) P
-  useful-con⁺ (usvs , rsps≼usvs , 𝒮P⋠usvs)
+  useful-con⁺ : Useful (𝒮 c P) (All.++⁺ rs ps) → Useful P (con c rs ∷ ps)
+  useful-con⁺ (usvs , 𝒮P⋠usvs , rsps≼usvs)
     with us , vs , refl , rs≼us , ps≼vs ← split rs rsps≼usvs =
-    con c us ∷ vs , con≼ rs≼us ∷ ps≼vs , contraposition 𝒮-pres-≼ 𝒮P⋠usvs
+    con c us ∷ vs , contraposition 𝒮-pres-≼ 𝒮P⋠usvs , con≼ rs≼us ∷ ps≼vs
 
-  useful-con⁻ : Useful (con c rs ∷ ps) P → Useful (All.++⁺ rs ps) (𝒮 c P)
-  useful-con⁻ (con c vs ∷ us , con≼ rs≼vs ∷ ps≼us , P⋠cvsus) =
-    All.++⁺ vs us , ++⁺ rs≼vs ps≼us , contraposition 𝒮-pres-≼⁻ P⋠cvsus
+  useful-con⁻ : Useful P (con c rs ∷ ps) → Useful (𝒮 c P) (All.++⁺ rs ps)
+  useful-con⁻ (con c vs ∷ us , P⋠cvsus , con≼ rs≼vs ∷ ps≼us) =
+    All.++⁺ vs us , contraposition 𝒮-pres-≼⁻ P⋠cvsus , ++⁺ rs≼vs ps≼us
 
   -- con c rs ∷ ps is useful wrt P iff rs ++ ps is useful wrt 𝒮 c P
-  useful-con⇔ : Useful (All.++⁺ rs ps) (𝒮 c P) ⇔ Useful (con c rs ∷ ps) P
+  useful-con⇔ : Useful (𝒮 c P) (All.++⁺ rs ps) ⇔ Useful P (con c rs ∷ ps)
   useful-con⇔ = mk⇔ useful-con⁺ useful-con⁻
 
 
 module _ {α αs} {ps : Pats αs} {P} where
 
   -- If there exists a constructor c such that `∙* ++ ps` is useful wrt `𝒮 c P`, `∙ ∷ ps` is also useful wrt P
-  useful-∙-𝒮⁺ : ∃[ c ] Useful (All.++⁺ ∙* ps) (𝒮 c P) → Useful (∙ {α} ∷ ps) P
-  useful-∙-𝒮⁺ (c , usvs , ∙*ps≼usvs , 𝒮P⋠usvs)
+  useful-∙-𝒮⁺ : ∃[ c ] Useful (𝒮 c P) (All.++⁺ ∙* ps) → Useful P (∙ {α} ∷ ps)
+  useful-∙-𝒮⁺ (c , usvs , 𝒮P⋠usvs , ∙*ps≼usvs)
     with us , vs , refl , _ , ps≼vs ← split {args α c} ∙* ∙*ps≼usvs =
-    con c us ∷ vs , ∙≼ ∷ ps≼vs , contraposition 𝒮-pres-≼ 𝒮P⋠usvs
+    con c us ∷ vs , contraposition 𝒮-pres-≼ 𝒮P⋠usvs , ∙≼ ∷ ps≼vs
 
   -- If `∙ ∷ ps` is useful wrt P, there exists a constructor c such that `∙* ++ ps` is useful wrt `𝒮 c P`
-  useful-∙-𝒮⁻ : Useful (∙ {α} ∷ ps) P → ∃[ c ] Useful (All.++⁺ ∙* ps) (𝒮 c P)
-  useful-∙-𝒮⁻ (con c us ∷ vs , ∙≼ ∷ ps≼vs , P⋠cusvs) =
-    c , All.++⁺ us vs , ++⁺ ∙*≼ ps≼vs , contraposition 𝒮-pres-≼⁻ P⋠cusvs
+  useful-∙-𝒮⁻ : Useful P (∙ {α} ∷ ps) → ∃[ c ] Useful (𝒮 c P) (All.++⁺ ∙* ps)
+  useful-∙-𝒮⁻ (con c us ∷ vs , P⋠cusvs , ∙≼ ∷ ps≼vs) =
+    c , All.++⁺ us vs , contraposition 𝒮-pres-≼⁻ P⋠cusvs , ++⁺ ∙*≼ ps≼vs
 
   -- ∙ ∷ ps is useful wrt P iff ∙* ++ ps is useful wrt 𝒮 c P
-  useful-∙-𝒮⇔ : (∃[ c ] Useful (All.++⁺ ∙* ps) (𝒮 c P)) ⇔ Useful (∙ {α} ∷ ps) P
+  useful-∙-𝒮⇔ : (∃[ c ] Useful (𝒮 c P) (All.++⁺ ∙* ps) ) ⇔ Useful P (∙ {α} ∷ ps)
   useful-∙-𝒮⇔ = mk⇔ useful-∙-𝒮⁺ useful-∙-𝒮⁻
 
 
@@ -284,34 +284,34 @@ module _ {α} {ps : Pats αs} {P} where
   -- That means, it suffices to check for usefulness of ps wrt 𝒟 P if Σ P is not complete.
   useful-∙-𝒟⁺ :
       ∃[ c ] c ∉ Σ P
-    → Useful ps (𝒟 P)
-    → Useful (∙ {α} ∷ ps) P
-  useful-∙-𝒟⁺ (c , c∉ΣP) (vs , ps≼vs , 𝒟P⋠vs) =
-    inhabOf c ∷ vs , ∙≼ ∷ ps≼vs , contraposition (𝒟-pres-≼ c∉ΣP) 𝒟P⋠vs
+    → Useful (𝒟 P) ps
+    → Useful P (∙ {α} ∷ ps)
+  useful-∙-𝒟⁺ (c , c∉ΣP) (vs , 𝒟P⋠vs , ps≼vs) =
+    inhabOf c ∷ vs , contraposition (𝒟-pres-≼ c∉ΣP) 𝒟P⋠vs , ∙≼ ∷ ps≼vs
 
   -- ps is useful wrt (𝒟 P) if (∙ ∷ ps) is useful wrt P
-  useful-∙-𝒟⁻ : Useful (∙ {α} ∷ ps) P → Useful ps (𝒟 P)
-  useful-∙-𝒟⁻ (v ∷ vs , ∙≼ ∷ ps≼vs , P⋠vvs) =
-    vs , ps≼vs , contraposition 𝒟-pres-≼⁻ P⋠vvs
+  useful-∙-𝒟⁻ : Useful P (∙ {α} ∷ ps) → Useful (𝒟 P) ps
+  useful-∙-𝒟⁻ (v ∷ vs  , P⋠vvs , ∙≼ ∷ ps≼vs) =
+    vs , contraposition 𝒟-pres-≼⁻ P⋠vvs , ps≼vs
 
 --------------------------------------------------------------------------------
 -- Usefulness checking algorithm
 
 {-# TERMINATING #-}
-useful? : (ps : Pats αs) (P : PatMat αs) → Dec (Useful ps P)
+useful? : (P : PatMat αs) (ps : Pats αs) → Dec (Useful P ps)
 useful? [] [] = yes useful-[]-[]
-useful? [] (_ ∷ _) = no ¬useful-[]-∷
-useful? (∙ ∷ ps) P with ∃missingCon? P
+useful? (_ ∷ _) [] = no ¬useful-∷-[]
+useful? P (∙ ∷ ps) with ∃missingCon? P
 ... | yes ∃c∉ΣP =
-      Dec.map′ (useful-∙-𝒟⁺ ∃c∉ΣP) useful-∙-𝒟⁻ (useful? ps (𝒟 P))
+      Dec.map′ (useful-∙-𝒟⁺ ∃c∉ΣP) useful-∙-𝒟⁻ (useful? (𝒟 P) ps)
 ... | no _ =
-      Dec.map useful-∙-𝒮⇔ (any? λ c → useful? (All.++⁺ ∙* ps) (𝒮 c P))
-useful? (con c rs ∷ ps) P =
-  Dec.map useful-con⇔ (useful? (All.++⁺ rs ps) (𝒮 c P))
-useful? (r₁ ∣ r₂ ∷ ps) P =
-  Dec.map useful-∣⇔ (useful? (r₁ ∷ ps) P ⊎-dec useful? (r₂ ∷ ps) P)
+      Dec.map useful-∙-𝒮⇔ (any? λ c → useful? (𝒮 c P) (All.++⁺ ∙* ps))
+useful? P (con c rs ∷ ps) =
+  Dec.map useful-con⇔ (useful? (𝒮 c P) (All.++⁺ rs ps))
+useful? P (r₁ ∣ r₂ ∷ ps) =
+  Dec.map useful-∣⇔ (useful? P (r₁ ∷ ps) ⊎-dec useful? P (r₂ ∷ ps))
 
 exhaustive? : (P : PatMat αs) → Exhaustive P ⊎ NonExhaustive P
-exhaustive? P with useful? ∙* P
+exhaustive? P with useful? P ∙*
 ... | yes h = inj₂ (NonExhaustive′→NonExhaustive h)
 ... | no h = inj₁ (Exhaustive′→Exhaustive h)
