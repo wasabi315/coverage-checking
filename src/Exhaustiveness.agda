@@ -14,7 +14,7 @@ open import Data.List.Relation.Unary.First as First using (First; toAny)
 open import Data.List.Relation.Unary.First.Properties as First using (All⇒¬First)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product as Product using (∃-syntax; _×_; _,_; proj₁; proj₂)
-open import Data.Sum as Sum using (_⊎_; inj₁; inj₂)
+open import Data.Sum as Sum using (_⊎_; inj₁; inj₂; [_,_])
 open import Function using (id; _∘_; _⇔_; mk⇔; Equivalence)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; ≢-sym)
 open import Relation.Nullary.Decidable as Dec using (Dec; yes; no; _⊎-dec_; _×-dec_)
@@ -175,10 +175,8 @@ module _ {c} {us : Vals (args α c)} {vs : Vals αs} where
   𝒮-aux-pres-≼ {con d rs ∷ ps} drsps≼cusvs with c Fin.≟ d
   ... | no c≢d = contradiction (sym (c≼d→c≡d (∷⁻ drsps≼cusvs .proj₁))) c≢d
   ... | yes refl = here (con≼*⁻ drsps≼cusvs)
-  𝒮-aux-pres-≼ {r₁ ∣ r₂ ∷ ps} (∣≼ˡ r₁≼cus ∷ ps≼vs) =
-    Any.++⁺ˡ (𝒮-aux-pres-≼ (r₁≼cus ∷ ps≼vs))
-  𝒮-aux-pres-≼ {r₁ ∣ r₂ ∷ ps} (∣≼ʳ r₂≼cus ∷ ps≼vs) =
-    Any.++⁺ʳ _ (𝒮-aux-pres-≼ (r₂≼cus ∷ ps≼vs))
+  𝒮-aux-pres-≼ {r₁ ∣ r₂ ∷ ps} =
+    [ Any.++⁺ˡ , Any.++⁺ʳ _ ] ∘ Sum.map 𝒮-aux-pres-≼ 𝒮-aux-pres-≼ ∘ ∣≼*⁻
 
   -- 𝒮 preserves ≼
   𝒮-pres-≼ : ∀ {P}
@@ -236,7 +234,7 @@ module _ {α αs} {ps : Pats αs} {P} where
     c , All.++⁺ us vs , contraposition 𝒮-pres-≼⁻ P⋠cusvs , ++⁺ ∙*≼ ps≼vs
 
   -- ∙ ∷ ps is useful wrt P iff ∙* ++ ps is useful wrt 𝒮 c P
-  useful-∙-𝒮⇔ : (∃[ c ] Useful (𝒮 c P) (All.++⁺ ∙* ps) ) ⇔ Useful P (∙ {α} ∷ ps)
+  useful-∙-𝒮⇔ : (∃[ c ] Useful (𝒮 c P) (All.++⁺ ∙* ps)) ⇔ Useful P (∙ {α} ∷ ps)
   useful-∙-𝒮⇔ = mk⇔ useful-∙-𝒮⁺ useful-∙-𝒮⁻
 
 
@@ -249,10 +247,10 @@ module _ {c} {us : Vals (args α c)} {vs : Vals αs} where
   𝒟-aux-pres-≼ {∙ ∷ ps} _ ∙ps≼cusvs = here (∷⁻ ∙ps≼cusvs .proj₂)
   𝒟-aux-pres-≼ {con d rs ∷ ps} c∉⁅d⁆ drsps≼cusvs =
     contradiction (Equivalence.from x∈⁅y⁆⇔x≡y (sym (c≼d→c≡d (∷⁻ drsps≼cusvs .proj₁)))) c∉⁅d⁆
-  𝒟-aux-pres-≼ {r₁ ∣ r₂ ∷ ps} c∉Σr₁∪r₂ (∣≼ˡ r₁≼cus ∷ ps≼vs) =
-    Any.++⁺ˡ (𝒟-aux-pres-≼ (x∉p∪q⁻ˡ c∉Σr₁∪r₂) (r₁≼cus ∷ ps≼vs))
-  𝒟-aux-pres-≼ {r₁ ∣ r₂ ∷ ps} c∉Σr₁∪r₂ (∣≼ʳ r₂≼cus ∷ ps≼vs) =
-    Any.++⁺ʳ _ (𝒟-aux-pres-≼ (x∉p∪q⁻ʳ c∉Σr₁∪r₂) (r₂≼cus ∷ ps≼vs))
+  𝒟-aux-pres-≼ {r₁ ∣ r₂ ∷ ps} c∉Σr₁∪r₂ =
+    [ Any.++⁺ˡ , Any.++⁺ʳ _ ] ∘
+    Sum.map (𝒟-aux-pres-≼ (x∉p∪q⁻ˡ c∉Σr₁∪r₂)) (𝒟-aux-pres-≼ (x∉p∪q⁻ʳ c∉Σr₁∪r₂)) ∘
+    ∣≼*⁻
 
   -- If c is not in Σ P, 𝒟 preserves ≼
   𝒟-pres-≼ : ∀ {P}
