@@ -21,7 +21,7 @@ private
 --------------------------------------------------------------------------------
 -- Example from the paper (but made polymorphic)
 
--- type 'a mylist = Nil | One of 'a | Cons of 'a * 'a mylist
+-- data Mylist a = Nil | One a | Cons a (Mylist a)
 mylist : Ty → Ty
 mylist α .numCons = 3
 mylist α .args zero = []
@@ -40,6 +40,10 @@ P =
   (∙   ∷ nil ∷ []) ∷
   []
 
+-- P is non-exhaustive, witnessed by one (inhab α) ∷ one (inhab β) ∷ []
+_ : exhaustive? (P {α} {β}) ≡ inj₂ (one (inhab α) ∷ one (inhab β) ∷ [] , _)
+_ = refl
+
 Q : PatMat (mylist α ∷ mylist β ∷ [])
 Q =
   (nil      ∷ ∙        ∷ []) ∷
@@ -50,10 +54,6 @@ Q =
   (∙        ∷ cons ∙ ∙ ∷ []) ∷
   []
 
--- P is non-exhaustive, witnessed by one (inhab α) ∷ one (inhab β) ∷ []
-_ : exhaustive? (P {α} {β}) ≡ inj₂ (one (inhab α) ∷ one (inhab β) ∷ [] , _)
-_ = refl
-
--- Q is exhaustive, so we got a function of type `(vs : Vals (mylist α ∷ mylist β ∷ [])) → Match vs Q` inside the inj₁
+-- Q is exhaustive, so we get a "total" matching function of type `∀ vs → Match Q vs` inside the inj₁
 _ : exhaustive? (Q {α} {β}) ≡ inj₁ _
 _ = refl
