@@ -2,7 +2,7 @@ module Pattern where
 
 open import Data.Fin as Fin using (Fin; zero; suc)
 open import Data.Fin.Subset using (Subset)
-open import Data.List as List using (List; []; _∷_)
+open import Data.List as List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All as All using (All; []; _∷_)
 import Data.List.Relation.Unary.All.Properties as All
 open import Data.List.Relation.Unary.Any as Any using (Any; here; there)
@@ -57,13 +57,13 @@ private
 
 -- Value
 data Val α where
-  con : ∀ c → Vals (args α c) → Val α
+  con : (c : Con α) → Vals (args α c) → Val α
 
 -- (Heterogeneous) list of values
 Vals = All Val
 
 -- The inhabitant
-inhab : ∀ α → Val α
+inhab : (α : Ty) → Val α
 inhab α = con (inhabCon α) (inhabArgs α)
 
 -- There is an inhabitant for every variant
@@ -78,7 +78,7 @@ data Pat α where
   -- Wildcard pattern
   ∙ : Pat α
   -- Constructor pattern
-  con : ∀ c → Pats (args α c) → Pat α
+  con : (c : Con α) → Pats (args α c) → Pat α
   -- Or pattern
   _∣_ : Pat α → Pat α → Pat α
 
@@ -102,15 +102,25 @@ data _≼*_ : Pats αs → Vals αs → Set
 
 -- p ≼ v : pattern p matches value v
 data _≼_ {α} where
-  ∙≼ : ∀ {v} → ∙ ≼ v
-  con≼ : ∀ {c ps vs} → ps ≼* vs → con c ps ≼ con c vs
-  ∣≼ˡ : ∀ {p q v} → p ≼ v → p ∣ q ≼ v
-  ∣≼ʳ : ∀ {p q v} → q ≼ v → p ∣ q ≼ v
+  ∙≼ : {v : Val α} → ∙ ≼ v
+
+  con≼ : {c : Con α} {ps : Pats (args α c)} {vs : Vals (args α c)}
+    → ps ≼* vs
+    → con c ps ≼ con c vs
+
+  ∣≼ˡ : {p q : Pat α} {v : Val α}
+    → p ≼ v
+    → p ∣ q ≼ v
+
+  ∣≼ʳ : {p q : Pat α} {v : Val α}
+    → q ≼ v
+    → p ∣ q ≼ v
 
 -- ps ≼* vs : each pattern in ps matches the corresponding value in vs
 data _≼*_ where
   [] : [] ≼* []
-  _∷_ : ∀ {p : Pat α} {ps : Pats αs} {v vs}
+
+  _∷_ : {p : Pat α} {ps : Pats αs} {v : Val α} {vs : Vals αs}
     → p ≼ v
     → ps ≼* vs
     → p ∷ ps ≼* v ∷ vs
@@ -135,7 +145,7 @@ P ⋠** vs = ¬ P ≼** vs
 ∙*≼ {vs = []} = []
 ∙*≼ {vs = _ ∷ _} = ∙≼ ∷ ∙*≼
 
-module _ {p q : Pat α} {v} where
+module _ {p q : Pat α} {v : Val α} where
 
   ∣≼⁻ : p ∣ q ≼ v → p ≼ v ⊎ q ≼ v
   ∣≼⁻ (∣≼ˡ h) = inj₁ h
@@ -146,7 +156,7 @@ module _ {p q : Pat α} {v} where
   ∣≼⇔ = mk⇔ [ ∣≼ˡ , ∣≼ʳ ] ∣≼⁻
 
 
-module _ {c} {ps : Pats (args α c)} {vs} where
+module _ {c : Con α} {ps : Pats (args α c)} {vs : Vals (args α c)} where
 
   con≼⁻ : con {α} c ps ≼ con c vs → ps ≼* vs
   con≼⁻ (con≼ h) = h
@@ -156,7 +166,7 @@ module _ {c} {ps : Pats (args α c)} {vs} where
   con≼⇔ = mk⇔ con≼ con≼⁻
 
 
-module _ {p : Pat α} {ps : Pats αs} {v vs} where
+module _ {p : Pat α} {ps : Pats αs} {v : Val α} {vs : Vals αs} where
 
   ∷⁻ : p ∷ ps ≼* v ∷ vs → p ≼ v × ps ≼* vs
   ∷⁻ (h ∷ hs) = h , hs
@@ -166,14 +176,14 @@ module _ {p : Pat α} {ps : Pats αs} {v vs} where
   ∷⇔ = mk⇔ (uncurry _∷_) ∷⁻
 
 
-++⁺ : ∀ {ps : Pats αs} {qs : Pats βs} {vs us}
+++⁺ : {ps : Pats αs} {qs : Pats βs} {vs : Vals αs} {us : Vals βs}
   → ps ≼* vs
   → qs ≼* us
   → All.++⁺ ps qs ≼* All.++⁺ vs us
 ++⁺ [] qs≼us = qs≼us
 ++⁺ (p≼v ∷ ps≼vs) qs≼us = p≼v ∷ ++⁺ ps≼vs qs≼us
 
-++⁻ : ∀ (ps : Pats αs) {qs : Pats βs} {vs us}
+++⁻ : (ps : Pats αs) {qs : Pats βs} {vs : Vals αs} {us : Vals βs}
   → All.++⁺ ps qs ≼* All.++⁺ vs us
   → ps ≼* vs × qs ≼* us
 ++⁻ [] {vs = []} qs≼us = [] , qs≼us
@@ -181,11 +191,11 @@ module _ {p : Pat α} {ps : Pats αs} {v vs} where
   Product.map₁ (p≼v ∷_) (++⁻ ps psqs≼vsus)
 
 -- (ps ++ qs) ≼* (vs ++ us) iff ps ≼* vs and qs ≼* us
-++⇔ : ∀ {ps : Pats αs} {qs : Pats βs} {vs us}
+++⇔ : {ps : Pats αs} {qs : Pats βs} {vs : Vals αs} {us : Vals βs}
   → (ps ≼* vs × qs ≼* us) ⇔ All.++⁺ ps qs ≼* All.++⁺ vs us
 ++⇔ = mk⇔ (uncurry ++⁺) (++⁻ _)
 
-split : ∀ (ps : Pats αs) {qs : Pats βs} {us}
+split : (ps : Pats αs) {qs : Pats βs} {us : Vals (αs ++ βs)}
   → All.++⁺ ps qs ≼* us
   → ∃[ vs ] ∃[ ws ] ((All.++⁺ vs ws ≡ us) × (ps ≼* vs) × (qs ≼* ws))
 split [] {us = us} qs≼us = [] , us , refl , [] , qs≼us
@@ -193,7 +203,7 @@ split (p ∷ ps) {us = u ∷ us} (p≼u ∷ ps≼us) =
   let vs , ws , p1 , p2 , p3 = split ps {us = us} ps≼us
    in u ∷ vs , ws , cong (u ∷_) p1 , p≼u ∷ p2 , p3
 
-module _ {ps : Pats αs} {u : Val β} {us : Vals βs} {vs} where
+module _ {ps : Pats αs} {u : Val β} {us : Vals βs} {vs : Vals αs} where
 
   ∙≼*⁺ : All.++⁺ ∙* ps ≼* All.++⁺ us vs → ∙ ∷ ps ≼* u ∷ vs
   ∙≼*⁺ ∙*ps≼usvs =
@@ -208,7 +218,7 @@ module _ {ps : Pats αs} {u : Val β} {us : Vals βs} {vs} where
   ∙≼*⇔ = mk⇔ ∙≼*⁺ ∙≼*⁻
 
 
-module _ {p q : Pat α} {ps : Pats αs} {v vs} where
+module _ {p q : Pat α} {ps : Pats αs} {v : Val α} {vs : Vals αs} where
 
   ∣≼*⁺ : (p ∷ ps ≼* v ∷ vs ⊎ q ∷ ps ≼* v ∷ vs) → p ∣ q ∷ ps ≼* v ∷ vs
   ∣≼*⁺ (inj₁ (p≼v ∷ ps≼vs)) = ∣≼ˡ p≼v ∷ ps≼vs
@@ -223,7 +233,7 @@ module _ {p q : Pat α} {ps : Pats αs} {v vs} where
   ∣≼*⇔ = mk⇔ ∣≼*⁺ ∣≼*⁻
 
 
-module _ {c} {rs : Pats (args α c)} {ps : Pats αs} {us vs} where
+module _ {c : Con α} {rs : Pats (args α c)} {ps : Pats αs} {us : Vals (args α c)} {vs : Vals αs} where
 
   con≼*⁺ : (All.++⁺ rs ps ≼* All.++⁺ us vs) → con {α} c rs ∷ ps ≼* con c us ∷ vs
   con≼*⁺ rsps≼usvs =
@@ -238,7 +248,7 @@ module _ {c} {rs : Pats (args α c)} {ps : Pats αs} {us vs} where
   con≼*⇔ = mk⇔ con≼*⁺ con≼*⁻
 
 
-c≼d→c≡d : ∀ {c d} {ps : Pats (args α c)} {vs : Vals (args α d)}
+c≼d→c≡d : {c d : Con α} {ps : Pats (args α c)} {vs : Vals (args α d)}
   → con {α} c ps ≼ con d vs
   → c ≡ d
 c≼d→c≡d (con≼ _) = refl
@@ -253,10 +263,10 @@ _≼*?_ : (ps : Pats αs) (vs : Vals αs) → Dec (ps ≼* vs)
 con c ps ≼? con d vs with c Fin.≟ d
 ... | yes refl = Dec.map con≼⇔ (ps ≼*? vs)
 ... | no c≢d = no (contraposition c≼d→c≡d c≢d)
-p ∣ q ≼? v = Dec.map ∣≼⇔ ((p ≼? v) ⊎-dec (q ≼? v))
+p ∣ q ≼? v = Dec.map ∣≼⇔ (p ≼? v ⊎-dec q ≼? v)
 
 [] ≼*? [] = yes []
-p ∷ ps ≼*? v ∷ vs = Dec.map ∷⇔ ((p ≼? v) ×-dec (ps ≼*? vs))
+p ∷ ps ≼*? v ∷ vs = Dec.map ∷⇔ (p ≼? v ×-dec ps ≼*? vs)
 
 -- First match
 Match : PatMat αs → Vals αs → Set
