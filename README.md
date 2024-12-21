@@ -45,3 +45,5 @@ Q =
 _ : exhaustive? (Q {α} {β}) ≡ inj₁ _
 _ = refl
 ```
+
+Tested with Agda v2.6.4.3 and agda-stdlib v2.0.
