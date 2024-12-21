@@ -97,7 +97,7 @@ PatMat = List ∘ Pats
 --------------------------------------------------------------------------------
 -- Instance relation
 
-data _≼_ {α} : Pat α → Val α → Set
+data _≼_ {α : Ty} : Pat α → Val α → Set
 data _≼*_ : Pats αs → Vals αs → Set
 
 -- p ≼ v : pattern p matches value v

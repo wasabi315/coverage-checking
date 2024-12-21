@@ -316,6 +316,12 @@ module _ {P : PatMat (α ∷ αs)} {ps : Pats αs} where
   default-preserves-usefulness⁻ (c , c∉P) (vs , defaultP⋠vs , ps≼vs) =
     inhabOf c ∷ vs , contraposition (default-preserves-≼ c∉P) defaultP⋠vs , ∙≼ ∷ ps≼vs
 
+  default-preserves-usefulness⇔ :
+      ∃[ c ] c ∉ presentCons P
+    → Useful (default P) ps ⇔ Useful P (∙ ∷ ps)
+  default-preserves-usefulness⇔ ∃c∉P =
+    mk⇔ (default-preserves-usefulness⁻ ∃c∉P) default-preserves-usefulness
+
 --------------------------------------------------------------------------------
 -- Usefulness checking algorithm
 
@@ -325,21 +331,16 @@ useful? [] [] = yes useful-[]-[]
 useful? (_ ∷ _) [] = no ¬useful-∷-[]
 useful? P (∙ ∷ ps) with ∃missingCon? P
 ... | yes ∃c∉P =
-      Dec.map′
-        (default-preserves-usefulness⁻ ∃c∉P)
-        default-preserves-usefulness
+      Dec.map (default-preserves-usefulness⇔ ∃c∉P)
         (useful? (default P) ps)
 ... | no _ =
-      Dec.map
-        ∃specialize-preserves-usefulness-∙⇔
+      Dec.map ∃specialize-preserves-usefulness-∙⇔
         (any? λ c → useful? (specialize c P) (All.++⁺ ∙* ps))
 useful? P (con c rs ∷ ps) =
-  Dec.map
-    specialize-preserves-usefulness-con⇔
+  Dec.map specialize-preserves-usefulness-con⇔
     (useful? (specialize c P) (All.++⁺ rs ps))
 useful? P (r₁ ∣ r₂ ∷ ps) =
-  Dec.map
-    merge-useful⇔
+  Dec.map merge-useful⇔
     (useful? P (r₁ ∷ ps) ⊎-dec useful? P (r₂ ∷ ps))
 
 exhaustive? : (P : PatMat αs) → Exhaustive P ⊎ NonExhaustive P
