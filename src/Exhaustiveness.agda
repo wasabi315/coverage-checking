@@ -119,108 +119,108 @@ emptyPresentCons? (ps ∷ P) = Dec.map Empty∪⇔ (emptyRootCons? (All.head ps)
 -}
 
 -- Specialization: filters out clauses whose first pattern does not match a value of the form `con c -`.
-specialize : (c : Con α) → PatMat (α ∷ αs) → PatMat (args α c ++ αs)
-specializeBody : (c : Con α) → Pats (α ∷ αs) → PatMat (args α c ++ αs)
-
-specialize = concatMap ∘ specializeBody
-specializeBody c (∙ ∷ ps) = All.++⁺ ∙* ps ∷ []
-specializeBody c (con d rs ∷ ps) with c Fin.≟ d
+𝒮-aux : (c : Con α) → Pats (α ∷ αs) → PatMat (argsTy α c ++ αs)
+𝒮-aux c (∙ ∷ ps) = (∙* ++ₚ ps) ∷ []
+𝒮-aux c (con d rs ∷ ps) with c Fin.≟ d
 ... | no _ = []
-... | yes refl = All.++⁺ rs ps ∷ []
-specializeBody c (r₁ ∣ r₂ ∷ ps) = specializeBody c (r₁ ∷ ps) ++ specializeBody c (r₂ ∷ ps)
+... | yes refl = (rs ++ₚ ps) ∷ []
+𝒮-aux c (r₁ ∣ r₂ ∷ ps) = 𝒮-aux c (r₁ ∷ ps) ++ 𝒮-aux c (r₂ ∷ ps)
+
+𝒮 : (c : Con α) → PatMat (α ∷ αs) → PatMat (argsTy α c ++ αs)
+𝒮 = concatMap ∘ 𝒮-aux
 
 -- Default matrix: filters out clauses whose first pattern is a constructor pattern
-default : PatMat (α ∷ αs) → PatMat αs
-defaultBody : Pats (α ∷ αs) → PatMat αs
+𝒟-aux : Pats (α ∷ αs) → PatMat αs
+𝒟-aux (∙ ∷ ps) = ps ∷ []
+𝒟-aux (con _ _ ∷ ps) = []
+𝒟-aux (r₁ ∣ r₂ ∷ ps) = 𝒟-aux (r₁ ∷ ps) ++ 𝒟-aux (r₂ ∷ ps)
 
-default = concatMap defaultBody
-defaultBody (∙ ∷ ps) = ps ∷ []
-defaultBody (con _ _ ∷ ps) = []
-defaultBody (r₁ ∣ r₂ ∷ ps) = defaultBody (r₁ ∷ ps) ++ defaultBody (r₂ ∷ ps)
+𝒟 : PatMat (α ∷ αs) → PatMat αs
+𝒟 = concatMap 𝒟-aux
 
 --------------------------------------------------------------------------------
--- Properties of ≼ and specialize/default
+-- Properties of ≼ and 𝒮/𝒟
 
-module _ {c : Con α} {us : Vals (args α c)} {vs : Vals αs} where
+module _ {c : Con α} {us : Vals (argsTy α c)} {vs : Vals αs} where
 
-  specializeBody-preserves-≼ : {ps : Pats (α ∷ αs)}
+  𝒮-aux-preserves-≼ : {ps : Pats (α ∷ αs)}
     → ps ≼* con {α} c us ∷ vs
-    → specializeBody c ps ≼** All.++⁺ us vs
-  specializeBody-preserves-≼ {∙ ∷ ps} ∙ps≼cusvs = here (∙≼*⁻ ∙ps≼cusvs)
-  specializeBody-preserves-≼ {con d rs ∷ ps} drsps≼cusvs with c Fin.≟ d
+    → 𝒮-aux c ps ≼** (us ++ᵥ vs)
+  𝒮-aux-preserves-≼ {∙ ∷ ps} ∙ps≼cusvs = here (∙≼*⁻ ∙ps≼cusvs)
+  𝒮-aux-preserves-≼ {con d rs ∷ ps} drsps≼cusvs with c Fin.≟ d
   ... | no c≢d = contradiction (sym (c≼d→c≡d (∷⁻ drsps≼cusvs .proj₁))) c≢d
   ... | yes refl = here (con≼*⁻ drsps≼cusvs)
-  specializeBody-preserves-≼ {r₁ ∣ r₂ ∷ ps} =
+  𝒮-aux-preserves-≼ {r₁ ∣ r₂ ∷ ps} =
     [ Any.++⁺ˡ , Any.++⁺ʳ _ ] ∘
-    Sum.map specializeBody-preserves-≼ specializeBody-preserves-≼ ∘
+    Sum.map 𝒮-aux-preserves-≼ 𝒮-aux-preserves-≼ ∘
     ∣≼*⁻
 
-  -- specialize preserves ≼
-  specialize-preserves-≼ : {P : PatMat (α ∷ αs)}
+  -- 𝒮 preserves ≼
+  𝒮-preserves-≼ : {P : PatMat (α ∷ αs)}
     → P ≼** con {α} c us ∷ vs
-    → specialize c P ≼** All.++⁺ us vs
-  specialize-preserves-≼ = Any.concat⁺ ∘ Any.gmap specializeBody-preserves-≼
+    → 𝒮 c P ≼** (us ++ᵥ vs)
+  𝒮-preserves-≼ = Any.concat⁺ ∘ Any.gmap 𝒮-aux-preserves-≼
 
-  specializeBody-preserves-≼⁻ : {ps : Pats (α ∷ αs)}
-    → specializeBody c ps ≼** All.++⁺ us vs
+  𝒮-aux-preserves-≼⁻ : {ps : Pats (α ∷ αs)}
+    → 𝒮-aux c ps ≼** (us ++ᵥ vs)
     → ps ≼* con {α} c us ∷ vs
-  specializeBody-preserves-≼⁻ {∙ ∷ ps} (here ∙*ps≼usvs) = ∙≼*⁺ ∙*ps≼usvs
-  specializeBody-preserves-≼⁻ {con d rs ∷ ps} _ with c Fin.≟ d
-  specializeBody-preserves-≼⁻ {con d rs ∷ ps} (here drsps≼cusvs) | yes refl = con≼*⁺ drsps≼cusvs
-  specializeBody-preserves-≼⁻ {r₁ ∣ r₂ ∷ ps} =
-    ∣≼*⁺ ∘ Sum.map specializeBody-preserves-≼⁻ specializeBody-preserves-≼⁻ ∘ Any.++⁻ _
+  𝒮-aux-preserves-≼⁻ {∙ ∷ ps} (here ∙*ps≼usvs) = ∙≼*⁺ ∙*ps≼usvs
+  𝒮-aux-preserves-≼⁻ {con d rs ∷ ps} _ with c Fin.≟ d
+  𝒮-aux-preserves-≼⁻ {con d rs ∷ ps} (here drsps≼cusvs) | yes refl = con≼*⁺ drsps≼cusvs
+  𝒮-aux-preserves-≼⁻ {r₁ ∣ r₂ ∷ ps} =
+    ∣≼*⁺ ∘ Sum.map 𝒮-aux-preserves-≼⁻ 𝒮-aux-preserves-≼⁻ ∘ Any.++⁻ _
 
   -- "Unspecializing" preserves ≼
-  specialize-preserves-≼⁻ : {P : PatMat (α ∷ αs)}
-    → specialize c P ≼** All.++⁺ us vs
+  𝒮-preserves-≼⁻ : {P : PatMat (α ∷ αs)}
+    → 𝒮 c P ≼** (us ++ᵥ vs)
     → P ≼** con {α} c us ∷ vs
-  specialize-preserves-≼⁻ = Any.map specializeBody-preserves-≼⁻ ∘ Any.map⁻ ∘ Any.concat⁻ _
+  𝒮-preserves-≼⁻ = Any.map 𝒮-aux-preserves-≼⁻ ∘ Any.map⁻ ∘ Any.concat⁻ _
 
-  specialize-preserves-≼⇔ : {P : PatMat (α ∷ αs)}
-    → P ≼** con {α} c us ∷ vs ⇔ specialize c P ≼** All.++⁺ us vs
-  specialize-preserves-≼⇔ = mk⇔ specialize-preserves-≼ specialize-preserves-≼⁻
+  𝒮-preserves-≼⇔ : {P : PatMat (α ∷ αs)}
+    → P ≼** con {α} c us ∷ vs ⇔ 𝒮 c P ≼** (us ++ᵥ vs)
+  𝒮-preserves-≼⇔ = mk⇔ 𝒮-preserves-≼ 𝒮-preserves-≼⁻
 
 
-module _ {c : Con α} {us : Vals (args α c)} {vs : Vals αs} where
+module _ {c : Con α} {us : Vals (argsTy α c)} {vs : Vals αs} where
 
-  defaultBody-preserves-≼ : {ps : Pats (α ∷ αs)}
+  𝒟-aux-preserves-≼ : {ps : Pats (α ∷ αs)}
     → c ∉ rootCons (All.head ps)
     → ps ≼* con {α} c us ∷ vs
-    → defaultBody ps ≼** vs
-  defaultBody-preserves-≼ {∙ ∷ ps} _ ∙ps≼cusvs = here (∷⁻ ∙ps≼cusvs .proj₂)
-  defaultBody-preserves-≼ {con d rs ∷ ps} c∉⁅d⁆ drsps≼cusvs =
+    → 𝒟-aux ps ≼** vs
+  𝒟-aux-preserves-≼ {∙ ∷ ps} _ ∙ps≼cusvs = here (∷⁻ ∙ps≼cusvs .proj₂)
+  𝒟-aux-preserves-≼ {con d rs ∷ ps} c∉⁅d⁆ drsps≼cusvs =
     contradiction (Equivalence.from x∈⁅y⁆⇔x≡y (sym (c≼d→c≡d (∷⁻ drsps≼cusvs .proj₁)))) c∉⁅d⁆
-  defaultBody-preserves-≼ {r₁ ∣ r₂ ∷ ps} c∉r₁∪r₂ =
+  𝒟-aux-preserves-≼ {r₁ ∣ r₂ ∷ ps} c∉r₁∪r₂ =
     [ Any.++⁺ˡ , Any.++⁺ʳ _ ] ∘
     Sum.map
-      (defaultBody-preserves-≼ (x∉p∪q⁻ˡ c∉r₁∪r₂))
-      (defaultBody-preserves-≼ (x∉p∪q⁻ʳ c∉r₁∪r₂)) ∘
+      (𝒟-aux-preserves-≼ (x∉p∪q⁻ˡ c∉r₁∪r₂))
+      (𝒟-aux-preserves-≼ (x∉p∪q⁻ʳ c∉r₁∪r₂)) ∘
     ∣≼*⁻
 
-  -- If c is not in presentCons P, default preserves ≼
-  default-preserves-≼ : {P : PatMat (α ∷ αs)}
+  -- If c is not in presentCons P, 𝒟 preserves ≼
+  𝒟-preserves-≼ : {P : PatMat (α ∷ αs)}
     → c ∉ presentCons P
     → P ≼** con {α} c us ∷ vs
-    → default P ≼** vs
-  default-preserves-≼ {ps ∷ P} c∉ps∪P (here ps≼cusvs) =
-    Any.++⁺ˡ (defaultBody-preserves-≼ (x∉p∪q⁻ˡ c∉ps∪P) ps≼cusvs)
-  default-preserves-≼ {ps ∷ P} c∉ps∪P (there P≼cusvs) =
-    Any.++⁺ʳ _ (default-preserves-≼ (x∉p∪q⁻ʳ c∉ps∪P) P≼cusvs)
+    → 𝒟 P ≼** vs
+  𝒟-preserves-≼ {ps ∷ P} c∉ps∪P (here ps≼cusvs) =
+    Any.++⁺ˡ (𝒟-aux-preserves-≼ (x∉p∪q⁻ˡ c∉ps∪P) ps≼cusvs)
+  𝒟-preserves-≼ {ps ∷ P} c∉ps∪P (there P≼cusvs) =
+    Any.++⁺ʳ _ (𝒟-preserves-≼ (x∉p∪q⁻ʳ c∉ps∪P) P≼cusvs)
 
 
 module _ {v : Val α} {vs : Vals αs} where
 
-  defaultBody-preserves-≼⁻ : {ps : Pats (α ∷ αs)}
-    → defaultBody ps ≼** vs
+  𝒟-aux-preserves-≼⁻ : {ps : Pats (α ∷ αs)}
+    → 𝒟-aux ps ≼** vs
     → ps ≼* v ∷ vs
-  defaultBody-preserves-≼⁻ {∙ ∷ ps} (here ∙ps≼vvs) = ∙≼ ∷ ∙ps≼vvs
-  defaultBody-preserves-≼⁻ {r₁ ∣ r₂ ∷ ps} =
-    ∣≼*⁺ ∘ Sum.map defaultBody-preserves-≼⁻ defaultBody-preserves-≼⁻ ∘ Any.++⁻ _
+  𝒟-aux-preserves-≼⁻ {∙ ∷ ps} (here ∙ps≼vvs) = ∙≼ ∷ ∙ps≼vvs
+  𝒟-aux-preserves-≼⁻ {r₁ ∣ r₂ ∷ ps} =
+    ∣≼*⁺ ∘ Sum.map 𝒟-aux-preserves-≼⁻ 𝒟-aux-preserves-≼⁻ ∘ Any.++⁻ _
 
-  default-preserves-≼⁻ : {P : PatMat (α ∷ αs)}
-    → default P ≼** vs
+  𝒟-preserves-≼⁻ : {P : PatMat (α ∷ αs)}
+    → 𝒟 P ≼** vs
     → P ≼** v ∷ vs
-  default-preserves-≼⁻ = Any.map defaultBody-preserves-≼⁻ ∘ Any.map⁻ ∘ Any.concat⁻ _
+  𝒟-preserves-≼⁻ = Any.map 𝒟-aux-preserves-≼⁻ ∘ Any.map⁻ ∘ Any.concat⁻ _
 
 --------------------------------------------------------------------------------
 -- Properties of usefulness
@@ -252,75 +252,75 @@ module _ {P : PatMat (α ∷ αs)} {r₁ r₂ : Pat α} {ps : Pats αs} where
   merge-useful⇔ = mk⇔ merge-useful merge-useful⁻
 
 
-module _ {P : PatMat (α ∷ αs)} {c : Con α} {rs : Pats (args α c)} {ps : Pats αs} where
+module _ {P : PatMat (α ∷ αs)} {c : Con α} {rs : Pats (argsTy α c)} {ps : Pats αs} where
 
-  specialize-preserves-usefulness-con :
+  𝒮-preserves-usefulness-con :
       Useful P (con c rs ∷ ps)
-    → Useful (specialize c P) (All.++⁺ rs ps)
-  specialize-preserves-usefulness-con (con c vs ∷ us , P⋠cvsus , con≼ rs≼vs ∷ ps≼us) =
-    All.++⁺ vs us , contraposition specialize-preserves-≼⁻ P⋠cvsus , ++⁺ rs≼vs ps≼us
+    → Useful (𝒮 c P) (All.++⁺ rs ps)
+  𝒮-preserves-usefulness-con (con c vs ∷ us , P⋠cvsus , con≼ rs≼vs ∷ ps≼us) =
+    All.++⁺ vs us , contraposition 𝒮-preserves-≼⁻ P⋠cvsus , ++⁺ rs≼vs ps≼us
 
-  specialize-preserves-usefulness-con⁻ :
-      Useful (specialize c P) (All.++⁺ rs ps)
+  𝒮-preserves-usefulness-con⁻ :
+      Useful (𝒮 c P) (All.++⁺ rs ps)
     → Useful P (con c rs ∷ ps)
-  specialize-preserves-usefulness-con⁻ (usvs , specializeP⋠usvs , rsps≼usvs)
+  𝒮-preserves-usefulness-con⁻ (usvs , 𝒮P⋠usvs , rsps≼usvs)
     with us , vs , refl , rs≼us , ps≼vs ← split rs rsps≼usvs =
-    con c us ∷ vs , contraposition specialize-preserves-≼ specializeP⋠usvs , con≼ rs≼us ∷ ps≼vs
+    con c us ∷ vs , contraposition 𝒮-preserves-≼ 𝒮P⋠usvs , con≼ rs≼us ∷ ps≼vs
 
-  -- con c rs ∷ ps is useful wrt P iff rs ++ ps is useful wrt specialize c P
-  specialize-preserves-usefulness-con⇔ :
-      Useful (specialize c P) (All.++⁺ rs ps)
+  -- con c rs ∷ ps is useful wrt P iff rs ++ ps is useful wrt 𝒮 c P
+  𝒮-preserves-usefulness-con⇔ :
+      Useful (𝒮 c P) (All.++⁺ rs ps)
     ⇔ Useful P (con c rs ∷ ps)
-  specialize-preserves-usefulness-con⇔ =
-    mk⇔ specialize-preserves-usefulness-con⁻ specialize-preserves-usefulness-con
+  𝒮-preserves-usefulness-con⇔ =
+    mk⇔ 𝒮-preserves-usefulness-con⁻ 𝒮-preserves-usefulness-con
 
 
 module _ {P : PatMat (α ∷ αs)} {ps : Pats αs} where
 
-  -- If `∙ ∷ ps` is useful wrt P, there exists a constructor c such that `∙* ++ ps` is useful wrt `specialize c P`
-  ∃specialize-preserves-usefulness-∙ :
+  -- If `∙ ∷ ps` is useful wrt P, there exists a constructor c such that `∙* ++ ps` is useful wrt `𝒮 c P`
+  ∃𝒮-preserves-usefulness-∙ :
       Useful P (∙ ∷ ps)
-    → ∃[ c ] Useful (specialize c P) (All.++⁺ ∙* ps)
-  ∃specialize-preserves-usefulness-∙ (con c us ∷ vs , P⋠cusvs , ∙≼ ∷ ps≼vs) =
-    c , All.++⁺ us vs , contraposition specialize-preserves-≼⁻ P⋠cusvs , ++⁺ ∙*≼ ps≼vs
+    → ∃[ c ] Useful (𝒮 c P) (All.++⁺ ∙* ps)
+  ∃𝒮-preserves-usefulness-∙ (con c us ∷ vs , P⋠cusvs , ∙≼ ∷ ps≼vs) =
+    c , All.++⁺ us vs , contraposition 𝒮-preserves-≼⁻ P⋠cusvs , ++⁺ ∙*≼ ps≼vs
 
-  -- If there exists a constructor c such that `∙* ++ ps` is useful wrt `specialize c P`, `∙ ∷ ps` is also useful wrt P
-  ∃specialize-preserves-usefulness-∙⁻ :
-      ∃[ c ] Useful (specialize c P) (All.++⁺ ∙* ps)
+  -- If there exists a constructor c such that `∙* ++ ps` is useful wrt `𝒮 c P`, `∙ ∷ ps` is also useful wrt P
+  ∃𝒮-preserves-usefulness-∙⁻ :
+      ∃[ c ] Useful (𝒮 c P) (All.++⁺ ∙* ps)
     → Useful P (∙ ∷ ps)
-  ∃specialize-preserves-usefulness-∙⁻ (c , usvs , specializeP⋠usvs , ∙*ps≼usvs)
-    with us , vs , refl , _ , ps≼vs ← split {args α c} ∙* ∙*ps≼usvs =
-    con c us ∷ vs , contraposition specialize-preserves-≼ specializeP⋠usvs , ∙≼ ∷ ps≼vs
+  ∃𝒮-preserves-usefulness-∙⁻ (c , usvs , 𝒮P⋠usvs , ∙*ps≼usvs)
+    with us , vs , refl , _ , ps≼vs ← split {argsTy α c} ∙* ∙*ps≼usvs =
+    con c us ∷ vs , contraposition 𝒮-preserves-≼ 𝒮P⋠usvs , ∙≼ ∷ ps≼vs
 
-  -- ∙ ∷ ps is useful wrt P iff ∙* ++ ps is useful wrt specialize c P
-  ∃specialize-preserves-usefulness-∙⇔ :
-      (∃[ c ] Useful (specialize c P) (All.++⁺ ∙* ps))
+  -- ∙ ∷ ps is useful wrt P iff ∙* ++ ps is useful wrt 𝒮 c P
+  ∃𝒮-preserves-usefulness-∙⇔ :
+      (∃[ c ] Useful (𝒮 c P) (All.++⁺ ∙* ps))
     ⇔ Useful P (∙ ∷ ps)
-  ∃specialize-preserves-usefulness-∙⇔ =
-    mk⇔ ∃specialize-preserves-usefulness-∙⁻ ∃specialize-preserves-usefulness-∙
+  ∃𝒮-preserves-usefulness-∙⇔ =
+    mk⇔ ∃𝒮-preserves-usefulness-∙⁻ ∃𝒮-preserves-usefulness-∙
 
 
 module _ {P : PatMat (α ∷ αs)} {ps : Pats αs} where
 
-  -- ps is useful wrt (default P) if (∙ ∷ ps) is useful wrt P
-  default-preserves-usefulness : Useful P (∙ ∷ ps) → Useful (default P) ps
-  default-preserves-usefulness (v ∷ vs  , P⋠vvs , ∙≼ ∷ ps≼vs) =
-    vs , contraposition default-preserves-≼⁻ P⋠vvs , ps≼vs
+  -- ps is useful wrt (𝒟 P) if (∙ ∷ ps) is useful wrt P
+  𝒟-preserves-usefulness : Useful P (∙ ∷ ps) → Useful (𝒟 P) ps
+  𝒟-preserves-usefulness (v ∷ vs  , P⋠vvs , ∙≼ ∷ ps≼vs) =
+    vs , contraposition 𝒟-preserves-≼⁻ P⋠vvs , ps≼vs
 
-  -- If presentCons P is not complete, and ps is useful wrt default P, ∙ ∷ ps is also useful wrt P.
-  -- That means, it suffices to check for usefulness of ps wrt default P if presentCons P is not complete.
-  default-preserves-usefulness⁻ :
+  -- If presentCons P is not complete, and ps is useful wrt 𝒟 P, ∙ ∷ ps is also useful wrt P.
+  -- That means, it suffices to check for usefulness of ps wrt 𝒟 P if presentCons P is not complete.
+  𝒟-preserves-usefulness⁻ :
       ∃[ c ] c ∉ presentCons P
-    → Useful (default P) ps
+    → Useful (𝒟 P) ps
     → Useful P (∙ ∷ ps)
-  default-preserves-usefulness⁻ (c , c∉P) (vs , defaultP⋠vs , ps≼vs) =
-    inhabOf c ∷ vs , contraposition (default-preserves-≼ c∉P) defaultP⋠vs , ∙≼ ∷ ps≼vs
+  𝒟-preserves-usefulness⁻ (c , c∉P) (vs , 𝒟P⋠vs , ps≼vs) =
+    inhabOf c ∷ vs , contraposition (𝒟-preserves-≼ c∉P) 𝒟P⋠vs , ∙≼ ∷ ps≼vs
 
-  default-preserves-usefulness⇔ :
+  𝒟-preserves-usefulness⇔ :
       ∃[ c ] c ∉ presentCons P
-    → Useful (default P) ps ⇔ Useful P (∙ ∷ ps)
-  default-preserves-usefulness⇔ ∃c∉P =
-    mk⇔ (default-preserves-usefulness⁻ ∃c∉P) default-preserves-usefulness
+    → Useful (𝒟 P) ps ⇔ Useful P (∙ ∷ ps)
+  𝒟-preserves-usefulness⇔ ∃c∉P =
+    mk⇔ (𝒟-preserves-usefulness⁻ ∃c∉P) 𝒟-preserves-usefulness
 
 --------------------------------------------------------------------------------
 -- Usefulness checking algorithm
@@ -331,17 +331,13 @@ useful? [] [] = yes useful-[]-[]
 useful? (_ ∷ _) [] = no ¬useful-∷-[]
 useful? P (∙ ∷ ps) with ∃missingCon? P
 ... | yes ∃c∉P =
-      Dec.map (default-preserves-usefulness⇔ ∃c∉P)
-        (useful? (default P) ps)
+      Dec.map (𝒟-preserves-usefulness⇔ ∃c∉P) (useful? (𝒟 P) ps)
 ... | no _ =
-      Dec.map ∃specialize-preserves-usefulness-∙⇔
-        (any? λ c → useful? (specialize c P) (All.++⁺ ∙* ps))
+      Dec.map ∃𝒮-preserves-usefulness-∙⇔ (any? λ c → useful? (𝒮 c P) (All.++⁺ ∙* ps))
 useful? P (con c rs ∷ ps) =
-  Dec.map specialize-preserves-usefulness-con⇔
-    (useful? (specialize c P) (All.++⁺ rs ps))
+  Dec.map 𝒮-preserves-usefulness-con⇔ (useful? (𝒮 c P) (All.++⁺ rs ps))
 useful? P (r₁ ∣ r₂ ∷ ps) =
-  Dec.map merge-useful⇔
-    (useful? P (r₁ ∷ ps) ⊎-dec useful? P (r₂ ∷ ps))
+  Dec.map merge-useful⇔ (useful? P (r₁ ∷ ps) ⊎-dec useful? P (r₂ ∷ ps))
 
 exhaustive? : (P : PatMat αs) → Exhaustive P ⊎ NonExhaustive P
 exhaustive? P with useful? P ∙*

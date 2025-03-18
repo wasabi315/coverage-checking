@@ -24,9 +24,9 @@ private
 -- data Mylist a = Nil | One a | Cons a (Mylist a)
 mylist : Ty → Ty
 mylist α .numCons = 3
-mylist α .args zero = []
-mylist α .args (suc zero) = α ∷ []
-mylist α .args (suc (suc zero)) = α ∷ mylist α ∷ []
+mylist α .argsTy zero = []
+mylist α .argsTy (suc zero) = α ∷ []
+mylist α .argsTy (suc (suc zero)) = α ∷ mylist α ∷ []
 mylist α .inhabCon = zero
 mylist α .inhabArgs = []
 
