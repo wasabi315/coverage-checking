@@ -2,22 +2,28 @@ module Exhaustiveness where
 
 open import Data.Bool using (true; false; _∧_)
 open import Data.Fin as Fin using (zero; suc)
-open import Data.Fin.Subset using (Subset; _∈_; _∉_; ⊥; ⁅_⁆; _∪_; ∁; ⋃; Nonempty; Empty)
-open import Data.Fin.Subset.Properties using (x∈∁p⇒x∉p; x∉p⇒x∈∁p; ∉⊥; x∈⁅x⁆; x∈⁅y⁆⇔x≡y; nonempty?)
-open import Data.Fin.Properties using (any?)
-open import Data.List as List using (List; []; _∷_; _++_; concatMap)
+import Data.Fin.Properties as Fin
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.List as List using (List; []; _∷_; _++_)
+open import Data.List.Properties using (sum-++; map-++; ++-identityʳ)
 open import Data.List.Relation.Unary.All as All using (All; []; _∷_)
-import Data.List.Relation.Unary.All.Properties as All
+open import Data.List.Relation.Unary.All.Properties as All using (¬All⇒Any¬; All¬⇒¬Any)
 open import Data.List.Relation.Unary.Any as Any using (Any; here; there)
 open import Data.List.Relation.Unary.Any.Properties as Any using (¬Any[])
 open import Data.List.Relation.Unary.First as First using (First; toAny)
 open import Data.List.Relation.Unary.First.Properties as First using (All⇒¬First)
-open import Data.Nat using (ℕ; zero; suc)
-open import Data.Product as Product using (∃-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Nat as ℕ using (ℕ; zero; suc; _+_)
+import Data.Nat.Properties as ℕ
+import Data.Nat.Induction as ℕ
+open import Data.Product as Product using (∃-syntax; _×_; -,_; _,_; proj₁; proj₂)
+open import Data.Product.Relation.Binary.Lex.Strict using (×-Lex; ×-wellFounded')
 open import Data.Sum as Sum using (_⊎_; inj₁; inj₂; [_,_])
-open import Function using (id; _∘_; _⇔_; mk⇔; Equivalence)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; ≢-sym)
-open import Relation.Nullary.Decidable as Dec using (Dec; yes; no; _⊎-dec_; _×-dec_)
+open import Function using (id; _∘_; flip; _on_; _⇔_; mk⇔; Equivalence)
+open import Induction.WellFounded using (WellFounded; Acc; acc)
+import Relation.Binary.Construct.On as On
+open import Relation.Binary.Definitions using (Transitive; _Respectsʳ_; tri<; tri≈; tri>)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; ≢-sym; cong; cong₂)
+open import Relation.Nullary.Decidable as Dec using (Dec; yes; no; ¬?; _⊎-dec_; _×-dec_)
 open import Relation.Nullary.Negation using (¬_; contradiction; contraposition)
 
 open import Extra
@@ -82,41 +88,54 @@ module _ {P : PatMat αs} where
 --------------------------------------------------------------------------------
 -- Operations on patterns used in the algorithm
 
--- Set of root constructors of a pattern
-rootCons : Pat α → ConSet α
-rootCons ∙ = ⊥
-rootCons (con c _) = ⁅ c ⁆
-rootCons (p ∣ q) = rootCons p ∪ rootCons q
+infix 4 _∈_ _∉_ _∈?_ _∉?_
 
-emptyRootCons? : (p : Pat α) → Dec (Empty (rootCons p))
-emptyRootCons? ∙ = yes (∉⊥ ∘ proj₂)
-emptyRootCons? (con c _) = no λ empty⁅c⁆ → empty⁅c⁆ (c , x∈⁅x⁆ c)
-emptyRootCons? (p ∣ q) = Dec.map Empty∪⇔ (emptyRootCons? p ×-dec emptyRootCons? q)
+-- Does c appear in p?
+_∈_ : Con α → Pat α → Set
+c ∈ ∙ = ⊥
+c ∈ con c′ _ = c ≡ c′
+c ∈ (p ∣ q) = c ∈ p ⊎ c ∈ q
 
--- Set of root constructors in the first column of a pattern matrix
-presentCons : PatMat (α ∷ αs) → ConSet α
-presentCons = ⋃ ∘ List.map (rootCons ∘ All.head)
+_∉_ : Con α → Pat α → Set
+c ∉ p = ¬ c ∈ p
 
-emptyPresentCons? : (P : PatMat (α ∷ αs)) → Dec (Empty (presentCons P))
-emptyPresentCons? [] = yes (∉⊥ ∘ proj₂)
-emptyPresentCons? (ps ∷ P) = Dec.map Empty∪⇔ (emptyRootCons? (All.head ps) ×-dec emptyPresentCons? P)
+_∈?_ : (c : Con α) (p : Pat α) → Dec (c ∈ p)
+c ∈? ∙ = no id
+c ∈? (con c′ _) = c Fin.≟ c′
+c ∈? (p ∣ q) = c ∈? p ⊎-dec c ∈? q
 
-∃missingCon? : (P : PatMat (α ∷ αs)) → Dec (∃[ c ] c ∉ presentCons P)
-∃missingCon? {α = α} P with emptyPresentCons? P
-... | yes empty = yes (inhabCon α , empty ∘ (inhabCon α ,_))
-... | no _ =
-      Dec.map′
-        (Product.map₂ x∈∁p⇒x∉p)
-        (Product.map₂ x∉p⇒x∈∁p)
-        (nonempty? (∁ (presentCons P)))
-{-
--- The above definition has better decidability than the following one;
--- When α is abstract, you can't decide how many constructors there are in α, therefore you can't decide if there is a missing constructor.
--- The definition above exploits the fact that you can decide if the set is empty without knowing the number of constructors.
+_∉?_ : (c : Con α) (p : Pat α) → Dec (c ∉ p)
+c ∉? p = ¬? (c ∈? p)
 
-∃missingCon? =
-  Dec.map′ (Product.map₂ x∈∁p⇒x∉p) (Product.map₂ x∉p⇒x∈∁p) (nonempty? (∁ (presentCons P)))
--}
+-- Is p empty?
+empty? : (p : Pat α) → Dec (∀ c → c ∉ p)
+empty? ∙ = yes λ c → id
+empty? (con c _) = no λ h → h c refl
+empty? (p ∣ q) =
+  Dec.map′
+    (λ (h , h′) c → [ h c , h′ c ])
+    (λ h → (λ c → h c ∘ inj₁) , (λ c → h c ∘ inj₂))
+    (empty? p ×-dec empty? q)
+
+-- Is the set of constructors that appear in the first column of P empty?
+rootConsEmpty? : (P : PatMat (α ∷ αs))
+  → Dec (∀ c → All (λ ps → c ∉ All.head ps) P)
+rootConsEmpty? [] = yes λ _ → []
+rootConsEmpty? (ps ∷ P) =
+  Dec.map′
+    (λ (h , h′) c → h c ∷ h′ c)
+    (λ h → All.head ∘ h , All.tail ∘ h)
+    (empty? (All.head ps) ×-dec rootConsEmpty? P)
+
+-- Is there a constructor that does not appear in the first column of P?
+∃missingCon? : (P : PatMat (α ∷ αs))
+  → (∃[ c ] All (λ ps → c ∉ All.head ps) P) ⊎
+    (∀ c → Any (λ ps → c ∈ All.head ps) P)
+∃missingCon? {α} P with rootConsEmpty? P
+... | yes empty = inj₁ (inhabCon α , empty (inhabCon α))
+... | no _ with Fin.any? (λ c → All.all? (λ ps → c ∉? All.head ps) P)
+...    | yes missing = inj₁ missing
+...    | no complete = inj₂ λ c → ¬All¬⇒Any (λ ps → c ∈? All.head ps) P (complete ∘ (c ,_))
 
 -- Specialization: filters out clauses whose first pattern does not match a value of the form `con c -`.
 𝒮-aux : (c : Con α) → Pats (α ∷ αs) → PatMat (argsTy α c ++ αs)
@@ -127,7 +146,7 @@ emptyPresentCons? (ps ∷ P) = Dec.map Empty∪⇔ (emptyRootCons? (All.head ps)
 𝒮-aux c (r₁ ∣ r₂ ∷ ps) = 𝒮-aux c (r₁ ∷ ps) ++ 𝒮-aux c (r₂ ∷ ps)
 
 𝒮 : (c : Con α) → PatMat (α ∷ αs) → PatMat (argsTy α c ++ αs)
-𝒮 = concatMap ∘ 𝒮-aux
+𝒮 = List.concatMap ∘ 𝒮-aux
 
 -- Default matrix: filters out clauses whose first pattern is a constructor pattern
 𝒟-aux : Pats (α ∷ αs) → PatMat αs
@@ -136,7 +155,7 @@ emptyPresentCons? (ps ∷ P) = Dec.map Empty∪⇔ (emptyRootCons? (All.head ps)
 𝒟-aux (r₁ ∣ r₂ ∷ ps) = 𝒟-aux (r₁ ∷ ps) ++ 𝒟-aux (r₂ ∷ ps)
 
 𝒟 : PatMat (α ∷ αs) → PatMat αs
-𝒟 = concatMap 𝒟-aux
+𝒟 = List.concatMap 𝒟-aux
 
 --------------------------------------------------------------------------------
 -- Properties of ≼ and 𝒮/𝒟
@@ -170,7 +189,7 @@ module _ {c : Con α} {us : Vals (argsTy α c)} {vs : Vals αs} where
   𝒮-aux-preserves-≼⁻ {r₁ ∣ r₂ ∷ ps} =
     ∣≼*⁺ ∘ Sum.map 𝒮-aux-preserves-≼⁻ 𝒮-aux-preserves-≼⁻ ∘ Any.++⁻ _
 
-  -- "Unspecializing" preserves ≼
+  -- Unspecialization preserves ≼
   𝒮-preserves-≼⁻ : {P : PatMat (α ∷ αs)}
     → 𝒮 c P ≼** (us ++ᵥ vs)
     → P ≼** con {α} c us ∷ vs
@@ -184,28 +203,28 @@ module _ {c : Con α} {us : Vals (argsTy α c)} {vs : Vals αs} where
 module _ {c : Con α} {us : Vals (argsTy α c)} {vs : Vals αs} where
 
   𝒟-aux-preserves-≼ : {ps : Pats (α ∷ αs)}
-    → c ∉ rootCons (All.head ps)
+    → c ∉ All.head ps
     → ps ≼* con {α} c us ∷ vs
     → 𝒟-aux ps ≼** vs
   𝒟-aux-preserves-≼ {∙ ∷ ps} _ ∙ps≼cusvs = here (∷⁻ ∙ps≼cusvs .proj₂)
-  𝒟-aux-preserves-≼ {con d rs ∷ ps} c∉⁅d⁆ drsps≼cusvs =
-    contradiction (Equivalence.from x∈⁅y⁆⇔x≡y (sym (c≼d→c≡d (∷⁻ drsps≼cusvs .proj₁)))) c∉⁅d⁆
+  𝒟-aux-preserves-≼ {con d rs ∷ ps} c∉d drsps≼cusvs =
+    contradiction (sym (c≼d→c≡d (∷⁻ drsps≼cusvs .proj₁))) c∉d
   𝒟-aux-preserves-≼ {r₁ ∣ r₂ ∷ ps} c∉r₁∪r₂ =
     [ Any.++⁺ˡ , Any.++⁺ʳ _ ] ∘
     Sum.map
-      (𝒟-aux-preserves-≼ (x∉p∪q⁻ˡ c∉r₁∪r₂))
-      (𝒟-aux-preserves-≼ (x∉p∪q⁻ʳ c∉r₁∪r₂)) ∘
+      (𝒟-aux-preserves-≼ (c∉r₁∪r₂ ∘ inj₁))
+      (𝒟-aux-preserves-≼ (c∉r₁∪r₂ ∘ inj₂)) ∘
     ∣≼*⁻
 
-  -- If c is not in presentCons P, 𝒟 preserves ≼
+  -- If c does not appear in the first column of P, 𝒟 preserves ≼
   𝒟-preserves-≼ : {P : PatMat (α ∷ αs)}
-    → c ∉ presentCons P
+    → All (λ ps → c ∉ All.head ps) P
     → P ≼** con {α} c us ∷ vs
     → 𝒟 P ≼** vs
-  𝒟-preserves-≼ {ps ∷ P} c∉ps∪P (here ps≼cusvs) =
-    Any.++⁺ˡ (𝒟-aux-preserves-≼ (x∉p∪q⁻ˡ c∉ps∪P) ps≼cusvs)
-  𝒟-preserves-≼ {ps ∷ P} c∉ps∪P (there P≼cusvs) =
-    Any.++⁺ʳ _ (𝒟-preserves-≼ (x∉p∪q⁻ʳ c∉ps∪P) P≼cusvs)
+  𝒟-preserves-≼ {ps ∷ P} (c∉ps ∷ _) (here ps≼cusvs) =
+    Any.++⁺ˡ (𝒟-aux-preserves-≼ c∉ps ps≼cusvs)
+  𝒟-preserves-≼ {ps ∷ P} (_ ∷ c∉P) (there P≼cusvs) =
+    Any.++⁺ʳ _ (𝒟-preserves-≼ c∉P P≼cusvs)
 
 
 module _ {v : Val α} {vs : Vals αs} where
@@ -225,9 +244,29 @@ module _ {v : Val α} {vs : Vals αs} where
 --------------------------------------------------------------------------------
 -- Properties of usefulness
 
--- [] is useful wrt []
-useful-[]-[] : Useful [] []
-useful-[]-[] = [] , ¬Any[] , []
+synth : Pat α → Val α
+synth* : Pats αs → Vals αs
+
+synth ∙ = inhab _
+synth (con c ps) = con c (synth* ps)
+synth (p ∣ _) = synth p
+
+synth* [] = []
+synth* (p ∷ ps) = synth p ∷ synth* ps
+
+synth≼ : (p : Pat α) → p ≼ synth p
+synth*≼ : (ps : Pats αs) → ps ≼* synth* ps
+
+synth≼ ∙ = ∙≼
+synth≼ (con c ps) = con≼ (synth*≼ ps)
+synth≼ (p ∣ _) = ∣≼ˡ (synth≼ p)
+
+synth*≼ [] = []
+synth*≼ (p ∷ ps) = synth≼ p ∷ synth*≼ ps
+
+-- any sequence of patterns is useful wrt []
+useful-[] : {ps : Pats αs} → Useful [] ps
+useful-[] {ps = ps} = synth* ps , (λ ()) , synth*≼ ps
 
 -- [] is not wrt any non-empty matrix
 ¬useful-∷-[] : {ps : Pats []} {P : PatMat []} → ¬ Useful (ps ∷ P) []
@@ -307,37 +346,230 @@ module _ {P : PatMat (α ∷ αs)} {ps : Pats αs} where
   𝒟-preserves-usefulness (v ∷ vs  , P⋠vvs , ∙≼ ∷ ps≼vs) =
     vs , contraposition 𝒟-preserves-≼⁻ P⋠vvs , ps≼vs
 
-  -- If presentCons P is not complete, and ps is useful wrt 𝒟 P, ∙ ∷ ps is also useful wrt P.
-  -- That means, it suffices to check for usefulness of ps wrt 𝒟 P if presentCons P is not complete.
+  -- If there is a constructor c that does not appear in the first column of P, and ps is useful wrt 𝒟 P, ∙ ∷ ps is also useful wrt P.
   𝒟-preserves-usefulness⁻ :
-      ∃[ c ] c ∉ presentCons P
+      ∃[ c ] All (λ ps → c ∉ All.head ps) P
     → Useful (𝒟 P) ps
     → Useful P (∙ ∷ ps)
   𝒟-preserves-usefulness⁻ (c , c∉P) (vs , 𝒟P⋠vs , ps≼vs) =
     inhabOf c ∷ vs , contraposition (𝒟-preserves-≼ c∉P) 𝒟P⋠vs , ∙≼ ∷ ps≼vs
 
   𝒟-preserves-usefulness⇔ :
-      ∃[ c ] c ∉ presentCons P
+      ∃[ c ] All (λ ps → c ∉ All.head ps) P
     → Useful (𝒟 P) ps ⇔ Useful P (∙ ∷ ps)
   𝒟-preserves-usefulness⇔ ∃c∉P =
     mk⇔ (𝒟-preserves-usefulness⁻ ∃c∉P) 𝒟-preserves-usefulness
 
 --------------------------------------------------------------------------------
+-- Termination
+
+patsSize : Pats αs → ℕ → ℕ
+patsSize [] n = n
+patsSize (∙ ∷ ps) n = patsSize ps n
+patsSize (con _ rs ∷ ps) n = suc (patsSize rs (patsSize ps n))
+patsSize (r₁ ∣ r₂ ∷ ps) n = suc (patsSize (r₁ ∷ ps) n + patsSize (r₂ ∷ ps) n)
+
+patMatSize : PatMat αs → ℕ
+patMatSize P = List.sum (List.map (flip patsSize 0) P)
+
+patsSize-++ : (ps : Pats αs) (qs : Pats βs) (n : ℕ)
+  → patsSize (All.++⁺ ps qs) n ≡ patsSize ps (patsSize qs n)
+patsSize-++ [] qs n = refl
+patsSize-++ (∙ ∷ ps) qs n = patsSize-++ ps qs n
+patsSize-++ (con _ rs ∷ ps) qs n = cong (suc ∘ patsSize rs) (patsSize-++ ps qs n)
+patsSize-++ (r₁ ∣ r₂ ∷ ps) qs n = cong suc (cong₂ _+_ (patsSize-++ (r₁ ∷ ps) qs n) (patsSize-++ (r₂ ∷ ps) qs n))
+
+patsSize∙* : ∀ αs n → patsSize (∙* {αs = αs}) n ≡ n
+patsSize∙* [] n = refl
+patsSize∙* (α ∷ αs) n = patsSize∙* αs n
+
+patMatSize-++ : (P Q : PatMat αs) → patMatSize (P ++ Q) ≡ patMatSize P + patMatSize Q
+patMatSize-++ P Q
+  rewrite map-++ (flip patsSize 0) P Q
+  | sum-++ (List.map (flip patsSize 0) P) (List.map (flip patsSize 0) Q)
+  = refl
+
+𝒮-aux-≤ : (c : Con α) (ps : Pats (α ∷ αs)) → patMatSize (𝒮-aux c ps) ℕ.≤ patsSize ps 0
+𝒮-aux-≤ {α} c (∙ ∷ ps)
+  rewrite patsSize-++ (∙* {αs = argsTy α c}) ps 0
+  | patsSize∙* (argsTy α c) (patsSize ps 0)
+  | ℕ.+-identityʳ (patsSize ps 0)
+  = ℕ.≤-refl
+𝒮-aux-≤ c (con c′ rs ∷ ps) with c Fin.≟ c′
+... | yes refl
+        rewrite patsSize-++ rs ps 0
+        | ℕ.+-identityʳ (patsSize rs (patsSize ps 0))
+        = ℕ.n≤1+n (patsSize rs (patsSize ps 0))
+... | no _ = ℕ.<⇒≤ ℕ.0<1+n
+𝒮-aux-≤ c (r₁ ∣ r₂ ∷ ps) =
+  -- rewrite messed up termination check, so do it manually
+  begin
+    patMatSize (𝒮-aux c (r₁ ∷ ps) ++ 𝒮-aux c (r₂ ∷ ps))
+  ≡⟨ patMatSize-++ (𝒮-aux c (r₁ ∷ ps)) (𝒮-aux c (r₂ ∷ ps)) ⟩
+    patMatSize (𝒮-aux c (r₁ ∷ ps)) + patMatSize (𝒮-aux c (r₂ ∷ ps))
+  ≤⟨ ℕ.+-mono-≤ (𝒮-aux-≤ c (r₁ ∷ ps)) (𝒮-aux-≤ c (r₂ ∷ ps)) ⟩
+    patsSize (r₁ ∷ ps) 0 + patsSize (r₂ ∷ ps) 0
+  <⟨ ℕ.n<1+n _ ⟩
+    suc (patsSize (r₁ ∷ ps) 0 + patsSize (r₂ ∷ ps) 0)
+  ∎
+  where open ℕ.≤-Reasoning
+
+-- 𝒮 does not increase the pattern matrix size
+𝒮-≤ : (c : Con α) (P : PatMat (α ∷ αs)) → patMatSize (𝒮 c P) ℕ.≤ patMatSize P
+𝒮-≤ c [] = ℕ.≤-refl
+𝒮-≤ c (ps ∷ P)
+  rewrite patMatSize-++ (𝒮-aux c ps) (𝒮 c P)
+  = ℕ.+-mono-≤ (𝒮-aux-≤ c ps) (𝒮-≤ c P)
+
+∈⇒𝒮-aux-< : (c : Con α) (ps : Pats (α ∷ αs))
+  → c ∈ All.head ps
+  → patMatSize (𝒮-aux c ps) ℕ.< patsSize ps 0
+∈⇒𝒮-aux-< c (con d rs ∷ ps) c≡d with c Fin.≟ d
+... | yes refl
+      rewrite patsSize-++ rs ps 0
+      | ℕ.+-identityʳ (patsSize rs (patsSize ps 0))
+      = ℕ.≤-refl
+... | no c≢d = contradiction c≡d c≢d
+∈⇒𝒮-aux-< c (r₁ ∣ r₂ ∷ ps) (inj₁ c∈r₁) =
+  begin
+    suc (patMatSize (𝒮-aux c (r₁ ∷ ps) ++ 𝒮-aux c (r₂ ∷ ps)))
+  ≡⟨ cong suc (patMatSize-++ (𝒮-aux c (r₁ ∷ ps)) (𝒮-aux c (r₂ ∷ ps))) ⟩
+    suc (patMatSize (𝒮-aux c (r₁ ∷ ps)) + patMatSize (𝒮-aux c (r₂ ∷ ps)))
+  <⟨ ℕ.s<s (ℕ.+-mono-<-≤ (∈⇒𝒮-aux-< c (r₁ ∷ ps) c∈r₁) (𝒮-aux-≤ c (r₂ ∷ ps))) ⟩
+    suc (patsSize (r₁ ∷ ps) 0 + patsSize (r₂ ∷ ps) 0)
+  ∎
+  where open ℕ.≤-Reasoning
+∈⇒𝒮-aux-< c (r₁ ∣ r₂ ∷ ps) (inj₂ c∈r₂) =
+  begin
+    suc (patMatSize (𝒮-aux c (r₁ ∷ ps) ++ 𝒮-aux c (r₂ ∷ ps)))
+  ≡⟨ cong suc (patMatSize-++ (𝒮-aux c (r₁ ∷ ps)) (𝒮-aux c (r₂ ∷ ps))) ⟩
+    suc (patMatSize (𝒮-aux c (r₁ ∷ ps)) + patMatSize (𝒮-aux c (r₂ ∷ ps)))
+  <⟨ ℕ.s<s (ℕ.+-mono-≤-< (𝒮-aux-≤ c (r₁ ∷ ps)) (∈⇒𝒮-aux-< c (r₂ ∷ ps) c∈r₂)) ⟩
+    suc (patsSize (r₁ ∷ ps) 0 + patsSize (r₂ ∷ ps) 0)
+  ∎
+  where open ℕ.≤-Reasoning
+
+-- 𝒮 strictly reduces the pattern matrix size if the constructor is in the first column of the matrix
+∈⇒𝒮-< : (c : Con α) (P : PatMat (α ∷ αs))
+  → Any (λ ps → c ∈ All.head ps) P
+  → patMatSize (𝒮 c P) ℕ.< patMatSize P
+∈⇒𝒮-< c (ps ∷ P) (here c∈ps)
+  rewrite patMatSize-++ (𝒮-aux c ps) (𝒮 c P)
+  = ℕ.+-mono-<-≤ (∈⇒𝒮-aux-< c ps c∈ps) (𝒮-≤ c P)
+∈⇒𝒮-< c (ps ∷ P) (there c∈P)
+  rewrite patMatSize-++ (𝒮-aux c ps) (𝒮 c P)
+  = ℕ.+-mono-≤-< (𝒮-aux-≤ c ps) (∈⇒𝒮-< c P c∈P)
+
+𝒟-aux-≤ : (ps : Pats (α ∷ αs)) → patMatSize (𝒟-aux ps) ℕ.≤ patsSize ps 0
+𝒟-aux-≤ (∙ ∷ ps)
+  rewrite ℕ.+-identityʳ (patsSize ps 0)
+  = ℕ.≤-refl
+𝒟-aux-≤ (con _ _ ∷ ps) = ℕ.<⇒≤ ℕ.0<1+n
+𝒟-aux-≤ (r₁ ∣ r₂ ∷ ps) =
+  begin
+    patMatSize (𝒟-aux (r₁ ∷ ps) ++ 𝒟-aux (r₂ ∷ ps))
+  ≡⟨ patMatSize-++ (𝒟-aux (r₁ ∷ ps)) (𝒟-aux (r₂ ∷ ps)) ⟩
+    patMatSize (𝒟-aux (r₁ ∷ ps)) + patMatSize (𝒟-aux (r₂ ∷ ps))
+  ≤⟨ ℕ.+-mono-≤ (𝒟-aux-≤ (r₁ ∷ ps)) (𝒟-aux-≤ (r₂ ∷ ps)) ⟩
+    patsSize (r₁ ∷ ps) 0 + patsSize (r₂ ∷ ps) 0
+  <⟨ ℕ.n<1+n _ ⟩
+    suc (patsSize (r₁ ∷ ps) 0 + patsSize (r₂ ∷ ps) 0)
+  ∎
+  where open ℕ.≤-Reasoning
+
+-- 𝒟 does not increase the pattern matrix size
+𝒟-≤ : (P : PatMat (α ∷ αs)) → patMatSize (𝒟 P) ℕ.≤ patMatSize P
+𝒟-≤ [] = ℕ.≤-refl
+𝒟-≤ (ps ∷ P)
+  rewrite patMatSize-++ (𝒟-aux ps) (𝒟 P)
+  = ℕ.+-mono-≤ (𝒟-aux-≤ ps) (𝒟-≤ P)
+
+SomeProblem : Set
+SomeProblem = ∃[ αs ] PatMat αs × Pats αs
+
+problemSize : SomeProblem → ℕ × ℕ
+problemSize (αs , P , ps) = (patMatSize P + patsSize ps 0) , List.length αs
+
+-- Lexicographic ordering on SomeProblem
+_⊏_ : (P Q : SomeProblem) → Set
+_⊏_ = ×-Lex _≡_ ℕ._<_ ℕ._<_ on problemSize
+
+-- _⊏_ is well-founded
+⊏-wellFounded : WellFounded _⊏_
+⊏-wellFounded =
+  On.wellFounded problemSize
+    (×-wellFounded' trans (ℕ.<-resp₂-≡ .proj₁) ℕ.<-wellFounded ℕ.<-wellFounded)
+
+-- 𝒮 strictly reduces the problem size
+𝒮-⊏ : (P : PatMat (α ∷ αs)) (c : Con α) (rs : Pats (argsTy α c)) (ps : Pats αs)
+  → (_ , 𝒮 c P , All.++⁺ rs ps) ⊏ (_ , P , con c rs ∷ ps)
+𝒮-⊏ P c rs ps
+  rewrite patsSize-++ rs ps 0
+  = inj₁ (ℕ.+-mono-≤-< (𝒮-≤ c P) (ℕ.n<1+n _))
+
+-- 𝒟 strictly reduces the problem size
+𝒟-⊏ : (P : PatMat (α ∷ αs)) (qs : Pats αs)
+  → (-, 𝒟 P , qs) ⊏ (-, P , ∙ ∷ qs)
+𝒟-⊏ P qs with ℕ.<-cmp (problemSize (-, 𝒟 P , qs) .proj₁) (problemSize (-, P , ∙ ∷ qs) .proj₁)
+... | tri< 𝒟-⊏₁ _ _ = inj₁ 𝒟-⊏₁
+... | tri≈ _ 𝒟≡₁ _ = inj₂ (𝒟≡₁ , ℕ.≤-refl)
+... | tri> _ _ D⊐₁ = ⊥-elim (ℕ.≤⇒≯ (ℕ.+-monoˡ-≤ (patsSize qs 0) (𝒟-≤ P)) D⊐₁)
+
+-- 𝒮 strictly reduces the problem size if the constructor is in the first column of the matrix
+∈⇒𝒮-⊏ : (c : Con α) (P : PatMat (α ∷ αs)) (qs : Pats αs)
+  → Any (λ ps → c ∈ All.head ps) P
+  → (-, 𝒮 c P , All.++⁺ ∙* qs) ⊏ (-, P , ∙ ∷ qs)
+∈⇒𝒮-⊏ {α} c P qs c∈P
+  rewrite patsSize-++ (∙* {αs = argsTy α c}) qs 0
+  | patsSize∙* (argsTy α c) (patsSize qs 0)
+  = inj₁ (ℕ.+-monoˡ-< (patsSize qs 0) (∈⇒𝒮-< c P c∈P))
+
+-- Choosing the left pattern strictly reduces the problem size
+∣-⊏ₗ : (P : PatMat (α ∷ αs)) (r₁ r₂ : Pat α) (ps : Pats αs)
+  → (_ , P , r₁ ∷ ps) ⊏ (_ , P , r₁ ∣ r₂ ∷ ps)
+∣-⊏ₗ P r₁ r₂ ps =
+  inj₁ (ℕ.+-monoʳ-< (patMatSize P) (ℕ.m≤m+n (suc (patsSize (r₁ ∷ ps) 0)) (patsSize (r₂ ∷ ps) 0)))
+
+-- Choosing the right pattern strictly reduces the problem size
+∣-⊏ᵣ : (P : PatMat (α ∷ αs)) (r₁ r₂ : Pat α) (ps : Pats αs)
+  → (_ , P , r₂ ∷ ps) ⊏ (_ , P , r₁ ∣ r₂ ∷ ps)
+∣-⊏ᵣ P r₁ r₂ ps =
+  inj₁ (ℕ.+-monoʳ-< (patMatSize P) (ℕ.s<s (ℕ.m≤n+m (patsSize (r₂ ∷ ps) 0) (patsSize (r₁ ∷ ps) 0))))
+
+--------------------------------------------------------------------------------
 -- Usefulness checking algorithm
 
-{-# TERMINATING #-}
+{-
+
+       | ps size + P size | αs len |
+-------+------------------+--------+
+wild 1 |    = + ≤ ⇒ ≤     |   <    |
+wild 2 |    = + < ⇒ <     |  <=>   |
+con    |    < + ≤ ⇒ <     |  <=>   |
+or     |    < + = ⇒ <     |   =    |
+
+-}
+
+useful?′ : (P : PatMat αs) (ps : Pats αs) → Acc _⊏_ (-, P , ps) → Dec (Useful P ps)
+useful?′ [] ps _ = yes useful-[]
+useful?′ (_ ∷ _) [] _ = no ¬useful-∷-[]
+useful?′ {αs} P@(ps ∷ P′) (∙ ∷ qs) (acc h) with ∃missingCon? P
+... | inj₁ ∃c∉P =
+      Dec.map (𝒟-preserves-usefulness⇔ ∃c∉P) (useful?′ (𝒟 P) qs (h (𝒟-⊏ P qs)))
+... | inj₂ ∀c∈P =
+      Dec.map ∃𝒮-preserves-usefulness-∙⇔
+        (Fin.any? λ c →
+          useful?′ (𝒮 c P) (All.++⁺ ∙* qs) (h (∈⇒𝒮-⊏ c P qs (∀c∈P c))))
+useful?′ {αs} P@(_ ∷ _) (con c rs ∷ ps) (acc h) =
+  Dec.map 𝒮-preserves-usefulness-con⇔
+    (useful?′ (𝒮 c P) (All.++⁺ rs ps) (h (𝒮-⊏ P c rs ps)))
+useful?′ {αs} P@(_ ∷ _) (r₁ ∣ r₂ ∷ ps) (acc h) =
+  Dec.map merge-useful⇔
+    (useful?′ P (r₁ ∷ ps) (h (∣-⊏ₗ P r₁ r₂ ps)) ⊎-dec
+     useful?′ P (r₂ ∷ ps) (h (∣-⊏ᵣ P r₁ r₂ ps)))
+
 useful? : (P : PatMat αs) (ps : Pats αs) → Dec (Useful P ps)
-useful? [] [] = yes useful-[]-[]
-useful? (_ ∷ _) [] = no ¬useful-∷-[]
-useful? P (∙ ∷ ps) with ∃missingCon? P
-... | yes ∃c∉P =
-      Dec.map (𝒟-preserves-usefulness⇔ ∃c∉P) (useful? (𝒟 P) ps)
-... | no _ =
-      Dec.map ∃𝒮-preserves-usefulness-∙⇔ (any? λ c → useful? (𝒮 c P) (All.++⁺ ∙* ps))
-useful? P (con c rs ∷ ps) =
-  Dec.map 𝒮-preserves-usefulness-con⇔ (useful? (𝒮 c P) (All.++⁺ rs ps))
-useful? P (r₁ ∣ r₂ ∷ ps) =
-  Dec.map merge-useful⇔ (useful? P (r₁ ∷ ps) ⊎-dec useful? P (r₂ ∷ ps))
+useful? P ps = useful?′ P ps (⊏-wellFounded _)
 
 exhaustive? : (P : PatMat αs) → Exhaustive P ⊎ NonExhaustive P
 exhaustive? P with useful? P ∙*
