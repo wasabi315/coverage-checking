@@ -101,7 +101,7 @@ c ∉ p = ¬ c ∈ p
 
 _∈?_ : (c : Con α) (p : Pat α) → Dec (c ∈ p)
 c ∈? ∙ = no id
-c ∈? (con c′ _) = c Fin.≟ c′
+c ∈? con c′ _ = c Fin.≟ c′
 c ∈? (p ∣ q) = c ∈? p ⊎-dec c ∈? q
 
 _∉?_ : (c : Con α) (p : Pat α) → Dec (c ∉ p)
@@ -244,29 +244,9 @@ module _ {v : Val α} {vs : Vals αs} where
 --------------------------------------------------------------------------------
 -- Properties of usefulness
 
-synth : Pat α → Val α
-synth* : Pats αs → Vals αs
-
-synth ∙ = inhab _
-synth (con c ps) = con c (synth* ps)
-synth (p ∣ _) = synth p
-
-synth* [] = []
-synth* (p ∷ ps) = synth p ∷ synth* ps
-
-synth≼ : (p : Pat α) → p ≼ synth p
-synth*≼ : (ps : Pats αs) → ps ≼* synth* ps
-
-synth≼ ∙ = ∙≼
-synth≼ (con c ps) = con≼ (synth*≼ ps)
-synth≼ (p ∣ _) = ∣≼ˡ (synth≼ p)
-
-synth*≼ [] = []
-synth*≼ (p ∷ ps) = synth≼ p ∷ synth*≼ ps
-
--- any sequence of patterns is useful wrt []
-useful-[] : {ps : Pats αs} → Useful [] ps
-useful-[] {ps = ps} = synth* ps , (λ ()) , synth*≼ ps
+-- [] is useful wrt []
+useful-[]-[] : Useful [] []
+useful-[]-[] = [] , (λ ()) , []
 
 -- [] is not wrt any non-empty matrix
 ¬useful-∷-[] : {ps : Pats []} {P : PatMat []} → ¬ Useful (ps ∷ P) []
@@ -551,19 +531,19 @@ or     |    < + = ⇒ <     |   =    |
 -}
 
 useful?′ : (P : PatMat αs) (ps : Pats αs) → Acc _⊏_ (-, P , ps) → Dec (Useful P ps)
-useful?′ [] ps _ = yes useful-[]
+useful?′ [] [] _ = yes useful-[]-[]
 useful?′ (_ ∷ _) [] _ = no ¬useful-∷-[]
-useful?′ {αs} P@(ps ∷ P′) (∙ ∷ qs) (acc h) with ∃missingCon? P
+useful?′ P (∙ ∷ qs) (acc h) with ∃missingCon? P
 ... | inj₁ ∃c∉P =
       Dec.map (𝒟-preserves-usefulness⇔ ∃c∉P) (useful?′ (𝒟 P) qs (h (𝒟-⊏ P qs)))
 ... | inj₂ ∀c∈P =
       Dec.map ∃𝒮-preserves-usefulness-∙⇔
         (Fin.any? λ c →
           useful?′ (𝒮 c P) (All.++⁺ ∙* qs) (h (∈⇒𝒮-⊏ c P qs (∀c∈P c))))
-useful?′ {αs} P@(_ ∷ _) (con c rs ∷ ps) (acc h) =
+useful?′ P (con c rs ∷ ps) (acc h) =
   Dec.map 𝒮-preserves-usefulness-con⇔
     (useful?′ (𝒮 c P) (All.++⁺ rs ps) (h (𝒮-⊏ P c rs ps)))
-useful?′ {αs} P@(_ ∷ _) (r₁ ∣ r₂ ∷ ps) (acc h) =
+useful?′ P (r₁ ∣ r₂ ∷ ps) (acc h) =
   Dec.map merge-useful⇔
     (useful?′ P (r₁ ∷ ps) (h (∣-⊏ₗ P r₁ r₂ ps)) ⊎-dec
      useful?′ P (r₂ ∷ ps) (h (∣-⊏ᵣ P r₁ r₂ ps)))
