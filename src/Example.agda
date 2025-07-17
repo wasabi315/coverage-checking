@@ -1,14 +1,12 @@
 module Example where
 
-open import Data.Fin using (zero; suc)
-open import Data.Fin.Subset using (∁)
-open import Data.Fin.Subset.Properties using (nonempty?)
-open import Data.Nat using (zero; suc)
-open import Data.List using ([]; _∷_)
+open import Data.Fin.Base using (zero; suc)
+open import Data.Nat.Base using (zero; suc)
+open import Data.List.Base using ([]; _∷_)
 open import Data.List.Relation.Unary.All using ([]; _∷_)
-open import Data.Product using (_,_)
-open import Data.Sum using (inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Data.Product.Base using (_,_)
+open import Data.Sum.Base using (inj₁; inj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; erefl)
 open import Relation.Nullary.Decidable using (yes; no)
 
 open import Pattern

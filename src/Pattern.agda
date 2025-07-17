@@ -1,20 +1,21 @@
 module Pattern where
 
-open import Data.Fin as Fin using (Fin; zero; suc)
-open import Data.Fin.Subset using (Subset)
-open import Data.List as List using (List; []; _∷_; _++_)
+open import Data.Fin.Base as Fin using (Fin; zero; suc)
+import Data.Fin.Properties as Fin
+open import Data.List.Base as List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All as All using (All; []; _∷_)
 import Data.List.Relation.Unary.All.Properties as All
 open import Data.List.Relation.Unary.Any as Any using (Any; here; there)
 open import Data.List.Relation.Unary.First as First using (First; _∷_)
 open import Data.List.Relation.Unary.First.Properties as First using (cofirst?)
-open import Data.Nat using (ℕ; zero; suc)
-open import Data.Product as Product using (∃-syntax; _×_; _,_; uncurry; proj₁; proj₂)
-open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_])
-open import Function using (id; _∘_; _⇔_; mk⇔)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong)
+open import Data.Nat.Base using (ℕ; zero; suc)
+open import Data.Product.Base as Product using (∃-syntax; _×_; _,_; uncurry; proj₁; proj₂)
+open import Data.Sum.Base using (_⊎_; inj₁; inj₂; [_,_])
+open import Function.Base using (id; _∘_)
+open import Function.Bundles using (_⇔_; mk⇔)
+open import Relation.Binary.PropositionalEquality.Core using (_≡_; _≢_; refl; cong)
 open import Relation.Nullary.Decidable as Dec using (Dec; yes; no; _×-dec_; _⊎-dec_)
-open import Relation.Nullary.Negation using (¬_; contraposition)
+open import Relation.Nullary.Negation.Core using (¬_; contraposition)
 
 open import Extra
 
@@ -44,9 +45,6 @@ record Ty where
 
   Con : Set
   Con = Fin numCons
-
-  ConSet : Set
-  ConSet = Subset numCons
 
 open Ty public
 

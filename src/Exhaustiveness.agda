@@ -1,30 +1,32 @@
 module Exhaustiveness where
 
-open import Data.Bool using (true; false; _∧_)
-open import Data.Fin as Fin using (zero; suc)
+open import Data.Bool.Base using (true; false; _∧_)
+open import Data.Fin.Base as Fin using (zero; suc)
 import Data.Fin.Properties as Fin
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.List as List using (List; []; _∷_; _++_)
+open import Data.List.Base as List using (List; []; _∷_; _++_)
 open import Data.List.Properties using (sum-++; map-++; ++-identityʳ)
 open import Data.List.Relation.Unary.All as All using (All; []; _∷_)
-open import Data.List.Relation.Unary.All.Properties as All using (¬All⇒Any¬; All¬⇒¬Any)
+open import Data.List.Relation.Unary.All.Properties as All using (¬All⇒Any¬; All¬⇒¬Any; ¬Any⇒All¬)
 open import Data.List.Relation.Unary.Any as Any using (Any; here; there)
 open import Data.List.Relation.Unary.Any.Properties as Any using (¬Any[])
 open import Data.List.Relation.Unary.First as First using (First; toAny)
 open import Data.List.Relation.Unary.First.Properties as First using (All⇒¬First)
-open import Data.Nat as ℕ using (ℕ; zero; suc; _+_)
+open import Data.Nat.Base as ℕ using (ℕ; zero; suc; _+_; _≤_; _<_)
 import Data.Nat.Properties as ℕ
 import Data.Nat.Induction as ℕ
-open import Data.Product as Product using (∃-syntax; _×_; -,_; _,_; proj₁; proj₂)
-open import Data.Product.Relation.Binary.Lex.Strict using (×-Lex; ×-wellFounded')
-open import Data.Sum as Sum using (_⊎_; inj₁; inj₂; [_,_])
-open import Function using (id; _∘_; flip; _on_; _⇔_; mk⇔; Equivalence)
+open import Data.Product.Base as Product using (∃-syntax; _×_; -,_; _,_; proj₁; proj₂)
+open import Data.Product.Relation.Binary.Lex.Strict using (×-Lex; ×-wellFounded)
+open import Data.Sum.Base as Sum using (_⊎_; inj₁; inj₂; [_,_])
+open import Function.Base using (id; _∘_; flip; _on_)
+open import Function.Bundles using (_⇔_; mk⇔; Equivalence)
 open import Induction.WellFounded using (WellFounded; Acc; acc)
 import Relation.Binary.Construct.On as On
-open import Relation.Binary.Definitions using (Transitive; _Respectsʳ_; tri<; tri≈; tri>)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; ≢-sym; cong; cong₂)
-open import Relation.Nullary.Decidable as Dec using (Dec; yes; no; ¬?; _⊎-dec_; _×-dec_)
-open import Relation.Nullary.Negation using (¬_; contradiction; contraposition)
+open import Relation.Binary.Definitions using (Transitive)
+open import Relation.Binary.PropositionalEquality.Core using (_≡_; refl; sym; trans; ≢-sym; cong; cong₂)
+open import Relation.Nullary.Decidable as Dec using (Dec; _because_; yes; no; ¬?; _⊎-dec_; _×-dec_)
+open import Relation.Nullary.Reflects using (invert)
+open import Relation.Nullary.Negation.Core using (¬_; contradiction; contraposition)
 
 open import Extra
 open import Pattern
@@ -78,8 +80,8 @@ module _ {P : PatMat αs} where
 
   Exhaustive′→Exhaustive : Exhaustive′ P → Exhaustive P
   Exhaustive′→Exhaustive exh vs with match? P vs
-  ... | yes P≼vs = P≼vs
-  ... | no P⋠vs = contradiction (vs , ¬First⇒¬Any id P⋠vs , ∙*≼ ) exh
+  ... | true because [P≼vs] = invert [P≼vs]
+  ... | false because [P⋠vs] = contradiction (vs , ¬First⇒¬Any id (invert [P⋠vs]) , ∙*≼) exh
 
   -- The two definitions of exhaustiveness are equivalent
   Exhaustive′⇔Exhaustive : Exhaustive′ P ⇔ Exhaustive P
@@ -117,7 +119,7 @@ empty? (p ∣ q) =
     (λ h → (λ c → h c ∘ inj₁) , (λ c → h c ∘ inj₂))
     (empty? p ×-dec empty? q)
 
--- Is the set of constructors that appear in the first column of P empty?
+-- Is the set of root constructors that appear in the first column of P empty?
 rootConsEmpty? : (P : PatMat (α ∷ αs))
   → Dec (∀ c → All (λ ps → c ∉ All.head ps) P)
 rootConsEmpty? [] = yes λ _ → []
@@ -132,10 +134,10 @@ rootConsEmpty? (ps ∷ P) =
   → (∃[ c ] All (λ ps → c ∉ All.head ps) P) ⊎
     (∀ c → Any (λ ps → c ∈ All.head ps) P)
 ∃missingCon? {α} P with rootConsEmpty? P
-... | yes empty = inj₁ (inhabCon α , empty (inhabCon α))
-... | no _ with Fin.any? (λ c → All.all? (λ ps → c ∉? All.head ps) P)
-...    | yes missing = inj₁ missing
-...    | no complete = inj₂ λ c → ¬All¬⇒Any (λ ps → c ∈? All.head ps) P (complete ∘ (c ,_))
+... | true because [empty] = inj₁ (inhabCon α , invert [empty] (inhabCon α))
+... | no _ with allOrCounterexample (λ c → Any.any? (λ ps → c ∈? All.head ps) P)
+...   | inj₁ ∀c∈P = inj₂ ∀c∈P
+...   | inj₂ (c , c∉P) = inj₁ (c , ¬Any⇒All¬ P c∉P)
 
 -- Specialization: filters out clauses whose first pattern does not match a value of the form `con c -`.
 𝒮-aux : (c : Con α) → Pats (α ∷ αs) → PatMat (argsTy α c ++ αs)
@@ -369,7 +371,7 @@ patMatSize-++ P Q
   | sum-++ (List.map (flip patsSize 0) P) (List.map (flip patsSize 0) Q)
   = refl
 
-𝒮-aux-≤ : (c : Con α) (ps : Pats (α ∷ αs)) → patMatSize (𝒮-aux c ps) ℕ.≤ patsSize ps 0
+𝒮-aux-≤ : (c : Con α) (ps : Pats (α ∷ αs)) → patMatSize (𝒮-aux c ps) ≤ patsSize ps 0
 𝒮-aux-≤ {α} c (∙ ∷ ps)
   rewrite patsSize-++ (∙* {αs = argsTy α c}) ps 0
   | patsSize∙* (argsTy α c) (patsSize ps 0)
@@ -395,7 +397,7 @@ patMatSize-++ P Q
   where open ℕ.≤-Reasoning
 
 -- 𝒮 does not increase the pattern matrix size
-𝒮-≤ : (c : Con α) (P : PatMat (α ∷ αs)) → patMatSize (𝒮 c P) ℕ.≤ patMatSize P
+𝒮-≤ : (c : Con α) (P : PatMat (α ∷ αs)) → patMatSize (𝒮 c P) ≤ patMatSize P
 𝒮-≤ c [] = ℕ.≤-refl
 𝒮-≤ c (ps ∷ P)
   rewrite patMatSize-++ (𝒮-aux c ps) (𝒮 c P)
@@ -403,7 +405,7 @@ patMatSize-++ P Q
 
 ∈⇒𝒮-aux-< : (c : Con α) (ps : Pats (α ∷ αs))
   → c ∈ All.head ps
-  → patMatSize (𝒮-aux c ps) ℕ.< patsSize ps 0
+  → patMatSize (𝒮-aux c ps) < patsSize ps 0
 ∈⇒𝒮-aux-< c (con d rs ∷ ps) c≡d with c Fin.≟ d
 ... | yes refl
       rewrite patsSize-++ rs ps 0
@@ -432,7 +434,7 @@ patMatSize-++ P Q
 -- 𝒮 strictly reduces the pattern matrix size if the constructor is in the first column of the matrix
 ∈⇒𝒮-< : (c : Con α) (P : PatMat (α ∷ αs))
   → Any (λ ps → c ∈ All.head ps) P
-  → patMatSize (𝒮 c P) ℕ.< patMatSize P
+  → patMatSize (𝒮 c P) < patMatSize P
 ∈⇒𝒮-< c (ps ∷ P) (here c∈ps)
   rewrite patMatSize-++ (𝒮-aux c ps) (𝒮 c P)
   = ℕ.+-mono-<-≤ (∈⇒𝒮-aux-< c ps c∈ps) (𝒮-≤ c P)
@@ -440,7 +442,7 @@ patMatSize-++ P Q
   rewrite patMatSize-++ (𝒮-aux c ps) (𝒮 c P)
   = ℕ.+-mono-≤-< (𝒮-aux-≤ c ps) (∈⇒𝒮-< c P c∈P)
 
-𝒟-aux-≤ : (ps : Pats (α ∷ αs)) → patMatSize (𝒟-aux ps) ℕ.≤ patsSize ps 0
+𝒟-aux-≤ : (ps : Pats (α ∷ αs)) → patMatSize (𝒟-aux ps) ≤ patsSize ps 0
 𝒟-aux-≤ (∙ ∷ ps)
   rewrite ℕ.+-identityʳ (patsSize ps 0)
   = ℕ.≤-refl
@@ -458,7 +460,7 @@ patMatSize-++ P Q
   where open ℕ.≤-Reasoning
 
 -- 𝒟 does not increase the pattern matrix size
-𝒟-≤ : (P : PatMat (α ∷ αs)) → patMatSize (𝒟 P) ℕ.≤ patMatSize P
+𝒟-≤ : (P : PatMat (α ∷ αs)) → patMatSize (𝒟 P) ≤ patMatSize P
 𝒟-≤ [] = ℕ.≤-refl
 𝒟-≤ (ps ∷ P)
   rewrite patMatSize-++ (𝒟-aux ps) (𝒟 P)
@@ -472,17 +474,15 @@ problemSize (αs , P , ps) = (patMatSize P + patsSize ps 0) , List.length αs
 
 -- Lexicographic ordering on SomeProblem
 _⊏_ : (P Q : SomeProblem) → Set
-_⊏_ = ×-Lex _≡_ ℕ._<_ ℕ._<_ on problemSize
+_⊏_ = ×-Lex _≡_ _<_ _<_ on problemSize
 
 -- _⊏_ is well-founded
 ⊏-wellFounded : WellFounded _⊏_
-⊏-wellFounded =
-  On.wellFounded problemSize
-    (×-wellFounded' trans (ℕ.<-resp₂-≡ .proj₁) ℕ.<-wellFounded ℕ.<-wellFounded)
+⊏-wellFounded = On.wellFounded problemSize (×-wellFounded ℕ.<-wellFounded ℕ.<-wellFounded)
 
 -- 𝒮 strictly reduces the problem size
 𝒮-⊏ : (P : PatMat (α ∷ αs)) (c : Con α) (rs : Pats (argsTy α c)) (ps : Pats αs)
-  → (_ , 𝒮 c P , All.++⁺ rs ps) ⊏ (_ , P , con c rs ∷ ps)
+  → (-, 𝒮 c P , All.++⁺ rs ps) ⊏ (-, P , con c rs ∷ ps)
 𝒮-⊏ P c rs ps
   rewrite patsSize-++ rs ps 0
   = inj₁ (ℕ.+-mono-≤-< (𝒮-≤ c P) (ℕ.n<1+n _))
@@ -490,10 +490,9 @@ _⊏_ = ×-Lex _≡_ ℕ._<_ ℕ._<_ on problemSize
 -- 𝒟 strictly reduces the problem size
 𝒟-⊏ : (P : PatMat (α ∷ αs)) (qs : Pats αs)
   → (-, 𝒟 P , qs) ⊏ (-, P , ∙ ∷ qs)
-𝒟-⊏ P qs with ℕ.<-cmp (problemSize (-, 𝒟 P , qs) .proj₁) (problemSize (-, P , ∙ ∷ qs) .proj₁)
-... | tri< 𝒟-⊏₁ _ _ = inj₁ 𝒟-⊏₁
-... | tri≈ _ 𝒟≡₁ _ = inj₂ (𝒟≡₁ , ℕ.≤-refl)
-... | tri> _ _ D⊐₁ = ⊥-elim (ℕ.≤⇒≯ (ℕ.+-monoˡ-≤ (patsSize qs 0) (𝒟-≤ P)) D⊐₁)
+𝒟-⊏ P qs with ℕ.m≤n⇒m<n∨m≡n (𝒟-≤ P)
+... | inj₁ 𝒟P<P = inj₁ (ℕ.+-monoˡ-< (patsSize qs 0) 𝒟P<P)
+... | inj₂ 𝒟P≡P = inj₂ (cong (_+ patsSize qs 0) 𝒟P≡P , ℕ.n<1+n _)
 
 -- 𝒮 strictly reduces the problem size if the constructor is in the first column of the matrix
 ∈⇒𝒮-⊏ : (c : Con α) (P : PatMat (α ∷ αs)) (qs : Pats αs)
@@ -553,5 +552,5 @@ useful? P ps = useful?′ P ps (⊏-wellFounded _)
 
 exhaustive? : (P : PatMat αs) → Exhaustive P ⊎ NonExhaustive P
 exhaustive? P with useful? P ∙*
-... | yes h = inj₂ (NonExhaustive′→NonExhaustive h)
-... | no h = inj₁ (Exhaustive′→Exhaustive h)
+... | true because [h] = inj₂ (NonExhaustive′→NonExhaustive (invert [h]))
+... | false because [h] = inj₁ (Exhaustive′→Exhaustive (invert [h]))
