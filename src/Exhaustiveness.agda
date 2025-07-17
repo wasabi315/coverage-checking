@@ -119,6 +119,12 @@ empty? (p ∣ q) =
     (λ h → (λ c → h c ∘ inj₁) , (λ c → h c ∘ inj₂))
     (empty? p ×-dec empty? q)
 
+-- Predicate on pattern matrix P that states if the first column of P
+-- covers all constructor or there is a missing constructor.
+Complete Missing : PatMat (α ∷ αs) → Set
+Complete P = ∀ c → Any (λ ps → c ∈ All.head ps) P
+Missing P = ∃[ c ] All (λ ps → c ∉ All.head ps) P
+
 -- Is the set of root constructors that appear in the first column of P empty?
 rootConsEmpty? : (P : PatMat (α ∷ αs))
   → Dec (∀ c → All (λ ps → c ∉ All.head ps) P)
@@ -130,9 +136,7 @@ rootConsEmpty? (ps ∷ P) =
     (empty? (All.head ps) ×-dec rootConsEmpty? P)
 
 -- Is there a constructor that does not appear in the first column of P?
-∃missingCon? : (P : PatMat (α ∷ αs))
-  → (∃[ c ] All (λ ps → c ∉ All.head ps) P) ⊎
-    (∀ c → Any (λ ps → c ∈ All.head ps) P)
+∃missingCon? : (P : PatMat (α ∷ αs)) → Missing P ⊎ Complete P
 ∃missingCon? {α} P with rootConsEmpty? P
 ... | true because [empty] = inj₁ (inhabCon α , invert [empty] (inhabCon α))
 ... | no _ with allOrCounterexample (λ c → Any.any? (λ ps → c ∈? All.head ps) P)
@@ -329,21 +333,66 @@ module _ {P : PatMat (α ∷ αs)} {ps : Pats αs} where
     vs , contraposition 𝒟-preserves-≼⁻ P⋠vvs , ps≼vs
 
   -- If there is a constructor c that does not appear in the first column of P, and ps is useful wrt 𝒟 P, ∙ ∷ ps is also useful wrt P.
-  𝒟-preserves-usefulness⁻ :
-      ∃[ c ] All (λ ps → c ∉ All.head ps) P
-    → Useful (𝒟 P) ps
-    → Useful P (∙ ∷ ps)
+  𝒟-preserves-usefulness⁻ : Missing P → Useful (𝒟 P) ps → Useful P (∙ ∷ ps)
   𝒟-preserves-usefulness⁻ (c , c∉P) (vs , 𝒟P⋠vs , ps≼vs) =
     inhabOf c ∷ vs , contraposition (𝒟-preserves-≼ c∉P) 𝒟P⋠vs , ∙≼ ∷ ps≼vs
 
-  𝒟-preserves-usefulness⇔ :
-      ∃[ c ] All (λ ps → c ∉ All.head ps) P
-    → Useful (𝒟 P) ps ⇔ Useful P (∙ ∷ ps)
+  𝒟-preserves-usefulness⇔ : Missing P → Useful (𝒟 P) ps ⇔ Useful P (∙ ∷ ps)
   𝒟-preserves-usefulness⇔ ∃c∉P =
     mk⇔ (𝒟-preserves-usefulness⁻ ∃c∉P) 𝒟-preserves-usefulness
 
 --------------------------------------------------------------------------------
+-- Usefulness checking algorithm
+
+-- Specialized accessibility predicate for usefulness checking algorithm
+-- for separating termination proof from the algorithm
+-- This method is due to Ana Bove 2003.
+data UsefulAcc : (P : PatMat αs) (ps : Pats αs) → Set where
+  done : {P : PatMat []} → UsefulAcc P []
+
+  step-∙ : {P : PatMat (α ∷ αs)} {ps : Pats αs}
+    → (Missing P → UsefulAcc (𝒟 P) ps)
+    → (∀ c → Any (λ qs → c ∈ All.head qs) P → UsefulAcc (𝒮 c P) (All.++⁺ ∙* ps))
+    → UsefulAcc P (∙ ∷ ps)
+
+  step-con : {P : PatMat (α ∷ αs)} {c : Con α} {rs : Pats (argsTy α c)} {ps : Pats αs}
+    → UsefulAcc (𝒮 c P) (All.++⁺ rs ps)
+    → UsefulAcc P (con c rs ∷ ps)
+
+  step-∣ : {P : PatMat (α ∷ αs)} {p q : Pat α} {ps : Pats αs}
+    → UsefulAcc P (p ∷ ps)
+    → UsefulAcc P (q ∷ ps)
+    → UsefulAcc P (p ∣ q ∷ ps)
+
+useful?′ : (P : PatMat αs) (ps : Pats αs) → UsefulAcc P ps → Dec (Useful P ps)
+useful?′ P (∙ ∷ qs) (step-∙ h h′) with ∃missingCon? P
+... | inj₁ ∃c∉P =
+      Dec.map (𝒟-preserves-usefulness⇔ ∃c∉P) (useful?′ (𝒟 P) qs (h ∃c∉P))
+... | inj₂ ∀c∈P =
+      Dec.map ∃𝒮-preserves-usefulness-∙⇔
+        (Fin.any? λ c → useful?′ (𝒮 c P) (All.++⁺ ∙* qs) (h′ c (∀c∈P c)))
+useful?′ P (con c rs ∷ ps) (step-con h) =
+  Dec.map 𝒮-preserves-usefulness-con⇔
+    (useful?′ (𝒮 c P) (All.++⁺ rs ps) h)
+useful?′ P (r₁ ∣ r₂ ∷ ps) (step-∣ h h′) =
+  Dec.map merge-useful⇔
+    (useful?′ P (r₁ ∷ ps) h ⊎-dec useful?′ P (r₂ ∷ ps) h′)
+useful?′ [] [] _ = yes useful-[]-[]
+useful?′ (_ ∷ _) [] _ = no ¬useful-∷-[]
+
+--------------------------------------------------------------------------------
 -- Termination
+
+{-
+
+       | ps size + P size | αs len |
+-------+------------------+--------+
+wild 1 |    = + ≤ ⇒ ≤     |   <    |
+wild 2 |    = + < ⇒ <     |  <=>   |
+con    |    < + ≤ ⇒ <     |  <=>   |
+or     |    < + = ⇒ <     |   =    |
+
+-}
 
 patsSize : Pats αs → ℕ → ℕ
 patsSize [] n = n
@@ -515,40 +564,29 @@ _⊏_ = ×-Lex _≡_ _<_ _<_ on problemSize
 ∣-⊏ᵣ P r₁ r₂ ps =
   inj₁ (ℕ.+-monoʳ-< (patMatSize P) (ℕ.s<s (ℕ.m≤n+m (patsSize (r₂ ∷ ps) 0) (patsSize (r₁ ∷ ps) 0))))
 
+∀UsefulAcc-aux : (P : PatMat αs) (ps : Pats αs)
+  → Acc _⊏_ (-, P , ps)
+  → UsefulAcc P ps
+∀UsefulAcc-aux P [] _ = done
+∀UsefulAcc-aux P (∙ ∷ ps) (acc h) =
+  step-∙
+    (λ _ → ∀UsefulAcc-aux (𝒟 P) ps (h (𝒟-⊏ P ps)))
+    (λ c c∈P → ∀UsefulAcc-aux (𝒮 c P) (All.++⁺ ∙* ps) (h (∈⇒𝒮-⊏ c P ps c∈P)))
+∀UsefulAcc-aux P (con c rs ∷ ps) (acc h) =
+  step-con (∀UsefulAcc-aux (𝒮 c P) (All.++⁺ rs ps) (h (𝒮-⊏ P c rs ps)))
+∀UsefulAcc-aux P (r₁ ∣ r₂ ∷ ps) (acc h) =
+  step-∣
+    (∀UsefulAcc-aux P (r₁ ∷ ps) (h (∣-⊏ₗ P r₁ r₂ ps)))
+    (∀UsefulAcc-aux P (r₂ ∷ ps) (h (∣-⊏ᵣ P r₁ r₂ ps)))
+
+∀UsefulAcc : (P : PatMat αs) (ps : Pats αs) → UsefulAcc P ps
+∀UsefulAcc P ps = ∀UsefulAcc-aux P ps (⊏-wellFounded _)
+
 --------------------------------------------------------------------------------
--- Usefulness checking algorithm
-
-{-
-
-       | ps size + P size | αs len |
--------+------------------+--------+
-wild 1 |    = + ≤ ⇒ ≤     |   <    |
-wild 2 |    = + < ⇒ <     |  <=>   |
-con    |    < + ≤ ⇒ <     |  <=>   |
-or     |    < + = ⇒ <     |   =    |
-
--}
-
-useful?′ : (P : PatMat αs) (ps : Pats αs) → Acc _⊏_ (-, P , ps) → Dec (Useful P ps)
-useful?′ [] [] _ = yes useful-[]-[]
-useful?′ (_ ∷ _) [] _ = no ¬useful-∷-[]
-useful?′ P (∙ ∷ qs) (acc h) with ∃missingCon? P
-... | inj₁ ∃c∉P =
-      Dec.map (𝒟-preserves-usefulness⇔ ∃c∉P) (useful?′ (𝒟 P) qs (h (𝒟-⊏ P qs)))
-... | inj₂ ∀c∈P =
-      Dec.map ∃𝒮-preserves-usefulness-∙⇔
-        (Fin.any? λ c →
-          useful?′ (𝒮 c P) (All.++⁺ ∙* qs) (h (∈⇒𝒮-⊏ c P qs (∀c∈P c))))
-useful?′ P (con c rs ∷ ps) (acc h) =
-  Dec.map 𝒮-preserves-usefulness-con⇔
-    (useful?′ (𝒮 c P) (All.++⁺ rs ps) (h (𝒮-⊏ P c rs ps)))
-useful?′ P (r₁ ∣ r₂ ∷ ps) (acc h) =
-  Dec.map merge-useful⇔
-    (useful?′ P (r₁ ∷ ps) (h (∣-⊏ₗ P r₁ r₂ ps)) ⊎-dec
-     useful?′ P (r₂ ∷ ps) (h (∣-⊏ᵣ P r₁ r₂ ps)))
+-- Entrypoint
 
 useful? : (P : PatMat αs) (ps : Pats αs) → Dec (Useful P ps)
-useful? P ps = useful?′ P ps (⊏-wellFounded _)
+useful? P ps = useful?′ P ps (∀UsefulAcc P ps)
 
 exhaustive? : (P : PatMat αs) → Exhaustive P ⊎ NonExhaustive P
 exhaustive? P with useful? P ∙*

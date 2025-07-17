@@ -52,6 +52,6 @@ Q =
   (∙        ∷ cons ∙ ∙ ∷ []) ∷
   []
 
--- Q is exhaustive, so we get a "total" matching function of type `∀ vs → Match Q vs` inside the inj₁
+-- Q is exhaustive, so we get a total matching function of type `∀ vs → Match Q vs` inside the inj₁
 _ : exhaustive? (Q {α} {β}) ≡ inj₁ _
 _ = refl
