@@ -1,4 +1,4 @@
 name: coverage-checking
 include: src
-depend: standard-library
-flags: --guardedness --safe
+depend: agda2hs
+flags: --erasure
