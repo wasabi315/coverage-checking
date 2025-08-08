@@ -1,102 +1,15 @@
-module Pattern where
+module CoverageCheck.Instance where
 
-open import Data.Fin.Base as Fin using (Fin; zero; suc)
-import Data.Fin.Properties as Fin
-open import Data.List.Base as List using (List; []; _∷_; _++_)
-open import Data.List.Relation.Unary.All as All using (All; []; _∷_)
-import Data.List.Relation.Unary.All.Properties as All
-open import Data.List.Relation.Unary.Any as Any using (Any; here; there)
-open import Data.List.Relation.Unary.First as First using (First; _∷_)
-open import Data.List.Relation.Unary.First.Properties as First using (cofirst?)
-open import Data.Nat.Base using (ℕ; zero; suc)
-open import Data.Product.Base as Product using (∃-syntax; _×_; _,_; uncurry; proj₁; proj₂)
-open import Data.Sum.Base using (_⊎_; inj₁; inj₂; [_,_])
-open import Function.Base using (id; _∘_)
-open import Function.Bundles using (_⇔_; mk⇔)
-open import Relation.Binary.PropositionalEquality.Core using (_≡_; _≢_; refl; cong)
-open import Relation.Nullary.Decidable as Dec using (Dec; yes; no; _×-dec_; _⊎-dec_)
-open import Relation.Nullary.Negation.Core using (¬_; contraposition)
+open import CoverageCheck.Prelude
+open import CoverageCheck.Syntax
 
-open import Extra
-
-infixr 6 _∣_
-infixr 5 _∷_ _++ᵥ_ _++ₚ_
+infixr 5 _∷_
 infix 4 _≼_ _≼*_ _≼**_ _⋠_ _⋠*_ _⋠**_ _≼?_ _≼*?_
-
---------------------------------------------------------------------------------
--- Datatypes, values, and patterns
-
-record Ty : Set
-data Val (α : Ty) : Set
-Vals : List Ty → Set
-
--- *Inhabited* datatype
-record Ty where
-  coinductive
-  field
-    -- The number of constructors
-    numCons : ℕ
-    -- Mapping from constructor to its argument types
-    argsTy : Fin numCons → List Ty
-    -- Constructor of the inhabitant
-    inhabCon : Fin numCons
-    -- Constructor arguments of the inhabitant
-    inhabArgs : Vals (argsTy inhabCon)
-
-  Con : Set
-  Con = Fin numCons
-
-open Ty public
 
 private
   variable
     α β : Ty
-    αs βs : List Ty
-
--- Value
-data Val α where
-  con : (c : Con α) → Vals (argsTy α c) → Val α
-
--- (Heterogeneous) list of values
-Vals = All Val
-
--- The inhabitant
-inhab : (α : Ty) → Val α
-inhab α = con (inhabCon α) (inhabArgs α)
-
--- There is an inhabitant for every variant
-inhabOf : Con α → Val α
-inhabOf c = con c (All.tabulate λ {α} _ → inhab α)
-
-_++ᵥ_ : Vals αs → Vals βs → Vals (αs ++ βs)
-_++ᵥ_ = All.++⁺
-
-data Pat (α : Ty) : Set
-Pats : List Ty → Set
-
--- Pattern
-data Pat α where
-  -- Wildcard pattern
-  ∙ : Pat α
-  -- Constructor pattern
-  con : (c : Con α) → Pats (argsTy α c) → Pat α
-  -- Or pattern
-  _∣_ : Pat α → Pat α → Pat α
-
--- (Heterogeneous) list of patterns
-Pats = All Pat
-
--- Matrix of patterns
--- Each row corresponds to a clause
-PatMat = List ∘ Pats
-
--- List of wildcards
-∙* : Pats αs
-∙* {[]} = []
-∙* {_ ∷ _} = ∙ ∷ ∙*
-
-_++ₚ_ : Pats αs → Pats βs → Pats (αs ++ βs)
-_++ₚ_ = All.++⁺
+    αs βs : Tys
 
 --------------------------------------------------------------------------------
 -- Instance relation
@@ -192,7 +105,7 @@ module _ {p : Pat α} {ps : Pats αs} {v : Val α} {vs : Vals αs} where
   → (ps ≼* vs) × (qs ≼* us)
 ++⁻ [] {vs = []} qs≼us = [] , qs≼us
 ++⁻ (p ∷ ps) {vs = v ∷ vs} (p≼v ∷ psqs≼vsus) =
-  Product.map₁ (p≼v ∷_) (++⁻ ps psqs≼vsus)
+  map-×₁ (p≼v ∷_) (++⁻ ps psqs≼vsus)
 
 -- (ps ++ qs) ≼* (vs ++ us) iff ps ≼* vs and qs ≼* us
 ++⇔ : {ps : Pats αs} {qs : Pats βs} {vs : Vals αs} {us : Vals βs}
@@ -239,16 +152,16 @@ module _ {p q : Pat α} {ps : Pats αs} {v : Val α} {vs : Vals αs} where
 
 module _ {c : Con α} {rs : Pats (argsTy α c)} {ps : Pats αs} {us : Vals (argsTy α c)} {vs : Vals αs} where
 
-  con≼*⁺ : (All.++⁺ rs ps ≼* All.++⁺ us vs) → con {α} c rs ∷ ps ≼* con c us ∷ vs
+  con≼*⁺ : (++All⁺ rs ps ≼* ++All⁺ us vs) → con {α} c rs ∷ ps ≼* con c us ∷ vs
   con≼*⁺ rsps≼usvs =
     let rs≼us , ps≼vs = ++⁻ rs rsps≼usvs in
     con≼ rs≼us ∷ ps≼vs
 
-  con≼*⁻ : con {α} c rs ∷ ps ≼* con c us ∷ vs → All.++⁺ rs ps ≼* All.++⁺ us vs
+  con≼*⁻ : con {α} c rs ∷ ps ≼* con c us ∷ vs → ++All⁺ rs ps ≼* ++All⁺ us vs
   con≼*⁻ (con≼ rs≼us ∷ ps≼vs) = ++⁺ rs≼us ps≼vs
 
   -- (con c rs ∷ ps) ≼* (con c us ∷ vs) iff (rs ++ ps) ≼* (us ++ vs)
-  con≼*⇔ : (All.++⁺ rs ps ≼* All.++⁺ us vs) ⇔ (con {α} c rs ∷ ps ≼* con c us ∷ vs)
+  con≼*⇔ : (++All⁺ rs ps ≼* ++All⁺ us vs) ⇔ (con {α} c rs ∷ ps ≼* con c us ∷ vs)
   con≼*⇔ = mk⇔ con≼*⁺ con≼*⁻
 
 
@@ -264,17 +177,17 @@ _≼?_ : (p : Pat α) (v : Val α) → Dec (p ≼ v)
 _≼*?_ : (ps : Pats αs) (vs : Vals αs) → Dec (ps ≼* vs)
 
 ∙ ≼? v = yes ∙≼
-con c ps ≼? con d vs with c Fin.≟ d
-... | yes refl = Dec.map con≼⇔ (ps ≼*? vs)
+con c ps ≼? con d vs with c ≟Fin d
+... | yes refl = mapDec con≼⇔ (ps ≼*? vs)
 ... | no c≢d = no (contraposition c≼d→c≡d c≢d)
-p ∣ q ≼? v = Dec.map ∣≼⇔ (p ≼? v ⊎-dec q ≼? v)
+p ∣ q ≼? v = mapDec ∣≼⇔ (p ≼? v ⊎-dec q ≼? v)
 
 [] ≼*? [] = yes []
-p ∷ ps ≼*? v ∷ vs = Dec.map ∷⇔ (p ≼? v ×-dec ps ≼*? vs)
+p ∷ ps ≼*? v ∷ vs = mapDec ∷⇔ (p ≼? v ×-dec ps ≼*? vs)
 
 -- First match
 Match : PatMat αs → Vals αs → Set
 Match P vs = First (_⋠* vs) (_≼* vs) P
 
 match? : (P : PatMat αs) (vs : Vals αs) → Dec (Match P vs)
-match? P vs = cofirst? (_≼*? vs) P
+match? P vs = first? (_≼*? vs) P

@@ -1,4 +1,4 @@
-name: exhaustiveness-checking
+name: coverage-checking
 include: src
 depend: standard-library
 flags: --guardedness --safe
