@@ -1,10 +1,10 @@
-# exhaustiveness-checking-agda
+# coverage-check
 
-This repository contains an Agda formalization of one the exhaustiveness checking algorithms for pattern matching presented in the paper "Warnings for pattern matching" by Luc Maranget.
+This repository contains an Agda formalisation of one the coverage checking algorithms for pattern matching presented in the paper "Warnings for pattern matching" by Luc Maranget.
 
 > Luc Maranget. 2007. Warnings for pattern matching. J. Funct. Programming 17, 3 (May 2007), 387–421. <https://doi.org/10.1017/S0956796807006223>
 
-Specifically, we formalize the algorithm based on the usefulness checking algorithm $\mathcal{U}_\text{rec}$ presented in Section 3.1.
+Specifically, we formalise the usefulness checking algorithm $\mathcal{U}_\text{rec}$ presented in Section 3.1 and the exhaustiveness checking algorithm built on top of it.
 We prove that a matrix of pattern is indeed exhaustive if the algorithm returns `true`, and there exists a sequence of values that are not covered if the algorithm returns `false`.
 
 ```agda
@@ -46,4 +46,4 @@ _ : exhaustive? (Q {α} {β}) ≡ inj₁ _
 _ = refl
 ```
 
-Tested with Agda v2.6.4.3 and agda-stdlib v2.0.
+Tested with Agda v2.7.0 and agda-stdlib v2.0.
