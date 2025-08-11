@@ -1,6 +1,5 @@
 module Example where
 
-open import CoverageCheck.Prelude
 open import CoverageCheck
 
 -- private

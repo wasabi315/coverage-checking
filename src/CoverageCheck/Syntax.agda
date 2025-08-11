@@ -1,84 +1,126 @@
-module CoverageCheck.Syntax where
-
 open import CoverageCheck.Prelude
+open import CoverageCheck.GlobalScope using (Globals)
 
--- infixr 6 _∣_
--- infixr 5 _++ᵥ_ _++ₚ_
+module CoverageCheck.Syntax
+  {{@0 globals : Globals}}
+  where
 
--- --------------------------------------------------------------------------------
--- -- Datatypes, values, and patterns
+private open module @0 G = Globals globals
 
--- record Ty : Set
--- Tys : Set
--- data Val (α : Ty) : Set
--- Vals : Tys → Set
+infixr 5 _◂_ appendTypes
 
--- -- *Inhabited* datatype
--- record Ty where
---   coinductive
---   field
---     -- The number of constructors
---     numCons : ℕ
---     -- Mapping from constructor to its argument types
---     argsTy : Fin numCons → Tys
---     -- Constructor of the inhabitant
---     inhabCon : Fin numCons
---     -- Constructor arguments of the inhabitant
---     inhabArgs : Vals (argsTy inhabCon)
+--------------------------------------------------------------------------------
+-- Types and Signatures
 
---   Con : Set
---   Con = Fin numCons
+data Type  : Set
+data Types : Set
 
--- open Ty public
+data Type where
+  TyData : NameData → Type
 
--- Tys = List Ty
+data Types where
+  TNil  : Types
+  TCons : Type → Types → Types
 
--- private
---   variable
---     α β : Ty
---     αs βs : Tys
+pattern ⌈⌉       = TNil
+pattern _◂_ α αs = TCons α αs
 
--- -- Value
--- data Val α where
---   con : (c : Con α) → Vals (argsTy α c) → Val α
+{-# COMPILE AGDA2HS Type   deriving Show #-}
+{-# COMPILE AGDA2HS Types  deriving Show #-}
 
--- -- (Heterogeneous) list of values
--- Vals = All Val
+appendTypes : Types → Types → Types
+appendTypes ⌈⌉       βs = βs
+appendTypes (α ◂ αs) βs = α ◂ appendTypes αs βs
+syntax appendTypes αs βs = αs ◂◂ βs
+{-# COMPILE AGDA2HS appendTypes #-}
 
--- -- The inhabitant
--- inhab : (α : Ty) → Val α
--- inhab α = con (inhabCon α) (inhabArgs α)
+record Datatype (@0 d : NameData) : Set where
+  field
+    allNameCon : List (NameCon d)
+    argsTy     : (c : NameCon d) → Types
 
--- -- There is an inhabitant for every variant
--- inhabOf : Con α → Val α
--- inhabOf c = con c (tabulateAll λ {α} _ → inhab α)
+open Datatype public
+{-# COMPILE AGDA2HS Datatype  #-}
 
--- _++ᵥ_ : Vals αs → Vals βs → Vals (αs ++ βs)
--- _++ᵥ_ = ++All⁺
+record Signature : Set where
+  field
+    dataDefs : (d : NameData) → Datatype d
 
--- data Pat (α : Ty) : Set
--- Pats : Tys → Set
+open Signature public
+{-# COMPILE AGDA2HS Signature newtype #-}
 
--- -- Pattern
--- data Pat α where
---   -- Wildcard pattern
---   ∙ : Pat α
---   -- Constructor pattern
---   con : (c : Con α) → Pats (argsTy α c) → Pat α
---   -- Or pattern
---   _∣_ : Pat α → Pat α → Pat α
+tyData-injective : {d d' : NameData} → TyData d ≡ TyData d' → d ≡ d'
+tyData-injective refl = refl
 
--- -- (Heterogeneous) list of patterns
--- Pats = All Pat
+--------------------------------------------------------------------------------
+-- Values and Patterns
 
--- -- Matrix of patterns
--- -- Each row corresponds to a clause
--- PatMat = List ∘ Pats
+module _ {{@0 sig : Signature}} where
+  infixr 6 _∣_
+  infixr 5 _◂_ appendValues appendPatterns
 
--- -- List of wildcards
--- ∙* : Pats αs
--- ∙* {[]} = []
--- ∙* {_ ∷ _} = ∙ ∷ ∙*
+  data Value  : (@0 α : Type) → Set
+  data Values : (@0 αs : Types) → Set
 
--- _++ₚ_ : Pats αs → Pats βs → Pats (αs ++ βs)
--- _++ₚ_ = ++All⁺
+  data Value where
+    VCon : {@0 d : NameData} (c : NameCon d)
+      → (vs : Values (argsTy (dataDefs sig d) c))
+      → Value (TyData d)
+
+  pattern con c vs = VCon c vs
+
+  data Values where
+    VNil  : Values ⌈⌉
+    VCons : ∀ {@0 α αs} (v : Value α) (vs : Values αs) → Values (α ◂ αs)
+
+  pattern ⌈⌉         = VNil
+  pattern _◂_ v vs   = VCons v vs
+
+  {-# COMPILE AGDA2HS Value  deriving Show #-}
+  {-# COMPILE AGDA2HS Values deriving Show #-}
+
+  appendValues : ∀ {@0 αs βs} → Values αs → Values βs → Values (αs ◂◂ βs)
+  appendValues ⌈⌉       vs = vs
+  appendValues (u ◂ us) vs = u ◂ appendValues us vs
+  syntax appendValues us vs = us ◂◂ᵛ vs
+  {-# COMPILE AGDA2HS appendValues #-}
+
+  data Pattern  : (@0 α : Type) → Set
+  data Patterns : (@0 αs : Types) → Set
+
+  data Pattern where
+    PWild : ∀ {@0 α} → Pattern α
+    PCon  : {@0 d : NameData} (c : NameCon d)
+      → (ps : Patterns (argsTy (dataDefs sig d) c))
+      → Pattern (TyData d)
+    POr   : ∀ {@0 α} (p₁ p₂ : Pattern α) → Pattern α
+
+  pattern —         = PWild
+  pattern con c ps  = PCon c ps
+  pattern _∣_ p₁ p₂ = POr p₁ p₂
+
+  data Patterns where
+    PNil  : Patterns ⌈⌉
+    PCons : ∀ {@0 α αs} (p : Pattern α) (ps : Patterns αs) → Patterns (α ◂ αs)
+
+  pattern ⌈⌉         = PNil
+  pattern _◂_ p ps   = PCons p ps
+
+  PatternMatrix : (@0 αs : Types) → Set
+  PatternMatrix αs = List (Patterns αs)
+
+  {-# COMPILE AGDA2HS Pattern       deriving Show #-}
+  {-# COMPILE AGDA2HS Patterns      deriving Show #-}
+  {-# COMPILE AGDA2HS PatternMatrix inline #-}
+
+  pWilds : ∀ {αs} → Patterns αs -- αs is not erasable
+  pWilds {αs = ⌈⌉}    = ⌈⌉
+  pWilds {αs = α ◂ αs} = — ◂ pWilds
+  syntax pWilds = —*
+  {-# COMPILE AGDA2HS pWilds #-}
+
+  appendPatterns : ∀ {@0 αs βs} → Patterns αs → Patterns βs → Patterns (αs ◂◂ βs)
+  appendPatterns ⌈⌉       qs = qs
+  appendPatterns (p ◂ ps) qs = p ◂ appendPatterns ps qs
+  syntax appendPatterns ps qs = ps ◂◂ᵖ qs
+  {-# COMPILE AGDA2HS appendPatterns #-}

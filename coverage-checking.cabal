@@ -21,8 +21,11 @@ common warnings
 
 library
     import:           warnings
-    exposed-modules:  CoverageCheck.Syntax
+    exposed-modules:  CoverageCheck.Prelude
+                    , CoverageCheck.Syntax
                     , CoverageCheck.Instance
+                    , CoverageCheck.Name
+                    , CoverageCheck.GlobalScope
                     , CoverageCheck.Usefulness
                     , CoverageCheck.Exhaustiveness
                     , CoverageCheck
