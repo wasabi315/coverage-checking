@@ -1,4 +1,4 @@
 name: coverage-checking
 include: src
-depend: agda2hs-base
+depend: standard-library base
 flags: --with-K --erasure

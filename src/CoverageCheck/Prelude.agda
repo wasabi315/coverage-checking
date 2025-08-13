@@ -1,7 +1,7 @@
 module CoverageCheck.Prelude where
 
 --------------------------------------------------------------------------------
--- Re-exports
+-- agda2hs re-exports
 
 open import Haskell.Prim public
   using (⊥; exFalso)
@@ -10,7 +10,7 @@ open import Haskell.Prim.Tuple public
 
 open import Haskell.Prelude public
   using (id; _∘_; flip; case_of_;
-         Bool; True; False;
+         Bool; True; False; _&&_; _||_; if_then_else_;
          Nat; zero; suc;
          List; []; _∷_;
          String;
@@ -29,8 +29,8 @@ open import Haskell.Law.Equality public
   using (cong; cong₂; subst0)
 
 open import Haskell.Extra.Dec public
-  using (Reflects; mapReflects; invert; extractFalse)
-  renaming (Dec to Dec0; mapDec to mapDec0; ifDec to ifDec0)
+  using (Reflects; mapReflects;
+         Dec; mapDec)
 
 open import Haskell.Extra.Erase public
   using (Erase; Erased; get;
@@ -54,83 +54,133 @@ open import Haskell.Extra.Sigma public
   using (Σ-syntax; _,_; fst; snd)
 
 --------------------------------------------------------------------------------
--- Predicates on lists
+-- agda standard library re-exports
 
-infixr 5 _◂_
+-- open import Data.List.Relation.Unary.All public
+--   using (All; []; _∷_)
+--   renaming (head to headAll; tail to tailAll; tabulate to tabulateAll)
+-- open import Data.List.Relation.Unary.All.Properties public
+--   using (¬All⇒Any¬; All¬⇒¬Any; ¬Any⇒All¬)
+--   renaming (++⁺ to ++All⁺)
 
-data Any {@0 a : Set} (p : @0 a → Set) : (@0 xs : List a) → Set where
-  AnyHere  : ∀ {@0 x xs} → p x → Any p (x ∷ xs)
-  AnyThere : ∀ {@0 x xs} → Any p xs → Any p (x ∷ xs)
-{-# COMPILE AGDA2HS Any deriving Show #-}
+open import Data.List.Relation.Unary.Any public
+  using (Any; here; there)
+  -- renaming (map to mapAny)
+open import Data.List.Relation.Unary.Any.Properties public
+  using ()
+  -- renaming (gmap to gmapAny; concat⁺ to concatAny⁺; concat⁻ to concatAny⁻;
+  --           ++⁻ to ++Any⁻; ++⁺ˡ to ++Any⁺ˡ; ++⁺ʳ to ++Any⁺ʳ; map⁻ to mapAny⁻)
 
-pattern here  x    = AnyHere x
-pattern there x xs = AnyThere x xs
-
-data All {@0 a : Set} (p : @0 a → Set) : (@0 xs : List a) → Set where
-  AllNil  : All p []
-  AllCons : ∀ {@0 x xs} → p x → All p xs → All p (x ∷ xs)
-{-# COMPILE AGDA2HS All deriving Show #-}
-
-pattern ⌈⌉       = AllNil
-pattern _◂_ p ps = AllCons p ps
-
-data First {@0 a : Set} (p : @0 a → Set) : (@0 xs : List a) → Set where
-  FirstHere  : ∀ {@0 x xs} → p x → First p (x ∷ xs)
-  FirstThere : ∀ {@0 x xs} → @0 (p x → ⊥) → First p xs → First p (x ∷ xs)
-{-# COMPILE AGDA2HS First deriving Show #-}
-
-pattern ⌈_⌉ x    = FirstHere x
-pattern _◂_ x xs = FirstThere x xs
+open import Data.List.Relation.Unary.First public
+  using (First; _∷_; [_])
+  -- renaming (toAny to First⇒Any)
+-- open import Data.List.Relation.Unary.First.Properties public
+--   using (All⇒¬First)
 
 --------------------------------------------------------------------------------
--- Negation
+-- Bottom and negation
+
+infix 3 ¬_
+
+¬_ : Set → Set
+¬ A = A → ⊥
 
 exFalso0 : {a : Set} → @0 ⊥ → a
 exFalso0 _ = undefined
 
-contradiction : {a b : Set} → a → @0 (a → ⊥) → b
+contradiction : {a b : Set} → a → @0 ¬ a → b
 contradiction a ¬a = exFalso0 (¬a a)
 
-contraposition : {a b : Set} → (a → b) → (b → ⊥) → (a → ⊥)
+@0 contradiction0 : {a b : Set} → a → ¬ a → b
+contradiction0 a ¬a = exFalso0 (¬a a)
+
+contraposition : {a b : Set} → (a → b) → (¬ b → ¬ a)
 contraposition f g = g ∘ f
 
 --------------------------------------------------------------------------------
--- Decidable
+-- Decidable relations
+
+ifDec : {@0 a : Set} {b : Set} → Dec a → (@0 {{a}} → b) → (@0 {{¬ a}} → b) → b
+ifDec (b ⟨ p ⟩) x y = if b then (λ where {{refl}} → x {{p}}) else (λ where {{refl}} → y {{p}})
+{-# COMPILE AGDA2HS ifDec inline #-}
 
 infix 3 tupleDec
 
-data Dec (a : Set) : Set where
-  Yes : (p : a) → Dec a
-  No  : (@0 p : a → ⊥) → Dec a
-{-# COMPILE AGDA2HS Dec deriving Show #-}
+@0 tupleReflects : ∀ {ba bb a b} → Reflects a ba → Reflects b bb → Reflects (a × b) (ba && bb)
+tupleReflects {False} {_}     ¬a _  = ¬a ∘ fst
+tupleReflects {True}  {False} _  ¬b = ¬b ∘ snd
+tupleReflects {True}  {True}  a  b  = a , b
 
-mapDec : ∀ {a b} → (a → b) → @0 (b → a) → Dec a → Dec b
-mapDec f g (Yes p) = Yes (f p)
-mapDec f g (No p)  = No (contraposition g p)
-{-# COMPILE AGDA2HS mapDec #-}
-
-tupleDec : ∀ {a b} → Dec a → Dec b → Dec (a × b)
+tupleDec : ∀ {@0 a b} → Dec a → Dec b → Dec (a × b)
+tupleDec (ba ⟨ a ⟩) (bb ⟨ b ⟩) = (ba && bb) ⟨ tupleReflects a b ⟩
+{-# COMPILE AGDA2HS tupleDec inline #-}
 syntax tupleDec a b = a ×-dec b
-No p  ×-dec _     = No (contraposition fst p)
-Yes _ ×-dec No q  = No (contraposition snd q)
-Yes p ×-dec Yes q = Yes (p , q)
-{-# COMPILE AGDA2HS tupleDec #-}
 
-eitherDec : ∀ {a b} → Dec a → Dec b → Dec (Either a b)
-eitherDec (Yes p) _       = Yes (Left p)
-eitherDec (No p)  (Yes q) = Yes (Right q)
-eitherDec (No p)  (No q)  = No (either p q)
-{-# COMPILE AGDA2HS eitherDec #-}
+@0 eitherReflects : ∀ {ba bb a b} → Reflects a ba → Reflects b bb → Reflects (Either a b) (ba || bb)
+eitherReflects {True}  {_}     a  _  = Left a
+eitherReflects {False} {True}  _  b  = Right b
+eitherReflects {False} {False} ¬a ¬b = either ¬a ¬b
 
-firstDec : {a : Set} {p : @0 a → Set}
-  → (∀ x → Dec (p x))
-  → ∀ xs → Dec (First p xs)
-firstDec f []       = No (λ _ → undefined)
-firstDec f (x ∷ xs) = case f x of λ
-  { (Yes p) → Yes ⌈ p ⌉
-  ; (No p)  → mapDec (p ◂_) (λ { ⌈ h ⌉ → contradiction h p; (_ ◂ h) → h }) (firstDec f xs)
-  }
+eitherDec : ∀ {@0 a b} → Dec a → Dec b → Dec (Either a b)
+eitherDec (ba ⟨ a ⟩) (bb ⟨ b ⟩) = (ba || bb) ⟨ eitherReflects a b ⟩
+{-# COMPILE AGDA2HS eitherDec inline #-}
+
+anyDec : ∀ {a} {@0 p : a → Set}
+  → ((x : a) → Dec (p x))
+  → (xs : List a) → Dec (Any p xs)
+anyDec f []       = False ⟨ (λ ()) ⟩
+anyDec f (x ∷ xs) =
+  mapDec
+    (either here there)
+    (λ { (here h) → Left h; (there h) → Right h })
+    (eitherDec (f x) (anyDec f xs))
+{-# COMPILE AGDA2HS anyDec #-}
+
+firstDec : ∀ {a} {@0 p : a → Set}
+  → ((x : a) → Dec (p x))
+  → (xs : List a) → Dec (First (λ x → ¬ p x) p xs)
+firstDec f []       = False ⟨ (λ ()) ⟩
+firstDec {p = p} f (x ∷ xs) = ifDec (f x)
+  (λ {{h}} → True ⟨ [ h ] ⟩)
+  (λ {{h}} → mapDec (h ∷_) (lem h) (firstDec f xs))
+  where
+    @0 lem : ¬ p x → First (λ x → ¬ p x) p (x ∷ xs) → First (λ x → ¬ p x) p xs
+    lem h [ h' ] = contradiction h' h
+    lem h (x ∷ h') = h'
 {-# COMPILE AGDA2HS firstDec #-}
+
+--------------------------------------------------------------------------------
+-- Decidable relation that does not erase positive information
+
+infix 3 tupleDecP
+
+data DecP (a : Set) : Set where
+  Yes : (p : a) → DecP a
+  No  : (@0 p : ¬ a) → DecP a
+{-# COMPILE AGDA2HS DecP deriving Show #-}
+
+mapDecP : ∀ {a b} → (a → b) → @0 (b → a) → DecP a → DecP b
+mapDecP f g (Yes p) = Yes (f p)
+mapDecP f g (No p)  = No (contraposition g p)
+{-# COMPILE AGDA2HS mapDecP #-}
+
+ifDecP : {a b : Set} → DecP a → ({{a}} → b) → (@0 {{¬ a}} → b) → b
+ifDecP (Yes p) t e = t {{p}}
+ifDecP (No p)  t e = e {{p}}
+{-# COMPILE AGDA2HS ifDecP #-}
+
+tupleDecP : ∀ {a b} → DecP a → DecP b → DecP (a × b)
+syntax tupleDecP a b = a ×-decP b
+No p  ×-decP _     = No (contraposition fst p)
+Yes _ ×-decP No q  = No (contraposition snd q)
+Yes p ×-decP Yes q = Yes (p , q)
+{-# COMPILE AGDA2HS tupleDecP #-}
+
+eitherDecP : ∀ {a b} → DecP a → DecP b → DecP (Either a b)
+eitherDecP (Yes p) _       = Yes (Left p)
+eitherDecP (No p)  (Yes q) = Yes (Right q)
+eitherDecP (No p)  (No q)  = No (either p q)
+{-# COMPILE AGDA2HS eitherDecP #-}
 
 --------------------------------------------------------------------------------
 

@@ -1,39 +1,52 @@
-module CoverageCheck.Usefulness where
-
 open import CoverageCheck.Prelude
+open import CoverageCheck.GlobalScope using (Globals)
 open import CoverageCheck.Instance
 open import CoverageCheck.Syntax
+open import CoverageCheck.Name
 
--- private
---   variable
---     α β : Ty
---     αs βs : Tys
+module CoverageCheck.Usefulness
+  {{@0 globals : Globals}}
+  {{@0 sig : Signature}}
+  where
 
--- --------------------------------------------------------------------------------
--- -- Usefulness
+private open module @0 G = Globals globals
 
--- -- ps is useful with respect to P if
--- --   1. there is a list of values that matches ps (say vs)
--- --   2. vs does not match any row in P
--- -- Usefulness can also be used to formulate redundancy
--- Useful : PatMat αs → Pats αs → Set
--- Useful P ps = ∃[ vs ] P ⋠** vs × ps ≼* vs
+private
+  variable
+    @0 α0 β0 : Type
+    @0 αs0 βs0 : Types
+    @0 d : NameData
 
--- --------------------------------------------------------------------------------
--- -- Operations on patterns used in the algorithm
+--------------------------------------------------------------------------------
+-- Usefulness
+
+-- ps is useful with respect to P if
+--   1. there is a list of values that matches ps (say vs)
+--   2. vs does not match any row in P
+-- Usefulness can also be used to formulate redundancy
+Useful : (@0 P : PatternMatrix αs0) (@0 ps : Patterns αs0) → Set
+Useful {αs0} P ps = ∃[ vs ∈ Values αs0 ] P ⋠** vs × ps ≼* vs
+{-# COMPILE AGDA2HS Useful #-}
+
+--------------------------------------------------------------------------------
+-- Operations on patterns used in the algorithm
 
 -- infix 4 _∈_ _∉_ _∈?_ _∉?_
 
--- -- Does c appear in p?
--- _∈_ : Con α → Pat α → Set
--- c ∈ ∙ = ⊥
--- c ∈ con c′ _ = c ≡ c′
--- c ∈ (p ∣ q) = c ∈ p ⊎ c ∈ q
+-- -- Does c appear in the set of root constructors of p?
+-- _∈_ : NameCon d → Pattern (TyData d) → Set
+-- c ∈ —         = ⊥
+-- c ∈ con c' ps = c ≡ c'
+-- c ∈ (p ∣ q)   = Either (c ∈ p) (c ∈ q)
 
--- _∉_ : Con α → Pat α → Set
--- c ∉ p = ¬ c ∈ p
+-- _∉_ : NameCon d → Pattern (TyData d) → Set
+-- c ∉ p = c ∈ p → ⊥
 
--- _∈?_ : (c : Con α) (p : Pat α) → Dec (c ∈ p)
+-- isInRootCons : (c : NameCon d) (p : Pattern (TyData d)) → Dec0 (c ∈ p)
+-- syntax isInRootCons c p = c ∈? p
+-- c ∈? —         = False ⟨ id ⟩
+-- c ∈? con c' ps = c ≟ c'
+-- c ∈? (p ∣ q)   = {!   !}
 -- c ∈? ∙ = no id
 -- c ∈? con c′ _ = c ≟Fin c′
 -- c ∈? (p ∣ q) = c ∈? p ⊎-dec c ∈? q
