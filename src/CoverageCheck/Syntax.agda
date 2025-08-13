@@ -1,4 +1,5 @@
 open import CoverageCheck.Prelude
+open import CoverageCheck.Name
 open import CoverageCheck.GlobalScope using (Globals)
 
 module CoverageCheck.Syntax
@@ -25,8 +26,8 @@ data Types where
 pattern ⌈⌉       = TNil
 pattern _◂_ α αs = TCons α αs
 
-{-# COMPILE AGDA2HS Type   deriving Show #-}
-{-# COMPILE AGDA2HS Types  deriving Show #-}
+{-# COMPILE AGDA2HS Type  deriving Show #-}
+{-# COMPILE AGDA2HS Types deriving Show #-}
 
 appendTypes : Types → Types → Types
 appendTypes ⌈⌉       βs = βs
@@ -36,11 +37,47 @@ syntax appendTypes αs βs = αs ◂◂ βs
 
 record Datatype (@0 d : NameData) : Set where
   field
-    allNameCon : List (NameCon d)
-    argsTy     : (c : NameCon d) → Types
+    dataCons : Rezz (conScope d)
+    argsTy   : (c : NameCon d) → Types
 
 open Datatype public
-{-# COMPILE AGDA2HS Datatype  #-}
+{-# COMPILE AGDA2HS Datatype #-}
+
+allNameCon : {@0 d : NameData} → Datatype d → (NameCon d → Bool) → Bool
+allNameCon dty f =
+  let xs ⟨ h ⟩ = dataCons dty in
+  allNameIn xs λ x → f (subst0 NameIn (sym h) x)
+{-# COMPILE AGDA2HS allNameCon #-}
+
+decAllNameCon : {@0 d : NameData} (dty : Datatype d) {@0 p : NameCon d → Set}
+  → ((x : NameCon d) → Dec (p x))
+  → Either (Erase (∀ x → p x)) (Erase (∃[ x ∈ _ ] ¬ p x))
+decAllNameCon dty f =
+  let xs ⟨ h ⟩ = dataCons dty in
+  decAllNameIn xs h f
+{-# COMPILE AGDA2HS decAllNameCon #-}
+
+anyNameCon : {@0 d : NameData} → Datatype d → (NameCon d → Bool) → Bool
+anyNameCon dty f =
+  let xs ⟨ h ⟩ = dataCons dty in
+  anyNameIn xs λ x → f (subst0 NameIn (sym h) x)
+{-# COMPILE AGDA2HS anyNameCon #-}
+
+decAnyNameCon : {@0 d : NameData} (dty : Datatype d) {@0 p : NameCon d → Set}
+  → ((x : NameCon d) → Dec (p x))
+  → Dec (∃[ x ∈ NameCon d ] p x)
+decAnyNameCon dty f =
+  let xs ⟨ h ⟩ = dataCons dty in
+  decAnyNameIn xs h f
+{-# COMPILE AGDA2HS decAnyNameCon #-}
+
+decPAnyNameCon : {@0 d : NameData} (dty : Datatype d) {p : @0 NameCon d → Set}
+  → ((x : NameCon d) → DecP (p x))
+  → DecP (Σ[ x ∈ NameCon d ] p x)
+decPAnyNameCon dty f =
+  let xs ⟨ h ⟩ = dataCons dty in
+  decPAnyNameIn xs h f
+{-# COMPILE AGDA2HS decPAnyNameCon #-}
 
 record Signature : Set where
   field
@@ -118,6 +155,14 @@ module _ {{@0 sig : Signature}} where
   pWilds {αs = α ◂ αs} = — ◂ pWilds
   syntax pWilds = —*
   {-# COMPILE AGDA2HS pWilds #-}
+
+  headPattern : ∀ {@0 α αs} → Patterns (α ◂ αs) → Pattern α
+  headPattern (p ◂ _) = p
+  {-# COMPILE AGDA2HS headPattern #-}
+
+  tailPatterns : ∀ {@0 α αs} → Patterns (α ◂ αs) → Patterns αs
+  tailPatterns (_ ◂ ps) = ps
+  {-# COMPILE AGDA2HS tailPatterns #-}
 
   appendPatterns : ∀ {@0 αs βs} → Patterns αs → Patterns βs → Patterns (αs ◂◂ βs)
   appendPatterns ⌈⌉       qs = qs

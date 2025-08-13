@@ -4,15 +4,17 @@ module CoverageCheck.Prelude where
 -- agda2hs re-exports
 
 open import Haskell.Prim public
-  using (⊥; exFalso)
+  using (⊥)
+  renaming (magic to exFalso)
 open import Haskell.Prim.Tuple public
   using (first; second)
 
 open import Haskell.Prelude public
   using (id; _∘_; flip; case_of_;
-         Bool; True; False; _&&_; _||_; if_then_else_;
+         ⊤; tt;
+         Bool; True; False; not; _&&_; _||_; if_then_else_;
          Nat; zero; suc;
-         List; []; _∷_;
+         List; []; _∷_; _++_; map; concatMap;
          String;
          _×_; _,_; fst; snd; uncurry;
          Either; Left; Right; either;
@@ -23,10 +25,12 @@ open import Haskell.Prelude public
 open import Haskell.Prim.Eq public
   using (Eq; _==_)
 open import Haskell.Law.Eq public
-  using (IsLawfulEq; isEquality; _≟_)
+  using (IsLawfulEq; isEquality)
+
+open import Haskell.Prim.Foldable public
 
 open import Haskell.Law.Equality public
-  using (cong; cong₂; subst0)
+  using (cong; cong₂; subst0; sym)
 
 open import Haskell.Extra.Dec public
   using (Reflects; mapReflects;
@@ -43,7 +47,7 @@ syntax Σ0-syntax A (λ x → B) = Σ0[ x ∈ A ] B
 infix 2 Σ0-syntax
 
 open import Haskell.Extra.Refinement public
-  using (∃; _⟨_⟩)
+  using (∃; _⟨_⟩; value; proof)
 
 ∃-syntax = ∃
 {-# COMPILE AGDA2HS ∃-syntax inline #-}
@@ -56,12 +60,11 @@ open import Haskell.Extra.Sigma public
 --------------------------------------------------------------------------------
 -- agda standard library re-exports
 
--- open import Data.List.Relation.Unary.All public
---   using (All; []; _∷_)
---   renaming (head to headAll; tail to tailAll; tabulate to tabulateAll)
+open import Data.List.Relation.Unary.All public
+  using (All; []; _∷_)
+  renaming (head to headAll; tail to tailAll; tabulate to tabulateAll)
 -- open import Data.List.Relation.Unary.All.Properties public
---   using (¬All⇒Any¬; All¬⇒¬Any; ¬Any⇒All¬)
---   renaming (++⁺ to ++All⁺)
+  -- using (¬All⇒Any¬; All¬⇒¬Any; ¬Any⇒All¬)
 
 open import Data.List.Relation.Unary.Any public
   using (Any; here; there)
@@ -98,11 +101,36 @@ contraposition : {a b : Set} → (a → b) → (¬ b → ¬ a)
 contraposition f g = g ∘ f
 
 --------------------------------------------------------------------------------
+-- Freshness
+
+@0 Fresh : {a : Set} → List a → Set
+Fresh []       = ⊤
+Fresh (x ∷ xs) = All (λ y → ¬ x ≡ y) xs × Fresh xs
+
+¬Any⇒All¬ : {a : Set} {p : a → Set} (xs : List a)
+  → ¬ Any p xs
+  → All (λ x → ¬ p x) xs
+¬Any⇒All¬ []       ¬p = []
+¬Any⇒All¬ (x ∷ xs) ¬p = ¬p ∘ here ∷ ¬Any⇒All¬ xs (¬p ∘ there)
+
+--------------------------------------------------------------------------------
 -- Decidable relations
+
+_≟_ : {a : Set} {{_ : Eq a}} {{@0 _ : IsLawfulEq a}} → (x y : a) → Dec (x ≡ y)
+x ≟ y = (x == y) ⟨ isEquality x y ⟩
+{-# COMPILE AGDA2HS _≟_ inline #-}
 
 ifDec : {@0 a : Set} {b : Set} → Dec a → (@0 {{a}} → b) → (@0 {{¬ a}} → b) → b
 ifDec (b ⟨ p ⟩) x y = if b then (λ where {{refl}} → x {{p}}) else (λ where {{refl}} → y {{p}})
 {-# COMPILE AGDA2HS ifDec inline #-}
+
+@0 negReflects : ∀ {ba a} → Reflects a ba → Reflects (¬ a) (not ba)
+negReflects {False} ¬a = ¬a
+negReflects {True}  a  = λ ¬a → ¬a a
+
+negDec : ∀ {@0 a} → Dec a → Dec (¬ a)
+negDec (ba ⟨ a ⟩) = not ba ⟨ negReflects a ⟩
+{-# COMPILE AGDA2HS negDec #-}
 
 infix 3 tupleDec
 
@@ -158,6 +186,11 @@ data DecP (a : Set) : Set where
   Yes : (p : a) → DecP a
   No  : (@0 p : ¬ a) → DecP a
 {-# COMPILE AGDA2HS DecP deriving Show #-}
+
+fromDec : ∀ {a} → Dec a → DecP (Erase a)
+fromDec (True ⟨ p ⟩)  = Yes (Erased p)
+fromDec (False ⟨ p ⟩) = No λ (Erased x) → p x
+{-# COMPILE AGDA2HS fromDec #-}
 
 mapDecP : ∀ {a b} → (a → b) → @0 (b → a) → DecP a → DecP b
 mapDecP f g (Yes p) = Yes (f p)

@@ -1,3 +1,5 @@
+{-# OPTIONS --no-keep-pattern-variables #-}
+
 open import CoverageCheck.Prelude
 open import CoverageCheck.GlobalScope using (Globals)
 open import CoverageCheck.Instance
@@ -6,16 +8,243 @@ open import CoverageCheck.Name
 
 module CoverageCheck.Usefulness
   {{@0 globals : Globals}}
-  {{@0 sig : Signature}}
   where
 
 private open module @0 G = Globals globals
 
 private
   variable
+    α β : Type
+    αs βs : Types
+    d : NameData
     @0 α0 β0 : Type
     @0 αs0 βs0 : Types
-    @0 d : NameData
+    @0 d0 : NameData
+
+--------------------------------------------------------------------------------
+-- Raw algorithm
+
+module _
+  {{sig : Signature}}
+  {d : NameData} (c : NameCon d)
+  (let αs = argsTy (dataDefs sig d) c)
+  where
+
+  -- Specialisation: filters out clauses whose first pattern does not match a value of the form `con c -`.
+  specialiseAux : Patterns (TyData d ◂ βs0) → PatternMatrix (αs ◂◂ βs0)
+  specialiseAux (—         ◂ ps) = (—* ◂◂ᵖ ps) ∷ []
+  specialiseAux (con c' rs ◂ ps) =
+    ifDec (c ≟ c') (λ where {{refl}} → (rs ◂◂ᵖ ps) ∷ []) []
+  specialiseAux (r₁ ∣ r₂   ◂ ps) = specialiseAux (r₁ ◂ ps) ++ specialiseAux (r₂ ◂ ps)
+  {-# COMPILE AGDA2HS specialiseAux #-}
+
+  specialise : PatternMatrix (TyData d ◂ βs0) → PatternMatrix (αs ◂◂ βs0)
+  specialise = concatMap specialiseAux
+  {-# COMPILE AGDA2HS specialise #-}
+
+
+module _
+  {{@0 sig : Signature}}
+  where
+
+  -- Default matrix: filters out clauses whose first pattern is a constructor pattern
+  defaultAux : Patterns (α0 ◂ αs0) → PatternMatrix αs0
+  defaultAux (—       ◂ ps) = ps ∷ []
+  defaultAux (con _ _ ◂ ps) = []
+  defaultAux (r₁ ∣ r₂ ◂ ps) = defaultAux (r₁ ◂ ps) ++ defaultAux (r₂ ◂ ps)
+  {-# COMPILE AGDA2HS defaultAux #-}
+
+  default' : PatternMatrix (α0 ◂ αs0) → PatternMatrix αs0
+  default' = concatMap defaultAux
+  {-# COMPILE AGDA2HS default' #-}
+
+
+module Raw where
+
+  module _ {{@0 sig : Signature}} where
+
+    infix 4 elemRootCons
+
+    elemRootCons : (c : NameCon d0) (p : Pattern (TyData d0)) → Bool
+    syntax elemRootCons c p = c ∈ᵇ p
+    c ∈ᵇ —         = False
+    c ∈ᵇ con c' ps = value (c ≟ c')
+    c ∈ᵇ (p ∣ q)   = c ∈ᵇ p || c ∈ᵇ q
+    {-# COMPILE AGDA2HS elemRootCons #-}
+
+
+  module _ {{sig : Signature}} {d : NameData} where
+
+    -- Is there a constructor that does not appear in the first column of P?
+    existsMissingCon : (P : PatternMatrix (TyData d ◂ αs0)) → Bool
+    existsMissingCon pss =
+      not (allNameCon (dataDefs sig d) λ c → any (λ ps → c ∈ᵇ headPattern ps) pss)
+    {-# COMPILE AGDA2HS existsMissingCon #-}
+
+
+  module _ {{sig : Signature}} where
+
+    {-# TERMINATING #-}
+    isUseful : (P : PatternMatrix αs) (ps : Patterns αs) → Bool
+    isUseful {⌈⌉}            []      ⌈⌉              = True
+    isUseful {⌈⌉}            (_ ∷ _) ⌈⌉              = False
+    isUseful {TyData d ◂ αs} pss     (—        ◂ ps) =
+      if existsMissingCon pss
+        then isUseful (default' pss) ps
+        else anyNameCon (dataDefs sig d) λ c → isUseful (specialise c pss) (—* ◂◂ᵖ ps)
+    isUseful {TyData d ◂ αs} pss     (con c rs ◂ ps) = isUseful (specialise c pss) (rs ◂◂ᵖ ps)
+    isUseful {TyData d ◂ αs} pss     (r₁ ∣ r₂  ◂ ps) = isUseful pss (r₁ ◂ ps) || isUseful pss (r₂ ◂ ps)
+    {-# COMPILE AGDA2HS isUseful #-}
+
+--------------------------------------------------------------------------------
+
+module _ {{@0 sig : Signature}} where
+
+  infix 4 _∈_ _∉_ decElemRootCons
+
+  -- Does c appear in the set of root constructors of p?
+  @0 _∈_ : NameCon d0 → Pattern (TyData d0) → Set
+  c ∈ —         = ⊥
+  c ∈ con c' ps = c ≡ c'
+  c ∈ (p ∣ q)   = Either (c ∈ p) (c ∈ q)
+
+  @0 _∉_ : NameCon d0 → Pattern (TyData d0) → Set
+  c ∉ p = ¬ c ∈ p
+
+  decElemRootCons : (c : NameCon d0) (p : Pattern (TyData d0)) → Dec (c ∈ p)
+  syntax decElemRootCons c p = c ∈? p
+  c ∈? —         = False ⟨ id ⟩
+  c ∈? con c' ps = c ≟ c'
+  c ∈? (p ∣ q)   = eitherDec (c ∈? p) (c ∈? q)
+  {-# COMPILE AGDA2HS decElemRootCons #-}
+
+
+module _
+  {{@0 sig : Signature}}
+  {{nonEmptyAxiom : ∀ {α} → Value α}}
+  where
+
+  inhabCon : (d : NameData) → NameCon d
+  inhabCon d = case nonEmptyAxiom {α = TyData d} of λ { (con c _) → c }
+  {-# COMPILE AGDA2HS inhabCon #-}
+
+
+module _
+  {{sig : Signature}}
+  {d : NameData}
+  where
+
+  -- Is there a constructor that does not appear in the first column of P?
+  decExistsMissingCon : (P : PatternMatrix (TyData d ◂ αs0))
+    → Either
+        (Erase (∃[ c ∈ _ ] All (λ ps → c ∉ headPattern ps) P))
+        (Erase (∀ c → Any (λ ps → c ∈ headPattern ps) P))
+  decExistsMissingCon pss =
+    case
+      decAllNameCon (dataDefs sig d) (λ c →
+        anyDec (λ ps → c ∈? headPattern ps) pss)
+    of λ
+      { (Left (Erased h)) → Right (Erased h)
+      ; (Right (Erased (c ⟨ h ⟩ ))) → Left (Erased (c ⟨ ¬Any⇒All¬ pss h ⟩))
+      }
+  {-# COMPILE AGDA2HS decExistsMissingCon #-}
+
+module _ {{@0 sig : Signature}} where
+
+  record Usefulness
+    (u : ∀ {@0 αs0} (@0 P : PatternMatrix αs0) (@0 ps : Patterns αs0) → Set)
+    : Set where
+    field
+      nilNil : u [] ⌈⌉
+      @0 consNil : {ps : Patterns ⌈⌉} {pss : PatternMatrix ⌈⌉} → ¬ u (ps ∷ pss) ⌈⌉
+
+      orHead : {pss : PatternMatrix (α ◂ αs)} {r₁ r₂ : Pattern α} {ps : Patterns αs}
+        → Either (u pss (r₁ ◂ ps)) (u pss (r₂ ◂ ps)) → u pss (r₁ ∣ r₂ ◂ ps)
+      @0 orHeadInv : {pss : PatternMatrix (α ◂ αs)} {r₁ r₂ : Pattern α} {ps : Patterns αs}
+        → u pss (r₁ ∣ r₂ ◂ ps) → Either (u pss (r₁ ◂ ps)) (u pss (r₂ ◂ ps))
+
+      conHead : {pss : PatternMatrix (TyData d ◂ βs)} {c : NameCon d}
+        (let αs = argsTy (dataDefs sig d) c)
+        {rs : Patterns αs} {ps : Patterns βs}
+        → u (specialise c pss) (rs ◂◂ᵖ ps) → u pss (con c rs ◂ ps)
+      @0 conHeadInv : {pss : PatternMatrix (TyData d ◂ βs)} {c : NameCon d}
+        (let αs = argsTy (dataDefs sig d) c)
+        {rs : Patterns αs} {ps : Patterns βs}
+        → u pss (con c rs ◂ ps) → u (specialise c pss) (rs ◂◂ᵖ ps)
+
+      wildHeadMiss : {pss : PatternMatrix (TyData d ◂ αs)} {ps : Patterns αs}
+        → @0 ∃[ c ∈ _ ] All (λ ps → c ∉ headPattern ps) pss
+        → u (default' pss) ps
+        → u pss (— ◂ ps)
+      @0 wildHeadMissInv : {pss : PatternMatrix (TyData d ◂ αs)} {ps : Patterns αs}
+        → @0 ∃[ c ∈ _ ] All (λ ps → c ∉ headPattern ps) pss
+        → u pss (— ◂ ps)
+        → u (default' pss) ps
+
+      wildHeadComp : {pss : PatternMatrix (TyData d ◂ αs)} {ps : Patterns αs}
+        → @0 (∀ c → Any (λ ps → c ∈ headPattern ps) pss)
+        → Σ[ c ∈ NameCon d ] u (specialise c pss) (—* ◂◂ᵖ ps)
+        → u pss (— ◂ ps)
+      @0 wildHeadCompInv : {pss : PatternMatrix (TyData d ◂ αs)} {ps : Patterns αs}
+        → (∀ c → Any (λ ps → c ∈ headPattern ps) pss)
+        → u pss (— ◂ ps)
+        → Σ[ c ∈ NameCon d ] u (specialise c pss) (—* ◂◂ᵖ ps)
+
+  open Usefulness {{...}} public
+  {-# COMPILE AGDA2HS Usefulness class #-}
+
+
+module _ {{@0 sig : Signature}} where
+
+  -- Specialized accessibility predicate for usefulness checking algorithm
+  -- for separating termination proof from the algorithm
+  -- This method is due to Ana Bove 2003.
+  data @0 UsefulAcc : (P : PatternMatrix αs) (ps : Patterns αs) → Set where
+    done : {P : PatternMatrix ⌈⌉} → UsefulAcc P ⌈⌉
+
+    step-wild : {P : PatternMatrix (TyData d ◂ αs)} {ps : Patterns αs}
+      → (∃[ c ∈ _ ] All (λ ps → c ∉ headPattern ps) P → UsefulAcc (default' P) ps)
+      → (∀ c → Any (λ ps → c ∈ headPattern ps) P → UsefulAcc (specialise c P) (—* ◂◂ᵖ ps))
+      → UsefulAcc P (— ◂ ps)
+
+    step-con : {P : PatternMatrix (TyData d ◂ βs)} {c : NameCon d}
+      (let αs = argsTy (dataDefs sig d) c)
+      {rs : Patterns αs} {ps : Patterns βs}
+      → UsefulAcc (specialise c P) (rs ◂◂ᵖ ps)
+      → UsefulAcc P (con c rs ◂ ps)
+
+    step-∣ : {P : PatternMatrix (α ◂ αs)} {p q : Pattern α} {ps : Patterns αs}
+      → UsefulAcc P (p ◂ ps)
+      → UsefulAcc P (q ◂ ps)
+      → UsefulAcc P (p ∣ q ◂ ps)
+
+
+module _
+  {{sig : Signature}}
+  (u : ∀ {@0 αs0} (@0 P : PatternMatrix αs0) (@0 ps : Patterns αs0) → Set)
+  {{_ : Usefulness u}}
+  {{nonEmptyAxiom : ∀ {α} → Value α}}
+  where
+
+  decUseful : (P : PatternMatrix αs) (ps : Patterns αs) → @0 UsefulAcc P ps → DecP (u P ps)
+  decUseful {⌈⌉}            []      ⌈⌉              done             = Yes nilNil
+  decUseful {⌈⌉}            (_ ∷ _) ⌈⌉              done             = No consNil
+  decUseful {TyData d ◂ αs} pss     (— ◂ ps)        (step-wild h h') =
+    case decExistsMissingCon pss of λ
+      { (Left (Erased miss))  →
+          mapDecP (wildHeadMiss miss) (wildHeadMissInv miss)
+            (decUseful (default' pss) ps (h miss))
+      ; (Right (Erased comp)) →
+          mapDecP (wildHeadComp comp) (wildHeadCompInv comp)
+            (decPAnyNameCon (dataDefs sig d) λ c →
+              decUseful (specialise c pss) (—* ◂◂ᵖ ps) (h' c (comp c)))
+      }
+  decUseful {TyData d ◂ αs} pss     (con c rs ◂ ps) (step-con h)     =
+    mapDecP conHead conHeadInv (decUseful (specialise c pss) (rs ◂◂ᵖ ps) h)
+  decUseful {TyData d ◂ αs} pss     (r₁ ∣ r₂  ◂ ps) (step-∣ h h')    =
+    mapDecP orHead orHeadInv
+      (eitherDecP (decUseful pss (r₁ ◂ ps) h) (decUseful pss (r₂ ◂ ps) h'))
+  {-# COMPILE AGDA2HS decUseful #-}
 
 --------------------------------------------------------------------------------
 -- Usefulness
@@ -24,173 +253,93 @@ private
 --   1. there is a list of values that matches ps (say vs)
 --   2. vs does not match any row in P
 -- Usefulness can also be used to formulate redundancy
-Useful : (@0 P : PatternMatrix αs0) (@0 ps : Patterns αs0) → Set
-Useful {αs0} P ps = ∃[ vs ∈ Values αs0 ] P ⋠** vs × ps ≼* vs
-{-# COMPILE AGDA2HS Useful #-}
+Useful : {{@0 sig : Signature}} (@0 P : PatternMatrix αs0) (@0 ps : Patterns αs0) → Set
+Useful {αs0} P ps = ∃[ vs ∈ Values αs0 ] (P ⋠** vs × ps ≼* vs)
+{-# COMPILE AGDA2HS Useful inline #-}
 
 --------------------------------------------------------------------------------
--- Operations on patterns used in the algorithm
-
--- infix 4 _∈_ _∉_ _∈?_ _∉?_
-
--- -- Does c appear in the set of root constructors of p?
--- _∈_ : NameCon d → Pattern (TyData d) → Set
--- c ∈ —         = ⊥
--- c ∈ con c' ps = c ≡ c'
--- c ∈ (p ∣ q)   = Either (c ∈ p) (c ∈ q)
-
--- _∉_ : NameCon d → Pattern (TyData d) → Set
--- c ∉ p = c ∈ p → ⊥
-
--- isInRootCons : (c : NameCon d) (p : Pattern (TyData d)) → Dec0 (c ∈ p)
--- syntax isInRootCons c p = c ∈? p
--- c ∈? —         = False ⟨ id ⟩
--- c ∈? con c' ps = c ≟ c'
--- c ∈? (p ∣ q)   = {!   !}
--- c ∈? ∙ = no id
--- c ∈? con c′ _ = c ≟Fin c′
--- c ∈? (p ∣ q) = c ∈? p ⊎-dec c ∈? q
-
--- _∉?_ : (c : Con α) (p : Pat α) → Dec (c ∉ p)
--- c ∉? p = ¬? (c ∈? p)
-
--- -- Is p empty?
--- empty? : (p : Pat α) → Dec (∀ c → c ∉ p)
--- empty? ∙ = yes λ c → id
--- empty? (con c _) = no λ h → h c refl
--- empty? (p ∣ q) =
---   mapDec′
---     (λ (h , h′) c → [ h c , h′ c ])
---     (λ h → (λ c → h c ∘ inj₁) , (λ c → h c ∘ inj₂))
---     (empty? p ×-dec empty? q)
-
--- -- Predicate on pattern matrix P that states if the first column of P
--- -- covers all constructor or there is a missing constructor.
--- Complete Missing : PatMat (α ∷ αs) → Set
--- Complete P = ∀ c → Any (λ ps → c ∈ headAll ps) P
--- Missing P = ∃[ c ] All (λ ps → c ∉ headAll ps) P
-
--- -- Is the set of root constructors that appear in the first column of P empty?
--- rootConsEmpty? : (P : PatMat (α ∷ αs))
---   → Dec (∀ c → All (λ ps → c ∉ headAll ps) P)
--- rootConsEmpty? [] = yes λ _ → []
--- rootConsEmpty? (ps ∷ P) =
---   mapDec′
---     (λ (h , h′) c → h c ∷ h′ c)
---     (λ h → headAll ∘ h , tailAll ∘ h)
---     (empty? (headAll ps) ×-dec rootConsEmpty? P)
-
--- -- Is there a constructor that does not appear in the first column of P?
--- ∃missingCon? : (P : PatMat (α ∷ αs)) → Missing P ⊎ Complete P
--- ∃missingCon? {α} P with rootConsEmpty? P
--- ... | yes empty = inj₁ (inhabCon α , empty (inhabCon α))
--- ... | no _ with allOrCounterexample (λ c → any? (λ ps → c ∈? headAll ps) P)
--- ...   | inj₁ ∀c∈P = inj₂ ∀c∈P
--- ...   | inj₂ (c , c∉P) = inj₁ (c , ¬Any⇒All¬ P c∉P)
-
--- -- Specialization: filters out clauses whose first pattern does not match a value of the form `con c -`.
--- 𝒮-aux : (c : Con α) → Pats (α ∷ αs) → PatMat (argsTy α c ++ αs)
--- 𝒮-aux c (∙ ∷ ps) = (∙* ++ₚ ps) ∷ []
--- 𝒮-aux c (con d rs ∷ ps) with c ≟Fin d
--- ... | no _ = []
--- ... | yes refl = (rs ++ₚ ps) ∷ []
--- 𝒮-aux c (r₁ ∣ r₂ ∷ ps) = 𝒮-aux c (r₁ ∷ ps) ++ 𝒮-aux c (r₂ ∷ ps)
-
--- 𝒮 : (c : Con α) → PatMat (α ∷ αs) → PatMat (argsTy α c ++ αs)
--- 𝒮 = concatMap ∘ 𝒮-aux
-
--- -- Default matrix: filters out clauses whose first pattern is a constructor pattern
--- 𝒟-aux : Pats (α ∷ αs) → PatMat αs
--- 𝒟-aux (∙ ∷ ps) = ps ∷ []
--- 𝒟-aux (con _ _ ∷ ps) = []
--- 𝒟-aux (r₁ ∣ r₂ ∷ ps) = 𝒟-aux (r₁ ∷ ps) ++ 𝒟-aux (r₂ ∷ ps)
-
--- 𝒟 : PatMat (α ∷ αs) → PatMat αs
--- 𝒟 = concatMap 𝒟-aux
-
--- --------------------------------------------------------------------------------
--- -- Properties of ≼ and 𝒮/𝒟
+-- Properties of ≼ and specialise/default
 
 -- module _ {c : Con α} {us : Vals (argsTy α c)} {vs : Vals αs} where
 
---   𝒮-aux-preserves-≼ : {ps : Pats (α ∷ αs)}
+--   specialiseAux-preserves-≼ : {ps : Pats (α ∷ αs)}
 --     → ps ≼* con {α} c us ∷ vs
---     → 𝒮-aux c ps ≼** (us ++ᵥ vs)
---   𝒮-aux-preserves-≼ {∙ ∷ ps} ∙ps≼cusvs = here (∙≼*⁻ ∙ps≼cusvs)
---   𝒮-aux-preserves-≼ {con d rs ∷ ps} drsps≼cusvs with c ≟Fin d
+--     → specialiseAux c ps ≼** (us ++ᵥ vs)
+--   specialiseAux-preserves-≼ {∙ ∷ ps} ∙ps≼cusvs = here (∙≼*⁻ ∙ps≼cusvs)
+--   specialiseAux-preserves-≼ {con d rs ∷ ps} drsps≼cusvs with c ≟Fin d
 --   ... | no c≢d = contradiction (sym (c≼d→c≡d (∷⁻ drsps≼cusvs .proj₁))) c≢d
 --   ... | yes refl = here (con≼*⁻ drsps≼cusvs)
---   𝒮-aux-preserves-≼ {r₁ ∣ r₂ ∷ ps} =
+--   specialiseAux-preserves-≼ {r₁ ∣ r₂ ∷ ps} =
 --     [ ++Any⁺ˡ , ++Any⁺ʳ _ ] ∘
---     map-⊎ 𝒮-aux-preserves-≼ 𝒮-aux-preserves-≼ ∘
+--     map-⊎ specialiseAux-preserves-≼ specialiseAux-preserves-≼ ∘
 --     ∣≼*⁻
 
---   -- 𝒮 preserves ≼
---   𝒮-preserves-≼ : {P : PatMat (α ∷ αs)}
+--   -- specialise preserves ≼
+--   specialise-preserves-≼ : {P : PatMat (α ∷ αs)}
 --     → P ≼** con {α} c us ∷ vs
---     → 𝒮 c P ≼** (us ++ᵥ vs)
---   𝒮-preserves-≼ = concatAny⁺ ∘ gmapAny 𝒮-aux-preserves-≼
+--     → specialise c P ≼** (us ++ᵥ vs)
+--   specialise-preserves-≼ = concatAny⁺ ∘ gmapAny specialiseAux-preserves-≼
 
---   𝒮-aux-preserves-≼⁻ : {ps : Pats (α ∷ αs)}
---     → 𝒮-aux c ps ≼** (us ++ᵥ vs)
+--   specialiseAux-preserves-≼⁻ : {ps : Pats (α ∷ αs)}
+--     → specialiseAux c ps ≼** (us ++ᵥ vs)
 --     → ps ≼* con {α} c us ∷ vs
---   𝒮-aux-preserves-≼⁻ {∙ ∷ ps} (here ∙*ps≼usvs) = ∙≼*⁺ ∙*ps≼usvs
---   𝒮-aux-preserves-≼⁻ {con d rs ∷ ps} _ with c ≟Fin d
---   𝒮-aux-preserves-≼⁻ {con d rs ∷ ps} (here drsps≼cusvs) | yes refl = con≼*⁺ drsps≼cusvs
---   𝒮-aux-preserves-≼⁻ {r₁ ∣ r₂ ∷ ps} =
---     ∣≼*⁺ ∘ map-⊎ 𝒮-aux-preserves-≼⁻ 𝒮-aux-preserves-≼⁻ ∘ ++Any⁻ _
+--   specialiseAux-preserves-≼⁻ {∙ ∷ ps} (here ∙*ps≼usvs) = ∙≼*⁺ ∙*ps≼usvs
+--   specialiseAux-preserves-≼⁻ {con d rs ∷ ps} _ with c ≟Fin d
+--   specialiseAux-preserves-≼⁻ {con d rs ∷ ps} (here drsps≼cusvs) | yes refl = con≼*⁺ drsps≼cusvs
+--   specialiseAux-preserves-≼⁻ {r₁ ∣ r₂ ∷ ps} =
+--     ∣≼*⁺ ∘ map-⊎ specialiseAux-preserves-≼⁻ specialiseAux-preserves-≼⁻ ∘ ++Any⁻ _
 
---   -- Unspecialization preserves ≼
---   𝒮-preserves-≼⁻ : {P : PatMat (α ∷ αs)}
---     → 𝒮 c P ≼** (us ++ᵥ vs)
+--   -- Unspecialisation preserves ≼
+--   specialise-preserves-≼⁻ : {P : PatMat (α ∷ αs)}
+--     → specialise c P ≼** (us ++ᵥ vs)
 --     → P ≼** con {α} c us ∷ vs
---   𝒮-preserves-≼⁻ = mapAny 𝒮-aux-preserves-≼⁻ ∘ mapAny⁻ ∘ concatAny⁻ _
+--   specialise-preserves-≼⁻ = mapAny specialiseAux-preserves-≼⁻ ∘ mapAny⁻ ∘ concatAny⁻ _
 
---   𝒮-preserves-≼⇔ : {P : PatMat (α ∷ αs)}
---     → P ≼** con {α} c us ∷ vs ⇔ 𝒮 c P ≼** (us ++ᵥ vs)
---   𝒮-preserves-≼⇔ = mk⇔ 𝒮-preserves-≼ 𝒮-preserves-≼⁻
+--   specialise-preserves-≼⇔ : {P : PatMat (α ∷ αs)}
+--     → P ≼** con {α} c us ∷ vs ⇔ specialise c P ≼** (us ++ᵥ vs)
+--   specialise-preserves-≼⇔ = mk⇔ specialise-preserves-≼ specialise-preserves-≼⁻
 
 
 -- module _ {c : Con α} {us : Vals (argsTy α c)} {vs : Vals αs} where
 
---   𝒟-aux-preserves-≼ : {ps : Pats (α ∷ αs)}
+--   defaultAux-preserves-≼ : {ps : Pats (α ∷ αs)}
 --     → c ∉ headAll ps
 --     → ps ≼* con {α} c us ∷ vs
---     → 𝒟-aux ps ≼** vs
---   𝒟-aux-preserves-≼ {∙ ∷ ps} _ ∙ps≼cusvs = here (∷⁻ ∙ps≼cusvs .proj₂)
---   𝒟-aux-preserves-≼ {con d rs ∷ ps} c∉d drsps≼cusvs =
+--     → defaultAux ps ≼** vs
+--   defaultAux-preserves-≼ {∙ ∷ ps} _ ∙ps≼cusvs = here (∷⁻ ∙ps≼cusvs .proj₂)
+--   defaultAux-preserves-≼ {con d rs ∷ ps} c∉d drsps≼cusvs =
 --     contradiction (sym (c≼d→c≡d (∷⁻ drsps≼cusvs .proj₁))) c∉d
---   𝒟-aux-preserves-≼ {r₁ ∣ r₂ ∷ ps} c∉r₁∪r₂ =
+--   defaultAux-preserves-≼ {r₁ ∣ r₂ ∷ ps} c∉r₁∪r₂ =
 --     [ ++Any⁺ˡ , ++Any⁺ʳ _ ] ∘
 --     map-⊎
---       (𝒟-aux-preserves-≼ (c∉r₁∪r₂ ∘ inj₁))
---       (𝒟-aux-preserves-≼ (c∉r₁∪r₂ ∘ inj₂)) ∘
+--       (defaultAux-preserves-≼ (c∉r₁∪r₂ ∘ inj₁))
+--       (defaultAux-preserves-≼ (c∉r₁∪r₂ ∘ inj₂)) ∘
 --     ∣≼*⁻
 
---   -- If c does not appear in the first column of P, 𝒟 preserves ≼
---   𝒟-preserves-≼ : {P : PatMat (α ∷ αs)}
+--   -- If c does not appear in the first column of P, default preserves ≼
+--   default-preserves-≼ : {P : PatMat (α ∷ αs)}
 --     → All (λ ps → c ∉ headAll ps) P
 --     → P ≼** con {α} c us ∷ vs
---     → 𝒟 P ≼** vs
---   𝒟-preserves-≼ {ps ∷ P} (c∉ps ∷ _) (here ps≼cusvs) =
---     ++Any⁺ˡ (𝒟-aux-preserves-≼ c∉ps ps≼cusvs)
---   𝒟-preserves-≼ {ps ∷ P} (_ ∷ c∉P) (there P≼cusvs) =
---     ++Any⁺ʳ _ (𝒟-preserves-≼ c∉P P≼cusvs)
+--     → default P ≼** vs
+--   default-preserves-≼ {ps ∷ P} (c∉ps ∷ _) (here ps≼cusvs) =
+--     ++Any⁺ˡ (defaultAux-preserves-≼ c∉ps ps≼cusvs)
+--   default-preserves-≼ {ps ∷ P} (_ ∷ c∉P) (there P≼cusvs) =
+--     ++Any⁺ʳ _ (default-preserves-≼ c∉P P≼cusvs)
 
 
 -- module _ {v : Val α} {vs : Vals αs} where
 
---   𝒟-aux-preserves-≼⁻ : {ps : Pats (α ∷ αs)}
---     → 𝒟-aux ps ≼** vs
+--   defaultAux-preserves-≼⁻ : {ps : Pats (α ∷ αs)}
+--     → defaultAux ps ≼** vs
 --     → ps ≼* v ∷ vs
---   𝒟-aux-preserves-≼⁻ {∙ ∷ ps} (here ∙ps≼vvs) = ∙≼ ∷ ∙ps≼vvs
---   𝒟-aux-preserves-≼⁻ {r₁ ∣ r₂ ∷ ps} =
---     ∣≼*⁺ ∘ map-⊎ 𝒟-aux-preserves-≼⁻ 𝒟-aux-preserves-≼⁻ ∘ ++Any⁻ _
+--   defaultAux-preserves-≼⁻ {∙ ∷ ps} (here ∙ps≼vvs) = ∙≼ ∷ ∙ps≼vvs
+--   defaultAux-preserves-≼⁻ {r₁ ∣ r₂ ∷ ps} =
+--     ∣≼*⁺ ∘ map-⊎ defaultAux-preserves-≼⁻ defaultAux-preserves-≼⁻ ∘ ++Any⁻ _
 
---   𝒟-preserves-≼⁻ : {P : PatMat (α ∷ αs)}
---     → 𝒟 P ≼** vs
+--   default-preserves-≼⁻ : {P : PatMat (α ∷ αs)}
+--     → default P ≼** vs
 --     → P ≼** v ∷ vs
---   𝒟-preserves-≼⁻ = mapAny 𝒟-aux-preserves-≼⁻ ∘ mapAny⁻ ∘ concatAny⁻ _
+--   default-preserves-≼⁻ = mapAny defaultAux-preserves-≼⁻ ∘ mapAny⁻ ∘ concatAny⁻ _
 
 -- --------------------------------------------------------------------------------
 -- -- Properties of usefulness
@@ -224,101 +373,81 @@ Useful {αs0} P ps = ∃[ vs ∈ Values αs0 ] P ⋠** vs × ps ≼* vs
 
 -- module _ {P : PatMat (α ∷ αs)} {c : Con α} {rs : Pats (argsTy α c)} {ps : Pats αs} where
 
---   𝒮-preserves-usefulness-con :
+--   specialise-preserves-usefulness-con :
 --       Useful P (con c rs ∷ ps)
---     → Useful (𝒮 c P) (++All⁺ rs ps)
---   𝒮-preserves-usefulness-con (con c vs ∷ us , P⋠cvsus , con≼ rs≼vs ∷ ps≼us) =
---     ++All⁺ vs us , contraposition 𝒮-preserves-≼⁻ P⋠cvsus , ++⁺ rs≼vs ps≼us
+--     → Useful (specialise c P) (++All⁺ rs ps)
+--   specialise-preserves-usefulness-con (con c vs ∷ us , P⋠cvsus , con≼ rs≼vs ∷ ps≼us) =
+--     ++All⁺ vs us , contraposition specialise-preserves-≼⁻ P⋠cvsus , ++⁺ rs≼vs ps≼us
 
---   𝒮-preserves-usefulness-con⁻ :
---       Useful (𝒮 c P) (++All⁺ rs ps)
+--   specialise-preserves-usefulness-con⁻ :
+--       Useful (specialise c P) (++All⁺ rs ps)
 --     → Useful P (con c rs ∷ ps)
---   𝒮-preserves-usefulness-con⁻ (usvs , 𝒮P⋠usvs , rsps≼usvs)
+--   specialise-preserves-usefulness-con⁻ (usvs , specialiseP⋠usvs , rsps≼usvs)
 --     with us , vs , refl , rs≼us , ps≼vs ← split rs rsps≼usvs =
---     con c us ∷ vs , contraposition 𝒮-preserves-≼ 𝒮P⋠usvs , con≼ rs≼us ∷ ps≼vs
+--     con c us ∷ vs , contraposition specialise-preserves-≼ specialiseP⋠usvs , con≼ rs≼us ∷ ps≼vs
 
---   -- con c rs ∷ ps is useful wrt P iff rs ++ ps is useful wrt 𝒮 c P
---   𝒮-preserves-usefulness-con⇔ :
---       Useful (𝒮 c P) (++All⁺ rs ps)
+--   -- con c rs ∷ ps is useful wrt P iff rs ++ ps is useful wrt specialise c P
+--   specialise-preserves-usefulness-con⇔ :
+--       Useful (specialise c P) (++All⁺ rs ps)
 --     ⇔ Useful P (con c rs ∷ ps)
---   𝒮-preserves-usefulness-con⇔ =
---     mk⇔ 𝒮-preserves-usefulness-con⁻ 𝒮-preserves-usefulness-con
+--   specialise-preserves-usefulness-con⇔ =
+--     mk⇔ specialise-preserves-usefulness-con⁻ specialise-preserves-usefulness-con
 
 
 -- module _ {P : PatMat (α ∷ αs)} {ps : Pats αs} where
 
---   -- If `∙ ∷ ps` is useful wrt P, there exists a constructor c such that `∙* ++ ps` is useful wrt `𝒮 c P`
---   ∃𝒮-preserves-usefulness-∙ :
+--   -- If `∙ ∷ ps` is useful wrt P, there exists a constructor c such that `∙* ++ ps` is useful wrt `specialise c P`
+--   ∃specialise-preserves-usefulness-∙ :
 --       Useful P (∙ ∷ ps)
---     → ∃[ c ] Useful (𝒮 c P) (++All⁺ ∙* ps)
---   ∃𝒮-preserves-usefulness-∙ (con c us ∷ vs , P⋠cusvs , ∙≼ ∷ ps≼vs) =
---     c , ++All⁺ us vs , contraposition 𝒮-preserves-≼⁻ P⋠cusvs , ++⁺ ∙*≼ ps≼vs
+--     → ∃[ c ] Useful (specialise c P) (++All⁺ ∙* ps)
+--   ∃specialise-preserves-usefulness-∙ (con c us ∷ vs , P⋠cusvs , ∙≼ ∷ ps≼vs) =
+--     c , ++All⁺ us vs , contraposition specialise-preserves-≼⁻ P⋠cusvs , ++⁺ ∙*≼ ps≼vs
 
---   -- If there exists a constructor c such that `∙* ++ ps` is useful wrt `𝒮 c P`, `∙ ∷ ps` is also useful wrt P
---   ∃𝒮-preserves-usefulness-∙⁻ :
---       ∃[ c ] Useful (𝒮 c P) (++All⁺ ∙* ps)
+--   -- If there exists a constructor c such that `∙* ++ ps` is useful wrt `specialise c P`, `∙ ∷ ps` is also useful wrt P
+--   ∃specialise-preserves-usefulness-∙⁻ :
+--       ∃[ c ] Useful (specialise c P) (++All⁺ ∙* ps)
 --     → Useful P (∙ ∷ ps)
---   ∃𝒮-preserves-usefulness-∙⁻ (c , usvs , 𝒮P⋠usvs , ∙*ps≼usvs)
+--   ∃specialise-preserves-usefulness-∙⁻ (c , usvs , specialiseP⋠usvs , ∙*ps≼usvs)
 --     with us , vs , refl , _ , ps≼vs ← split {argsTy α c} ∙* ∙*ps≼usvs =
---     con c us ∷ vs , contraposition 𝒮-preserves-≼ 𝒮P⋠usvs , ∙≼ ∷ ps≼vs
+--     con c us ∷ vs , contraposition specialise-preserves-≼ specialiseP⋠usvs , ∙≼ ∷ ps≼vs
 
---   -- ∙ ∷ ps is useful wrt P iff ∙* ++ ps is useful wrt 𝒮 c P
---   ∃𝒮-preserves-usefulness-∙⇔ :
---       (∃[ c ] Useful (𝒮 c P) (++All⁺ ∙* ps))
+--   -- ∙ ∷ ps is useful wrt P iff ∙* ++ ps is useful wrt specialise c P
+--   ∃specialise-preserves-usefulness-∙⇔ :
+--       (∃[ c ] Useful (specialise c P) (++All⁺ ∙* ps))
 --     ⇔ Useful P (∙ ∷ ps)
---   ∃𝒮-preserves-usefulness-∙⇔ =
---     mk⇔ ∃𝒮-preserves-usefulness-∙⁻ ∃𝒮-preserves-usefulness-∙
+--   ∃specialise-preserves-usefulness-∙⇔ =
+--     mk⇔ ∃specialise-preserves-usefulness-∙⁻ ∃specialise-preserves-usefulness-∙
 
 
 -- module _ {P : PatMat (α ∷ αs)} {ps : Pats αs} where
 
---   -- ps is useful wrt (𝒟 P) if (∙ ∷ ps) is useful wrt P
---   𝒟-preserves-usefulness : Useful P (∙ ∷ ps) → Useful (𝒟 P) ps
---   𝒟-preserves-usefulness (v ∷ vs  , P⋠vvs , ∙≼ ∷ ps≼vs) =
---     vs , contraposition 𝒟-preserves-≼⁻ P⋠vvs , ps≼vs
+--   -- ps is useful wrt (default P) if (∙ ∷ ps) is useful wrt P
+--   default-preserves-usefulness : Useful P (∙ ∷ ps) → Useful (default P) ps
+--   default-preserves-usefulness (v ∷ vs  , P⋠vvs , ∙≼ ∷ ps≼vs) =
+--     vs , contraposition default-preserves-≼⁻ P⋠vvs , ps≼vs
 
---   -- If there is a constructor c that does not appear in the first column of P, and ps is useful wrt 𝒟 P, ∙ ∷ ps is also useful wrt P.
---   𝒟-preserves-usefulness⁻ : Missing P → Useful (𝒟 P) ps → Useful P (∙ ∷ ps)
---   𝒟-preserves-usefulness⁻ (c , c∉P) (vs , 𝒟P⋠vs , ps≼vs) =
---     inhabOf c ∷ vs , contraposition (𝒟-preserves-≼ c∉P) 𝒟P⋠vs , ∙≼ ∷ ps≼vs
+--   -- If there is a constructor c that does not appear in the first column of P, and ps is useful wrt default P, ∙ ∷ ps is also useful wrt P.
+--   default-preserves-usefulness⁻ : Missing P → Useful (default P) ps → Useful P (∙ ∷ ps)
+--   default-preserves-usefulness⁻ (c , c∉P) (vs , defaultP⋠vs , ps≼vs) =
+--     inhabOf c ∷ vs , contraposition (default-preserves-≼ c∉P) defaultP⋠vs , ∙≼ ∷ ps≼vs
 
---   𝒟-preserves-usefulness⇔ : Missing P → Useful (𝒟 P) ps ⇔ Useful P (∙ ∷ ps)
---   𝒟-preserves-usefulness⇔ ∃c∉P =
---     mk⇔ (𝒟-preserves-usefulness⁻ ∃c∉P) 𝒟-preserves-usefulness
+--   default-preserves-usefulness⇔ : Missing P → Useful (default P) ps ⇔ Useful P (∙ ∷ ps)
+--   default-preserves-usefulness⇔ ∃c∉P =
+--     mk⇔ (default-preserves-usefulness⁻ ∃c∉P) default-preserves-usefulness
 
 -- --------------------------------------------------------------------------------
 -- -- Usefulness checking algorithm
 
--- -- Specialized accessibility predicate for usefulness checking algorithm
--- -- for separating termination proof from the algorithm
--- -- This method is due to Ana Bove 2003.
--- data UsefulAcc : (P : PatMat αs) (ps : Pats αs) → Set where
---   done : {P : PatMat []} → UsefulAcc P []
-
---   step-∙ : {P : PatMat (α ∷ αs)} {ps : Pats αs}
---     → (Missing P → UsefulAcc (𝒟 P) ps)
---     → (∀ c → Any (λ qs → c ∈ headAll qs) P → UsefulAcc (𝒮 c P) (++All⁺ ∙* ps))
---     → UsefulAcc P (∙ ∷ ps)
-
---   step-con : {P : PatMat (α ∷ αs)} {c : Con α} {rs : Pats (argsTy α c)} {ps : Pats αs}
---     → UsefulAcc (𝒮 c P) (++All⁺ rs ps)
---     → UsefulAcc P (con c rs ∷ ps)
-
---   step-∣ : {P : PatMat (α ∷ αs)} {p q : Pat α} {ps : Pats αs}
---     → UsefulAcc P (p ∷ ps)
---     → UsefulAcc P (q ∷ ps)
---     → UsefulAcc P (p ∣ q ∷ ps)
-
 -- useful?′ : (P : PatMat αs) (ps : Pats αs) → UsefulAcc P ps → Dec (Useful P ps)
 -- useful?′ P (∙ ∷ qs) (step-∙ h h′) with ∃missingCon? P
 -- ... | inj₁ ∃c∉P =
---       mapDec (𝒟-preserves-usefulness⇔ ∃c∉P) (useful?′ (𝒟 P) qs (h ∃c∉P))
+--       mapDec (default-preserves-usefulness⇔ ∃c∉P) (useful?′ (default P) qs (h ∃c∉P))
 -- ... | inj₂ ∀c∈P =
---       mapDec ∃𝒮-preserves-usefulness-∙⇔
---         (anyFin? λ c → useful?′ (𝒮 c P) (++All⁺ ∙* qs) (h′ c (∀c∈P c)))
+--       mapDec ∃specialise-preserves-usefulness-∙⇔
+--         (anyFin? λ c → useful?′ (specialise c P) (++All⁺ ∙* qs) (h′ c (∀c∈P c)))
 -- useful?′ P (con c rs ∷ ps) (step-con h) =
---   mapDec 𝒮-preserves-usefulness-con⇔
---     (useful?′ (𝒮 c P) (++All⁺ rs ps) h)
+--   mapDec specialise-preserves-usefulness-con⇔
+--     (useful?′ (specialise c P) (++All⁺ rs ps) h)
 -- useful?′ P (r₁ ∣ r₂ ∷ ps) (step-∣ h h′) =
 --   mapDec merge-useful⇔
 --     (useful?′ P (r₁ ∷ ps) h ⊎-dec useful?′ P (r₂ ∷ ps) h′)
@@ -365,100 +494,100 @@ Useful {αs0} P ps = ∃[ vs ∈ Values αs0 ] P ⋠** vs × ps ≼* vs
 --   | sum-++ (mapList (flip patsSize 0) P) (mapList (flip patsSize 0) Q)
 --   = refl
 
--- 𝒮-aux-≤ : (c : Con α) (ps : Pats (α ∷ αs)) → patMatSize (𝒮-aux c ps) ≤ patsSize ps 0
--- 𝒮-aux-≤ {α} c (∙ ∷ ps)
+-- specialiseAux-≤ : (c : Con α) (ps : Pats (α ∷ αs)) → patMatSize (specialiseAux c ps) ≤ patsSize ps 0
+-- specialiseAux-≤ {α} c (∙ ∷ ps)
 --   rewrite patsSize-++ (∙* {αs = argsTy α c}) ps 0
 --   | patsSize∙* (argsTy α c) (patsSize ps 0)
 --   | +-identityʳ (patsSize ps 0)
 --   = ≤-refl
--- 𝒮-aux-≤ c (con c′ rs ∷ ps) with c ≟Fin c′
+-- specialiseAux-≤ c (con c′ rs ∷ ps) with c ≟Fin c′
 -- ... | yes refl
 --         rewrite patsSize-++ rs ps 0
 --         | +-identityʳ (patsSize rs (patsSize ps 0))
 --         = n≤1+n (patsSize rs (patsSize ps 0))
 -- ... | no _ = <⇒≤ 0<1+n
--- 𝒮-aux-≤ c (r₁ ∣ r₂ ∷ ps) =
+-- specialiseAux-≤ c (r₁ ∣ r₂ ∷ ps) =
 --   -- rewrite messed up termination check, so do it manually
 --   begin
---     patMatSize (𝒮-aux c (r₁ ∷ ps) ++ 𝒮-aux c (r₂ ∷ ps))
---   ≡⟨ patMatSize-++ (𝒮-aux c (r₁ ∷ ps)) (𝒮-aux c (r₂ ∷ ps)) ⟩
---     patMatSize (𝒮-aux c (r₁ ∷ ps)) + patMatSize (𝒮-aux c (r₂ ∷ ps))
---   ≤⟨ +-mono-≤ (𝒮-aux-≤ c (r₁ ∷ ps)) (𝒮-aux-≤ c (r₂ ∷ ps)) ⟩
+--     patMatSize (specialiseAux c (r₁ ∷ ps) ++ specialiseAux c (r₂ ∷ ps))
+--   ≡⟨ patMatSize-++ (specialiseAux c (r₁ ∷ ps)) (specialiseAux c (r₂ ∷ ps)) ⟩
+--     patMatSize (specialiseAux c (r₁ ∷ ps)) + patMatSize (specialiseAux c (r₂ ∷ ps))
+--   ≤⟨ +-mono-≤ (specialiseAux-≤ c (r₁ ∷ ps)) (specialiseAux-≤ c (r₂ ∷ ps)) ⟩
 --     patsSize (r₁ ∷ ps) 0 + patsSize (r₂ ∷ ps) 0
 --   <⟨ n<1+n _ ⟩
 --     suc (patsSize (r₁ ∷ ps) 0 + patsSize (r₂ ∷ ps) 0)
 --   ∎
 --   where open ≤-Reasoning
 
--- -- 𝒮 does not increase the pattern matrix size
--- 𝒮-≤ : (c : Con α) (P : PatMat (α ∷ αs)) → patMatSize (𝒮 c P) ≤ patMatSize P
--- 𝒮-≤ c [] = ≤-refl
--- 𝒮-≤ c (ps ∷ P)
---   rewrite patMatSize-++ (𝒮-aux c ps) (𝒮 c P)
---   = +-mono-≤ (𝒮-aux-≤ c ps) (𝒮-≤ c P)
+-- -- specialise does not increase the pattern matrix size
+-- specialise-≤ : (c : Con α) (P : PatMat (α ∷ αs)) → patMatSize (specialise c P) ≤ patMatSize P
+-- specialise-≤ c [] = ≤-refl
+-- specialise-≤ c (ps ∷ P)
+--   rewrite patMatSize-++ (specialiseAux c ps) (specialise c P)
+--   = +-mono-≤ (specialiseAux-≤ c ps) (specialise-≤ c P)
 
--- ∈⇒𝒮-aux-< : (c : Con α) (ps : Pats (α ∷ αs))
+-- ∈⇒specialiseAux-< : (c : Con α) (ps : Pats (α ∷ αs))
 --   → c ∈ headAll ps
---   → patMatSize (𝒮-aux c ps) < patsSize ps 0
--- ∈⇒𝒮-aux-< c (con d rs ∷ ps) c≡d with c ≟Fin d
+--   → patMatSize (specialiseAux c ps) < patsSize ps 0
+-- ∈⇒specialiseAux-< c (con d rs ∷ ps) c≡d with c ≟Fin d
 -- ... | yes refl
 --       rewrite patsSize-++ rs ps 0
 --       | +-identityʳ (patsSize rs (patsSize ps 0))
 --       = ≤-refl
 -- ... | no c≢d = contradiction c≡d c≢d
--- ∈⇒𝒮-aux-< c (r₁ ∣ r₂ ∷ ps) (inj₁ c∈r₁) =
+-- ∈⇒specialiseAux-< c (r₁ ∣ r₂ ∷ ps) (inj₁ c∈r₁) =
 --   begin
---     suc (patMatSize (𝒮-aux c (r₁ ∷ ps) ++ 𝒮-aux c (r₂ ∷ ps)))
---   ≡⟨ cong suc (patMatSize-++ (𝒮-aux c (r₁ ∷ ps)) (𝒮-aux c (r₂ ∷ ps))) ⟩
---     suc (patMatSize (𝒮-aux c (r₁ ∷ ps)) + patMatSize (𝒮-aux c (r₂ ∷ ps)))
---   <⟨ s<s (+-mono-<-≤ (∈⇒𝒮-aux-< c (r₁ ∷ ps) c∈r₁) (𝒮-aux-≤ c (r₂ ∷ ps))) ⟩
+--     suc (patMatSize (specialiseAux c (r₁ ∷ ps) ++ specialiseAux c (r₂ ∷ ps)))
+--   ≡⟨ cong suc (patMatSize-++ (specialiseAux c (r₁ ∷ ps)) (specialiseAux c (r₂ ∷ ps))) ⟩
+--     suc (patMatSize (specialiseAux c (r₁ ∷ ps)) + patMatSize (specialiseAux c (r₂ ∷ ps)))
+--   <⟨ s<s (+-mono-<-≤ (∈⇒specialiseAux-< c (r₁ ∷ ps) c∈r₁) (specialiseAux-≤ c (r₂ ∷ ps))) ⟩
 --     suc (patsSize (r₁ ∷ ps) 0 + patsSize (r₂ ∷ ps) 0)
 --   ∎
 --   where open ≤-Reasoning
--- ∈⇒𝒮-aux-< c (r₁ ∣ r₂ ∷ ps) (inj₂ c∈r₂) =
+-- ∈⇒specialiseAux-< c (r₁ ∣ r₂ ∷ ps) (inj₂ c∈r₂) =
 --   begin
---     suc (patMatSize (𝒮-aux c (r₁ ∷ ps) ++ 𝒮-aux c (r₂ ∷ ps)))
---   ≡⟨ cong suc (patMatSize-++ (𝒮-aux c (r₁ ∷ ps)) (𝒮-aux c (r₂ ∷ ps))) ⟩
---     suc (patMatSize (𝒮-aux c (r₁ ∷ ps)) + patMatSize (𝒮-aux c (r₂ ∷ ps)))
---   <⟨ s<s (+-mono-≤-< (𝒮-aux-≤ c (r₁ ∷ ps)) (∈⇒𝒮-aux-< c (r₂ ∷ ps) c∈r₂)) ⟩
+--     suc (patMatSize (specialiseAux c (r₁ ∷ ps) ++ specialiseAux c (r₂ ∷ ps)))
+--   ≡⟨ cong suc (patMatSize-++ (specialiseAux c (r₁ ∷ ps)) (specialiseAux c (r₂ ∷ ps))) ⟩
+--     suc (patMatSize (specialiseAux c (r₁ ∷ ps)) + patMatSize (specialiseAux c (r₂ ∷ ps)))
+--   <⟨ s<s (+-mono-≤-< (specialiseAux-≤ c (r₁ ∷ ps)) (∈⇒specialiseAux-< c (r₂ ∷ ps) c∈r₂)) ⟩
 --     suc (patsSize (r₁ ∷ ps) 0 + patsSize (r₂ ∷ ps) 0)
 --   ∎
 --   where open ≤-Reasoning
 
--- -- 𝒮 strictly reduces the pattern matrix size if the constructor is in the first column of the matrix
--- ∈⇒𝒮-< : (c : Con α) (P : PatMat (α ∷ αs))
+-- -- specialise strictly reduces the pattern matrix size if the constructor is in the first column of the matrix
+-- ∈⇒specialise-< : (c : Con α) (P : PatMat (α ∷ αs))
 --   → Any (λ ps → c ∈ headAll ps) P
---   → patMatSize (𝒮 c P) < patMatSize P
--- ∈⇒𝒮-< c (ps ∷ P) (here c∈ps)
---   rewrite patMatSize-++ (𝒮-aux c ps) (𝒮 c P)
---   = +-mono-<-≤ (∈⇒𝒮-aux-< c ps c∈ps) (𝒮-≤ c P)
--- ∈⇒𝒮-< c (ps ∷ P) (there c∈P)
---   rewrite patMatSize-++ (𝒮-aux c ps) (𝒮 c P)
---   = +-mono-≤-< (𝒮-aux-≤ c ps) (∈⇒𝒮-< c P c∈P)
+--   → patMatSize (specialise c P) < patMatSize P
+-- ∈⇒specialise-< c (ps ∷ P) (here c∈ps)
+--   rewrite patMatSize-++ (specialiseAux c ps) (specialise c P)
+--   = +-mono-<-≤ (∈⇒specialiseAux-< c ps c∈ps) (specialise-≤ c P)
+-- ∈⇒specialise-< c (ps ∷ P) (there c∈P)
+--   rewrite patMatSize-++ (specialiseAux c ps) (specialise c P)
+--   = +-mono-≤-< (specialiseAux-≤ c ps) (∈⇒specialise-< c P c∈P)
 
--- 𝒟-aux-≤ : (ps : Pats (α ∷ αs)) → patMatSize (𝒟-aux ps) ≤ patsSize ps 0
--- 𝒟-aux-≤ (∙ ∷ ps)
+-- defaultAux-≤ : (ps : Pats (α ∷ αs)) → patMatSize (defaultAux ps) ≤ patsSize ps 0
+-- defaultAux-≤ (∙ ∷ ps)
 --   rewrite +-identityʳ (patsSize ps 0)
 --   = ≤-refl
--- 𝒟-aux-≤ (con _ _ ∷ ps) = <⇒≤ 0<1+n
--- 𝒟-aux-≤ (r₁ ∣ r₂ ∷ ps) =
+-- defaultAux-≤ (con _ _ ∷ ps) = <⇒≤ 0<1+n
+-- defaultAux-≤ (r₁ ∣ r₂ ∷ ps) =
 --   begin
---     patMatSize (𝒟-aux (r₁ ∷ ps) ++ 𝒟-aux (r₂ ∷ ps))
---   ≡⟨ patMatSize-++ (𝒟-aux (r₁ ∷ ps)) (𝒟-aux (r₂ ∷ ps)) ⟩
---     patMatSize (𝒟-aux (r₁ ∷ ps)) + patMatSize (𝒟-aux (r₂ ∷ ps))
---   ≤⟨ +-mono-≤ (𝒟-aux-≤ (r₁ ∷ ps)) (𝒟-aux-≤ (r₂ ∷ ps)) ⟩
+--     patMatSize (defaultAux (r₁ ∷ ps) ++ defaultAux (r₂ ∷ ps))
+--   ≡⟨ patMatSize-++ (defaultAux (r₁ ∷ ps)) (defaultAux (r₂ ∷ ps)) ⟩
+--     patMatSize (defaultAux (r₁ ∷ ps)) + patMatSize (defaultAux (r₂ ∷ ps))
+--   ≤⟨ +-mono-≤ (defaultAux-≤ (r₁ ∷ ps)) (defaultAux-≤ (r₂ ∷ ps)) ⟩
 --     patsSize (r₁ ∷ ps) 0 + patsSize (r₂ ∷ ps) 0
 --   <⟨ n<1+n _ ⟩
 --     suc (patsSize (r₁ ∷ ps) 0 + patsSize (r₂ ∷ ps) 0)
 --   ∎
 --   where open ≤-Reasoning
 
--- -- 𝒟 does not increase the pattern matrix size
--- 𝒟-≤ : (P : PatMat (α ∷ αs)) → patMatSize (𝒟 P) ≤ patMatSize P
--- 𝒟-≤ [] = ≤-refl
--- 𝒟-≤ (ps ∷ P)
---   rewrite patMatSize-++ (𝒟-aux ps) (𝒟 P)
---   = +-mono-≤ (𝒟-aux-≤ ps) (𝒟-≤ P)
+-- -- default does not increase the pattern matrix size
+-- default-≤ : (P : PatMat (α ∷ αs)) → patMatSize (default P) ≤ patMatSize P
+-- default-≤ [] = ≤-refl
+-- default-≤ (ps ∷ P)
+--   rewrite patMatSize-++ (defaultAux ps) (default P)
+--   = +-mono-≤ (defaultAux-≤ ps) (default-≤ P)
 
 -- SomeProblem : Set
 -- SomeProblem = ∃[ αs ] PatMat αs × Pats αs
@@ -474,28 +603,28 @@ Useful {αs0} P ps = ∃[ vs ∈ Values αs0 ] P ⋠** vs × ps ≼* vs
 -- ⊏-wellFounded : WellFounded _⊏_
 -- ⊏-wellFounded = on-wellFounded problemSize (×-wellFounded <-wellFounded <-wellFounded)
 
--- -- 𝒮 strictly reduces the problem size
--- 𝒮-⊏ : (P : PatMat (α ∷ αs)) (c : Con α) (rs : Pats (argsTy α c)) (ps : Pats αs)
---   → (-, 𝒮 c P , ++All⁺ rs ps) ⊏ (-, P , con c rs ∷ ps)
--- 𝒮-⊏ P c rs ps
+-- -- specialise strictly reduces the problem size
+-- specialise-⊏ : (P : PatMat (α ∷ αs)) (c : Con α) (rs : Pats (argsTy α c)) (ps : Pats αs)
+--   → (-, specialise c P , ++All⁺ rs ps) ⊏ (-, P , con c rs ∷ ps)
+-- specialise-⊏ P c rs ps
 --   rewrite patsSize-++ rs ps 0
---   = inj₁ (+-mono-≤-< (𝒮-≤ c P) (n<1+n _))
+--   = inj₁ (+-mono-≤-< (specialise-≤ c P) (n<1+n _))
 
--- -- 𝒟 strictly reduces the problem size
--- 𝒟-⊏ : (P : PatMat (α ∷ αs)) (qs : Pats αs)
---   → (-, 𝒟 P , qs) ⊏ (-, P , ∙ ∷ qs)
--- 𝒟-⊏ P qs with m≤n⇒m<n∨m≡n (𝒟-≤ P)
--- ... | inj₁ 𝒟P<P = inj₁ (+-monoˡ-< (patsSize qs 0) 𝒟P<P)
--- ... | inj₂ 𝒟P≡P = inj₂ (cong (_+ patsSize qs 0) 𝒟P≡P , n<1+n _)
+-- -- default strictly reduces the problem size
+-- default-⊏ : (P : PatMat (α ∷ αs)) (qs : Pats αs)
+--   → (-, default P , qs) ⊏ (-, P , ∙ ∷ qs)
+-- default-⊏ P qs with m≤n⇒m<n∨m≡n (default-≤ P)
+-- ... | inj₁ defaultP<P = inj₁ (+-monoˡ-< (patsSize qs 0) defaultP<P)
+-- ... | inj₂ defaultP≡P = inj₂ (cong (_+ patsSize qs 0) defaultP≡P , n<1+n _)
 
--- -- 𝒮 strictly reduces the problem size if the constructor is in the first column of the matrix
--- ∈⇒𝒮-⊏ : (c : Con α) (P : PatMat (α ∷ αs)) (qs : Pats αs)
+-- -- specialise strictly reduces the problem size if the constructor is in the first column of the matrix
+-- ∈⇒specialise-⊏ : (c : Con α) (P : PatMat (α ∷ αs)) (qs : Pats αs)
 --   → Any (λ ps → c ∈ headAll ps) P
---   → (-, 𝒮 c P , ++All⁺ ∙* qs) ⊏ (-, P , ∙ ∷ qs)
--- ∈⇒𝒮-⊏ {α} c P qs c∈P
+--   → (-, specialise c P , ++All⁺ ∙* qs) ⊏ (-, P , ∙ ∷ qs)
+-- ∈⇒specialise-⊏ {α} c P qs c∈P
 --   rewrite patsSize-++ (∙* {αs = argsTy α c}) qs 0
 --   | patsSize∙* (argsTy α c) (patsSize qs 0)
---   = inj₁ (+-monoˡ-< (patsSize qs 0) (∈⇒𝒮-< c P c∈P))
+--   = inj₁ (+-monoˡ-< (patsSize qs 0) (∈⇒specialise-< c P c∈P))
 
 -- -- Choosing the left pattern strictly reduces the problem size
 -- ∣-⊏ₗ : (P : PatMat (α ∷ αs)) (r₁ r₂ : Pat α) (ps : Pats αs)
@@ -509,23 +638,23 @@ Useful {αs0} P ps = ∃[ vs ∈ Values αs0 ] P ⋠** vs × ps ≼* vs
 -- ∣-⊏ᵣ P r₁ r₂ ps =
 --   inj₁ (+-monoʳ-< (patMatSize P) (s<s (m≤n+m (patsSize (r₂ ∷ ps) 0) (patsSize (r₁ ∷ ps) 0))))
 
--- ∀UsefulAcc-aux : (P : PatMat αs) (ps : Pats αs)
+-- ∀UsefulAccAux : (P : PatMat αs) (ps : Pats αs)
 --   → Acc _⊏_ (-, P , ps)
 --   → UsefulAcc P ps
--- ∀UsefulAcc-aux P [] _ = done
--- ∀UsefulAcc-aux P (∙ ∷ ps) (acc h) =
+-- ∀UsefulAccAux P [] _ = done
+-- ∀UsefulAccAux P (∙ ∷ ps) (acc h) =
 --   step-∙
---     (λ _ → ∀UsefulAcc-aux (𝒟 P) ps (h (𝒟-⊏ P ps)))
---     (λ c c∈P → ∀UsefulAcc-aux (𝒮 c P) (++All⁺ ∙* ps) (h (∈⇒𝒮-⊏ c P ps c∈P)))
--- ∀UsefulAcc-aux P (con c rs ∷ ps) (acc h) =
---   step-con (∀UsefulAcc-aux (𝒮 c P) (++All⁺ rs ps) (h (𝒮-⊏ P c rs ps)))
--- ∀UsefulAcc-aux P (r₁ ∣ r₂ ∷ ps) (acc h) =
+--     (λ _ → ∀UsefulAccAux (default P) ps (h (default-⊏ P ps)))
+--     (λ c c∈P → ∀UsefulAccAux (specialise c P) (++All⁺ ∙* ps) (h (∈⇒specialise-⊏ c P ps c∈P)))
+-- ∀UsefulAccAux P (con c rs ∷ ps) (acc h) =
+--   step-con (∀UsefulAccAux (specialise c P) (++All⁺ rs ps) (h (specialise-⊏ P c rs ps)))
+-- ∀UsefulAccAux P (r₁ ∣ r₂ ∷ ps) (acc h) =
 --   step-∣
---     (∀UsefulAcc-aux P (r₁ ∷ ps) (h (∣-⊏ₗ P r₁ r₂ ps)))
---     (∀UsefulAcc-aux P (r₂ ∷ ps) (h (∣-⊏ᵣ P r₁ r₂ ps)))
+--     (∀UsefulAccAux P (r₁ ∷ ps) (h (∣-⊏ₗ P r₁ r₂ ps)))
+--     (∀UsefulAccAux P (r₂ ∷ ps) (h (∣-⊏ᵣ P r₁ r₂ ps)))
 
 -- ∀UsefulAcc : (P : PatMat αs) (ps : Pats αs) → UsefulAcc P ps
--- ∀UsefulAcc P ps = ∀UsefulAcc-aux P ps (⊏-wellFounded _)
+-- ∀UsefulAcc P ps = ∀UsefulAccAux P ps (⊏-wellFounded _)
 
 -- --------------------------------------------------------------------------------
 -- -- Entrypoint
