@@ -125,7 +125,7 @@ module _
   where
 
   inhabCon : (d : NameData) → NameCon d
-  inhabCon d = case nonEmptyAxiom {α = TyData d} of λ { (con c _) → c }
+  inhabCon d = case nonEmptyAxiom {α = TyData d} of λ where (con c _) → c
   {-# COMPILE AGDA2HS inhabCon #-}
 
 
@@ -143,10 +143,9 @@ module _
     case
       decAllNameCon (dataDefs sig d) (λ c →
         anyDec (λ ps → c ∈? headPattern ps) pss)
-    of λ
-      { (Left (Erased h)) → Right (Erased h)
-      ; (Right (Erased (c ⟨ h ⟩ ))) → Left (Erased (c ⟨ ¬Any⇒All¬ pss h ⟩))
-      }
+    of λ where
+      (Left (Erased h)) → Right (Erased h)
+      (Right (Erased (c ⟨ h ⟩ ))) → Left (Erased (c ⟨ ¬Any⇒All¬ pss h ⟩))
   {-# COMPILE AGDA2HS decExistsMissingCon #-}
 
 module _ {{@0 sig : Signature}} where
@@ -230,21 +229,239 @@ module _
   decUseful {⌈⌉}            []      ⌈⌉              done             = Yes nilNil
   decUseful {⌈⌉}            (_ ∷ _) ⌈⌉              done             = No consNil
   decUseful {TyData d ◂ αs} pss     (— ◂ ps)        (step-wild h h') =
-    case decExistsMissingCon pss of λ
-      { (Left (Erased miss))  →
-          mapDecP (wildHeadMiss miss) (wildHeadMissInv miss)
-            (decUseful (default' pss) ps (h miss))
-      ; (Right (Erased comp)) →
-          mapDecP (wildHeadComp comp) (wildHeadCompInv comp)
-            (decPAnyNameCon (dataDefs sig d) λ c →
-              decUseful (specialise c pss) (—* ◂◂ᵖ ps) (h' c (comp c)))
-      }
+    case decExistsMissingCon pss of λ where
+      (Left (Erased miss))  →
+        mapDecP (wildHeadMiss miss) (wildHeadMissInv miss)
+          (decUseful (default' pss) ps (h miss))
+      (Right (Erased comp)) →
+        mapDecP (wildHeadComp comp) (wildHeadCompInv comp)
+          (decPAnyNameCon (dataDefs sig d) λ c →
+            decUseful (specialise c pss) (—* ◂◂ᵖ ps) (h' c (comp c)))
   decUseful {TyData d ◂ αs} pss     (con c rs ◂ ps) (step-con h)     =
     mapDecP conHead conHeadInv (decUseful (specialise c pss) (rs ◂◂ᵖ ps) h)
   decUseful {TyData d ◂ αs} pss     (r₁ ∣ r₂  ◂ ps) (step-∣ h h')    =
     mapDecP orHead orHeadInv
       (eitherDecP (decUseful pss (r₁ ◂ ps) h) (decUseful pss (r₂ ◂ ps) h'))
   {-# COMPILE AGDA2HS decUseful #-}
+
+--------------------------------------------------------------------------------
+-- Termination
+
+{-
+
+       | ps size + P size | αs len |
+-------+------------------+--------+
+wild 1 |    = + ≤ ⇒ ≤     |   <    |
+wild 2 |    = + < ⇒ <     |  <=>   |
+con    |    < + ≤ ⇒ <     |  <=>   |
+or     |    < + = ⇒ <     |   =    |
+
+-}
+
+module @0 _ {{sig : Signature}} where
+
+--   patsSize : Patterns αs → ℕ → ℕ
+--   patsSize ⌈⌉              n = n
+--   patsSize (—        ◂ ps) n = patsSize ps n
+--   patsSize (con c rs ◂ ps) n = suc (patsSize rs (patsSize ps n))
+--   patsSize (r₁ ∣ r₂  ◂ ps) n = suc (patsSize (r₁ ◂ ps) n + patsSize (r₂ ◂ ps) n)
+
+--   patMatSize : PatternMatrix αs → ℕ
+--   patMatSize P = sum (map (flip patsSize 0) P)
+
+--   patsSize-◂◂ : (ps : Patterns αs) (qs : Patterns βs) (n : ℕ)
+--     → patsSize (ps ◂◂ᵖ qs) n ≡ patsSize ps (patsSize qs n)
+--   patsSize-◂◂ ⌈⌉ qs n = refl
+--   patsSize-◂◂ (— ◂ ps) qs n = patsSize-◂◂ ps qs n
+--   patsSize-◂◂ (con c rs ◂ ps) qs n = cong (suc ∘ patsSize rs) (patsSize-◂◂ ps qs n)
+--   patsSize-◂◂ (r₁ ∣ r₂ ◂ ps) qs n = cong suc (cong₂ _+_ (patsSize-◂◂ (r₁ ◂ ps) qs n) (patsSize-◂◂ (r₂ ◂ ps) qs n))
+
+--   patsSize—* : ∀ αs n → patsSize (—* {αs = αs}) n ≡ n
+--   patsSize—* ⌈⌉ n = refl
+--   patsSize—* (α ◂ αs) n = patsSize—* αs n
+
+  -- patMatSize-◂◂ : (P Q : PatternMatrix αs) → patMatSize (P ++ Q) ≡ patMatSize P + patMatSize Q
+  -- patMatSize-◂◂ P Q
+  --   rewrite map-++ (flip patsSize 0) P Q
+  --   | sum-++ (map (flip patsSize 0) P) (map (flip patsSize 0) Q)
+  --   = {!   !}
+
+  -- specialiseAux-≤ : (c : Con α) (ps : Pats (α ∷ αs)) → patMatSize (specialiseAux c ps) ≤ patsSize ps 0
+  -- specialiseAux-≤ {α} c (∙ ∷ ps)
+  --   rewrite patsSize-++ (∙* {αs = argsTy α c}) ps 0
+  --   | patsSize∙* (argsTy α c) (patsSize ps 0)
+  --   | +-identityʳ (patsSize ps 0)
+  --   = ≤-refl
+  -- specialiseAux-≤ c (con c′ rs ∷ ps) with c ≟Fin c′
+  -- ... | yes refl
+  --         rewrite patsSize-++ rs ps 0
+  --         | +-identityʳ (patsSize rs (patsSize ps 0))
+  --         = n≤1+n (patsSize rs (patsSize ps 0))
+  -- ... | no _ = <⇒≤ 0<1+n
+  -- specialiseAux-≤ c (r₁ ∣ r₂ ∷ ps) =
+  --   -- rewrite messed up termination check, so do it manually
+  --   begin
+  --     patMatSize (specialiseAux c (r₁ ∷ ps) ++ specialiseAux c (r₂ ∷ ps))
+  --   ≡⟨ patMatSize-++ (specialiseAux c (r₁ ∷ ps)) (specialiseAux c (r₂ ∷ ps)) ⟩
+  --     patMatSize (specialiseAux c (r₁ ∷ ps)) + patMatSize (specialiseAux c (r₂ ∷ ps))
+  --   ≤⟨ +-mono-≤ (specialiseAux-≤ c (r₁ ∷ ps)) (specialiseAux-≤ c (r₂ ∷ ps)) ⟩
+  --     patsSize (r₁ ∷ ps) 0 + patsSize (r₂ ∷ ps) 0
+  --   <⟨ n<1+n _ ⟩
+  --     suc (patsSize (r₁ ∷ ps) 0 + patsSize (r₂ ∷ ps) 0)
+  --   ∎
+  --   where open ≤-Reasoning
+
+  -- -- specialise does not increase the pattern matrix size
+  -- specialise-≤ : (c : Con α) (P : PatMat (α ∷ αs)) → patMatSize (specialise c P) ≤ patMatSize P
+  -- specialise-≤ c [] = ≤-refl
+  -- specialise-≤ c (ps ∷ P)
+  --   rewrite patMatSize-++ (specialiseAux c ps) (specialise c P)
+  --   = +-mono-≤ (specialiseAux-≤ c ps) (specialise-≤ c P)
+
+  -- ∈⇒specialiseAux-< : (c : Con α) (ps : Pats (α ∷ αs))
+  --   → c ∈ headAll ps
+  --   → patMatSize (specialiseAux c ps) < patsSize ps 0
+  -- ∈⇒specialiseAux-< c (con d rs ∷ ps) c≡d with c ≟Fin d
+  -- ... | yes refl
+  --       rewrite patsSize-++ rs ps 0
+  --       | +-identityʳ (patsSize rs (patsSize ps 0))
+  --       = ≤-refl
+  -- ... | no c≢d = contradiction c≡d c≢d
+  -- ∈⇒specialiseAux-< c (r₁ ∣ r₂ ∷ ps) (inj₁ c∈r₁) =
+  --   begin
+  --     suc (patMatSize (specialiseAux c (r₁ ∷ ps) ++ specialiseAux c (r₂ ∷ ps)))
+  --   ≡⟨ cong suc (patMatSize-++ (specialiseAux c (r₁ ∷ ps)) (specialiseAux c (r₂ ∷ ps))) ⟩
+  --     suc (patMatSize (specialiseAux c (r₁ ∷ ps)) + patMatSize (specialiseAux c (r₂ ∷ ps)))
+  --   <⟨ s<s (+-mono-<-≤ (∈⇒specialiseAux-< c (r₁ ∷ ps) c∈r₁) (specialiseAux-≤ c (r₂ ∷ ps))) ⟩
+  --     suc (patsSize (r₁ ∷ ps) 0 + patsSize (r₂ ∷ ps) 0)
+  --   ∎
+  --   where open ≤-Reasoning
+  -- ∈⇒specialiseAux-< c (r₁ ∣ r₂ ∷ ps) (inj₂ c∈r₂) =
+  --   begin
+  --     suc (patMatSize (specialiseAux c (r₁ ∷ ps) ++ specialiseAux c (r₂ ∷ ps)))
+  --   ≡⟨ cong suc (patMatSize-++ (specialiseAux c (r₁ ∷ ps)) (specialiseAux c (r₂ ∷ ps))) ⟩
+  --     suc (patMatSize (specialiseAux c (r₁ ∷ ps)) + patMatSize (specialiseAux c (r₂ ∷ ps)))
+  --   <⟨ s<s (+-mono-≤-< (specialiseAux-≤ c (r₁ ∷ ps)) (∈⇒specialiseAux-< c (r₂ ∷ ps) c∈r₂)) ⟩
+  --     suc (patsSize (r₁ ∷ ps) 0 + patsSize (r₂ ∷ ps) 0)
+  --   ∎
+  --   where open ≤-Reasoning
+
+  -- -- specialise strictly reduces the pattern matrix size if the constructor is in the first column of the matrix
+  -- ∈⇒specialise-< : (c : Con α) (P : PatMat (α ∷ αs))
+  --   → Any (λ ps → c ∈ headAll ps) P
+  --   → patMatSize (specialise c P) < patMatSize P
+  -- ∈⇒specialise-< c (ps ∷ P) (here c∈ps)
+  --   rewrite patMatSize-++ (specialiseAux c ps) (specialise c P)
+  --   = +-mono-<-≤ (∈⇒specialiseAux-< c ps c∈ps) (specialise-≤ c P)
+  -- ∈⇒specialise-< c (ps ∷ P) (there c∈P)
+  --   rewrite patMatSize-++ (specialiseAux c ps) (specialise c P)
+  --   = +-mono-≤-< (specialiseAux-≤ c ps) (∈⇒specialise-< c P c∈P)
+
+  -- defaultAux-≤ : (ps : Pats (α ∷ αs)) → patMatSize (defaultAux ps) ≤ patsSize ps 0
+  -- defaultAux-≤ (∙ ∷ ps)
+  --   rewrite +-identityʳ (patsSize ps 0)
+  --   = ≤-refl
+  -- defaultAux-≤ (con _ _ ∷ ps) = <⇒≤ 0<1+n
+  -- defaultAux-≤ (r₁ ∣ r₂ ∷ ps) =
+  --   begin
+  --     patMatSize (defaultAux (r₁ ∷ ps) ++ defaultAux (r₂ ∷ ps))
+  --   ≡⟨ patMatSize-++ (defaultAux (r₁ ∷ ps)) (defaultAux (r₂ ∷ ps)) ⟩
+  --     patMatSize (defaultAux (r₁ ∷ ps)) + patMatSize (defaultAux (r₂ ∷ ps))
+  --   ≤⟨ +-mono-≤ (defaultAux-≤ (r₁ ∷ ps)) (defaultAux-≤ (r₂ ∷ ps)) ⟩
+  --     patsSize (r₁ ∷ ps) 0 + patsSize (r₂ ∷ ps) 0
+  --   <⟨ n<1+n _ ⟩
+  --     suc (patsSize (r₁ ∷ ps) 0 + patsSize (r₂ ∷ ps) 0)
+  --   ∎
+  --   where open ≤-Reasoning
+
+  -- -- default does not increase the pattern matrix size
+  -- default-≤ : (P : PatMat (α ∷ αs)) → patMatSize (default P) ≤ patMatSize P
+  -- default-≤ [] = ≤-refl
+  -- default-≤ (ps ∷ P)
+  --   rewrite patMatSize-++ (defaultAux ps) (default P)
+  --   = +-mono-≤ (defaultAux-≤ ps) (default-≤ P)
+
+  -- SomeProblem : Set
+  -- SomeProblem = ∃[ αs ] PatMat αs × Pats αs
+
+  -- problemSize : SomeProblem → ℕ × ℕ
+  -- problemSize (αs , P , ps) = (patMatSize P + patsSize ps 0) , length αs
+
+  -- -- Lexicographic ordering on SomeProblem
+  -- _⊏_ : (P Q : SomeProblem) → Set
+  -- _⊏_ = ×-Lex _≡_ _<_ _<_ on problemSize
+
+  -- -- _⊏_ is well-founded
+  -- ⊏-wellFounded : WellFounded _⊏_
+  -- ⊏-wellFounded = on-wellFounded problemSize (×-wellFounded <-wellFounded <-wellFounded)
+
+  -- -- specialise strictly reduces the problem size
+  -- specialise-⊏ : (P : PatMat (α ∷ αs)) (c : Con α) (rs : Pats (argsTy α c)) (ps : Pats αs)
+  --   → (-, specialise c P , ++All⁺ rs ps) ⊏ (-, P , con c rs ∷ ps)
+  -- specialise-⊏ P c rs ps
+  --   rewrite patsSize-++ rs ps 0
+  --   = inj₁ (+-mono-≤-< (specialise-≤ c P) (n<1+n _))
+
+  -- -- default strictly reduces the problem size
+  -- default-⊏ : (P : PatMat (α ∷ αs)) (qs : Pats αs)
+  --   → (-, default P , qs) ⊏ (-, P , ∙ ∷ qs)
+  -- default-⊏ P qs with m≤n⇒m<n∨m≡n (default-≤ P)
+  -- ... | inj₁ defaultP<P = inj₁ (+-monoˡ-< (patsSize qs 0) defaultP<P)
+  -- ... | inj₂ defaultP≡P = inj₂ (cong (_+ patsSize qs 0) defaultP≡P , n<1+n _)
+
+  -- -- specialise strictly reduces the problem size if the constructor is in the first column of the matrix
+  -- ∈⇒specialise-⊏ : (c : Con α) (P : PatMat (α ∷ αs)) (qs : Pats αs)
+  --   → Any (λ ps → c ∈ headAll ps) P
+  --   → (-, specialise c P , ++All⁺ ∙* qs) ⊏ (-, P , ∙ ∷ qs)
+  -- ∈⇒specialise-⊏ {α} c P qs c∈P
+  --   rewrite patsSize-++ (∙* {αs = argsTy α c}) qs 0
+  --   | patsSize∙* (argsTy α c) (patsSize qs 0)
+  --   = inj₁ (+-monoˡ-< (patsSize qs 0) (∈⇒specialise-< c P c∈P))
+
+  -- -- Choosing the left pattern strictly reduces the problem size
+  -- ∣-⊏ₗ : (P : PatMat (α ∷ αs)) (r₁ r₂ : Pat α) (ps : Pats αs)
+  --   → (_ , P , r₁ ∷ ps) ⊏ (_ , P , r₁ ∣ r₂ ∷ ps)
+  -- ∣-⊏ₗ P r₁ r₂ ps =
+  --   inj₁ (+-monoʳ-< (patMatSize P) (m≤m+n (suc (patsSize (r₁ ∷ ps) 0)) (patsSize (r₂ ∷ ps) 0)))
+
+  -- -- Choosing the right pattern strictly reduces the problem size
+  -- ∣-⊏ᵣ : (P : PatMat (α ∷ αs)) (r₁ r₂ : Pat α) (ps : Pats αs)
+  --   → (_ , P , r₂ ∷ ps) ⊏ (_ , P , r₁ ∣ r₂ ∷ ps)
+  -- ∣-⊏ᵣ P r₁ r₂ ps =
+  --   inj₁ (+-monoʳ-< (patMatSize P) (s<s (m≤n+m (patsSize (r₂ ∷ ps) 0) (patsSize (r₁ ∷ ps) 0))))
+
+  -- ∀UsefulAccAux : (P : PatMat αs) (ps : Pats αs)
+  --   → Acc _⊏_ (-, P , ps)
+  --   → UsefulAcc P ps
+  -- ∀UsefulAccAux P [] _ = done
+  -- ∀UsefulAccAux P (∙ ∷ ps) (acc h) =
+  --   step-∙
+  --     (λ _ → ∀UsefulAccAux (default P) ps (h (default-⊏ P ps)))
+  --     (λ c c∈P → ∀UsefulAccAux (specialise c P) (++All⁺ ∙* ps) (h (∈⇒specialise-⊏ c P ps c∈P)))
+  -- ∀UsefulAccAux P (con c rs ∷ ps) (acc h) =
+  --   step-con (∀UsefulAccAux (specialise c P) (++All⁺ rs ps) (h (specialise-⊏ P c rs ps)))
+  -- ∀UsefulAccAux P (r₁ ∣ r₂ ∷ ps) (acc h) =
+  --   step-∣
+  --     (∀UsefulAccAux P (r₁ ∷ ps) (h (∣-⊏ₗ P r₁ r₂ ps)))
+  --     (∀UsefulAccAux P (r₂ ∷ ps) (h (∣-⊏ᵣ P r₁ r₂ ps)))
+
+  ∀UsefulAcc : (P : PatternMatrix αs) (ps : Patterns αs) → UsefulAcc P ps
+  ∀UsefulAcc P ps = sorry --  ∀UsefulAccAux P ps (⊏-wellFounded _)
+    where postulate sorry : _
+
+--------------------------------------------------------------------------------
+-- Entrypoint
+
+module _
+  {{sig : Signature}}
+  (u : ∀ {@0 αs0} (@0 P : PatternMatrix αs0) (@0 ps : Patterns αs0) → Set)
+  {{_ : Usefulness u}}
+  {{nonEmptyAxiom : ∀ {α} → Value α}}
+  where
+
+  decUsefulTerm : (pss : PatternMatrix αs) (ps : Patterns αs) → DecP (u pss ps)
+  decUsefulTerm pss ps = decUseful u pss ps (∀UsefulAcc pss ps)
+  {-# COMPILE AGDA2HS decUsefulTerm inline #-}
 
 --------------------------------------------------------------------------------
 -- Usefulness
@@ -254,7 +471,7 @@ module _
 --   2. vs does not match any row in P
 -- Usefulness can also be used to formulate redundancy
 Useful : {{@0 sig : Signature}} (@0 P : PatternMatrix αs0) (@0 ps : Patterns αs0) → Set
-Useful {αs0} P ps = ∃[ vs ∈ Values αs0 ] (P ⋠** vs × ps ≼* vs)
+Useful P ps = ∃[ vs ∈ _ ] (P ⋠** vs × ps ≼* vs)
 {-# COMPILE AGDA2HS Useful inline #-}
 
 --------------------------------------------------------------------------------
@@ -341,8 +558,8 @@ Useful {αs0} P ps = ∃[ vs ∈ Values αs0 ] (P ⋠** vs × ps ≼* vs)
 --     → P ≼** v ∷ vs
 --   default-preserves-≼⁻ = mapAny defaultAux-preserves-≼⁻ ∘ mapAny⁻ ∘ concatAny⁻ _
 
--- --------------------------------------------------------------------------------
--- -- Properties of usefulness
+--------------------------------------------------------------------------------
+-- Properties of usefulness
 
 -- -- [] is useful wrt []
 -- useful-[]-[] : Useful [] []
@@ -434,230 +651,3 @@ Useful {αs0} P ps = ∃[ vs ∈ Values αs0 ] (P ⋠** vs × ps ≼* vs)
 --   default-preserves-usefulness⇔ : Missing P → Useful (default P) ps ⇔ Useful P (∙ ∷ ps)
 --   default-preserves-usefulness⇔ ∃c∉P =
 --     mk⇔ (default-preserves-usefulness⁻ ∃c∉P) default-preserves-usefulness
-
--- --------------------------------------------------------------------------------
--- -- Usefulness checking algorithm
-
--- useful?′ : (P : PatMat αs) (ps : Pats αs) → UsefulAcc P ps → Dec (Useful P ps)
--- useful?′ P (∙ ∷ qs) (step-∙ h h′) with ∃missingCon? P
--- ... | inj₁ ∃c∉P =
---       mapDec (default-preserves-usefulness⇔ ∃c∉P) (useful?′ (default P) qs (h ∃c∉P))
--- ... | inj₂ ∀c∈P =
---       mapDec ∃specialise-preserves-usefulness-∙⇔
---         (anyFin? λ c → useful?′ (specialise c P) (++All⁺ ∙* qs) (h′ c (∀c∈P c)))
--- useful?′ P (con c rs ∷ ps) (step-con h) =
---   mapDec specialise-preserves-usefulness-con⇔
---     (useful?′ (specialise c P) (++All⁺ rs ps) h)
--- useful?′ P (r₁ ∣ r₂ ∷ ps) (step-∣ h h′) =
---   mapDec merge-useful⇔
---     (useful?′ P (r₁ ∷ ps) h ⊎-dec useful?′ P (r₂ ∷ ps) h′)
--- useful?′ [] [] _ = yes useful-[]-[]
--- useful?′ (_ ∷ _) [] _ = no ¬useful-∷-[]
-
--- --------------------------------------------------------------------------------
--- -- Termination
-
--- {-
-
---        | ps size + P size | αs len |
--- -------+------------------+--------+
--- wild 1 |    = + ≤ ⇒ ≤     |   <    |
--- wild 2 |    = + < ⇒ <     |  <=>   |
--- con    |    < + ≤ ⇒ <     |  <=>   |
--- or     |    < + = ⇒ <     |   =    |
-
--- -}
-
--- patsSize : Pats αs → ℕ → ℕ
--- patsSize [] n = n
--- patsSize (∙ ∷ ps) n = patsSize ps n
--- patsSize (con _ rs ∷ ps) n = suc (patsSize rs (patsSize ps n))
--- patsSize (r₁ ∣ r₂ ∷ ps) n = suc (patsSize (r₁ ∷ ps) n + patsSize (r₂ ∷ ps) n)
-
--- patMatSize : PatMat αs → ℕ
--- patMatSize P = sumList (mapList (flip patsSize 0) P)
-
--- patsSize-++ : (ps : Pats αs) (qs : Pats βs) (n : ℕ)
---   → patsSize (++All⁺ ps qs) n ≡ patsSize ps (patsSize qs n)
--- patsSize-++ [] qs n = refl
--- patsSize-++ (∙ ∷ ps) qs n = patsSize-++ ps qs n
--- patsSize-++ (con _ rs ∷ ps) qs n = cong (suc ∘ patsSize rs) (patsSize-++ ps qs n)
--- patsSize-++ (r₁ ∣ r₂ ∷ ps) qs n = cong suc (cong₂ _+_ (patsSize-++ (r₁ ∷ ps) qs n) (patsSize-++ (r₂ ∷ ps) qs n))
-
--- patsSize∙* : ∀ αs n → patsSize (∙* {αs = αs}) n ≡ n
--- patsSize∙* [] n = refl
--- patsSize∙* (α ∷ αs) n = patsSize∙* αs n
-
--- patMatSize-++ : (P Q : PatMat αs) → patMatSize (P ++ Q) ≡ patMatSize P + patMatSize Q
--- patMatSize-++ P Q
---   rewrite map-++ (flip patsSize 0) P Q
---   | sum-++ (mapList (flip patsSize 0) P) (mapList (flip patsSize 0) Q)
---   = refl
-
--- specialiseAux-≤ : (c : Con α) (ps : Pats (α ∷ αs)) → patMatSize (specialiseAux c ps) ≤ patsSize ps 0
--- specialiseAux-≤ {α} c (∙ ∷ ps)
---   rewrite patsSize-++ (∙* {αs = argsTy α c}) ps 0
---   | patsSize∙* (argsTy α c) (patsSize ps 0)
---   | +-identityʳ (patsSize ps 0)
---   = ≤-refl
--- specialiseAux-≤ c (con c′ rs ∷ ps) with c ≟Fin c′
--- ... | yes refl
---         rewrite patsSize-++ rs ps 0
---         | +-identityʳ (patsSize rs (patsSize ps 0))
---         = n≤1+n (patsSize rs (patsSize ps 0))
--- ... | no _ = <⇒≤ 0<1+n
--- specialiseAux-≤ c (r₁ ∣ r₂ ∷ ps) =
---   -- rewrite messed up termination check, so do it manually
---   begin
---     patMatSize (specialiseAux c (r₁ ∷ ps) ++ specialiseAux c (r₂ ∷ ps))
---   ≡⟨ patMatSize-++ (specialiseAux c (r₁ ∷ ps)) (specialiseAux c (r₂ ∷ ps)) ⟩
---     patMatSize (specialiseAux c (r₁ ∷ ps)) + patMatSize (specialiseAux c (r₂ ∷ ps))
---   ≤⟨ +-mono-≤ (specialiseAux-≤ c (r₁ ∷ ps)) (specialiseAux-≤ c (r₂ ∷ ps)) ⟩
---     patsSize (r₁ ∷ ps) 0 + patsSize (r₂ ∷ ps) 0
---   <⟨ n<1+n _ ⟩
---     suc (patsSize (r₁ ∷ ps) 0 + patsSize (r₂ ∷ ps) 0)
---   ∎
---   where open ≤-Reasoning
-
--- -- specialise does not increase the pattern matrix size
--- specialise-≤ : (c : Con α) (P : PatMat (α ∷ αs)) → patMatSize (specialise c P) ≤ patMatSize P
--- specialise-≤ c [] = ≤-refl
--- specialise-≤ c (ps ∷ P)
---   rewrite patMatSize-++ (specialiseAux c ps) (specialise c P)
---   = +-mono-≤ (specialiseAux-≤ c ps) (specialise-≤ c P)
-
--- ∈⇒specialiseAux-< : (c : Con α) (ps : Pats (α ∷ αs))
---   → c ∈ headAll ps
---   → patMatSize (specialiseAux c ps) < patsSize ps 0
--- ∈⇒specialiseAux-< c (con d rs ∷ ps) c≡d with c ≟Fin d
--- ... | yes refl
---       rewrite patsSize-++ rs ps 0
---       | +-identityʳ (patsSize rs (patsSize ps 0))
---       = ≤-refl
--- ... | no c≢d = contradiction c≡d c≢d
--- ∈⇒specialiseAux-< c (r₁ ∣ r₂ ∷ ps) (inj₁ c∈r₁) =
---   begin
---     suc (patMatSize (specialiseAux c (r₁ ∷ ps) ++ specialiseAux c (r₂ ∷ ps)))
---   ≡⟨ cong suc (patMatSize-++ (specialiseAux c (r₁ ∷ ps)) (specialiseAux c (r₂ ∷ ps))) ⟩
---     suc (patMatSize (specialiseAux c (r₁ ∷ ps)) + patMatSize (specialiseAux c (r₂ ∷ ps)))
---   <⟨ s<s (+-mono-<-≤ (∈⇒specialiseAux-< c (r₁ ∷ ps) c∈r₁) (specialiseAux-≤ c (r₂ ∷ ps))) ⟩
---     suc (patsSize (r₁ ∷ ps) 0 + patsSize (r₂ ∷ ps) 0)
---   ∎
---   where open ≤-Reasoning
--- ∈⇒specialiseAux-< c (r₁ ∣ r₂ ∷ ps) (inj₂ c∈r₂) =
---   begin
---     suc (patMatSize (specialiseAux c (r₁ ∷ ps) ++ specialiseAux c (r₂ ∷ ps)))
---   ≡⟨ cong suc (patMatSize-++ (specialiseAux c (r₁ ∷ ps)) (specialiseAux c (r₂ ∷ ps))) ⟩
---     suc (patMatSize (specialiseAux c (r₁ ∷ ps)) + patMatSize (specialiseAux c (r₂ ∷ ps)))
---   <⟨ s<s (+-mono-≤-< (specialiseAux-≤ c (r₁ ∷ ps)) (∈⇒specialiseAux-< c (r₂ ∷ ps) c∈r₂)) ⟩
---     suc (patsSize (r₁ ∷ ps) 0 + patsSize (r₂ ∷ ps) 0)
---   ∎
---   where open ≤-Reasoning
-
--- -- specialise strictly reduces the pattern matrix size if the constructor is in the first column of the matrix
--- ∈⇒specialise-< : (c : Con α) (P : PatMat (α ∷ αs))
---   → Any (λ ps → c ∈ headAll ps) P
---   → patMatSize (specialise c P) < patMatSize P
--- ∈⇒specialise-< c (ps ∷ P) (here c∈ps)
---   rewrite patMatSize-++ (specialiseAux c ps) (specialise c P)
---   = +-mono-<-≤ (∈⇒specialiseAux-< c ps c∈ps) (specialise-≤ c P)
--- ∈⇒specialise-< c (ps ∷ P) (there c∈P)
---   rewrite patMatSize-++ (specialiseAux c ps) (specialise c P)
---   = +-mono-≤-< (specialiseAux-≤ c ps) (∈⇒specialise-< c P c∈P)
-
--- defaultAux-≤ : (ps : Pats (α ∷ αs)) → patMatSize (defaultAux ps) ≤ patsSize ps 0
--- defaultAux-≤ (∙ ∷ ps)
---   rewrite +-identityʳ (patsSize ps 0)
---   = ≤-refl
--- defaultAux-≤ (con _ _ ∷ ps) = <⇒≤ 0<1+n
--- defaultAux-≤ (r₁ ∣ r₂ ∷ ps) =
---   begin
---     patMatSize (defaultAux (r₁ ∷ ps) ++ defaultAux (r₂ ∷ ps))
---   ≡⟨ patMatSize-++ (defaultAux (r₁ ∷ ps)) (defaultAux (r₂ ∷ ps)) ⟩
---     patMatSize (defaultAux (r₁ ∷ ps)) + patMatSize (defaultAux (r₂ ∷ ps))
---   ≤⟨ +-mono-≤ (defaultAux-≤ (r₁ ∷ ps)) (defaultAux-≤ (r₂ ∷ ps)) ⟩
---     patsSize (r₁ ∷ ps) 0 + patsSize (r₂ ∷ ps) 0
---   <⟨ n<1+n _ ⟩
---     suc (patsSize (r₁ ∷ ps) 0 + patsSize (r₂ ∷ ps) 0)
---   ∎
---   where open ≤-Reasoning
-
--- -- default does not increase the pattern matrix size
--- default-≤ : (P : PatMat (α ∷ αs)) → patMatSize (default P) ≤ patMatSize P
--- default-≤ [] = ≤-refl
--- default-≤ (ps ∷ P)
---   rewrite patMatSize-++ (defaultAux ps) (default P)
---   = +-mono-≤ (defaultAux-≤ ps) (default-≤ P)
-
--- SomeProblem : Set
--- SomeProblem = ∃[ αs ] PatMat αs × Pats αs
-
--- problemSize : SomeProblem → ℕ × ℕ
--- problemSize (αs , P , ps) = (patMatSize P + patsSize ps 0) , length αs
-
--- -- Lexicographic ordering on SomeProblem
--- _⊏_ : (P Q : SomeProblem) → Set
--- _⊏_ = ×-Lex _≡_ _<_ _<_ on problemSize
-
--- -- _⊏_ is well-founded
--- ⊏-wellFounded : WellFounded _⊏_
--- ⊏-wellFounded = on-wellFounded problemSize (×-wellFounded <-wellFounded <-wellFounded)
-
--- -- specialise strictly reduces the problem size
--- specialise-⊏ : (P : PatMat (α ∷ αs)) (c : Con α) (rs : Pats (argsTy α c)) (ps : Pats αs)
---   → (-, specialise c P , ++All⁺ rs ps) ⊏ (-, P , con c rs ∷ ps)
--- specialise-⊏ P c rs ps
---   rewrite patsSize-++ rs ps 0
---   = inj₁ (+-mono-≤-< (specialise-≤ c P) (n<1+n _))
-
--- -- default strictly reduces the problem size
--- default-⊏ : (P : PatMat (α ∷ αs)) (qs : Pats αs)
---   → (-, default P , qs) ⊏ (-, P , ∙ ∷ qs)
--- default-⊏ P qs with m≤n⇒m<n∨m≡n (default-≤ P)
--- ... | inj₁ defaultP<P = inj₁ (+-monoˡ-< (patsSize qs 0) defaultP<P)
--- ... | inj₂ defaultP≡P = inj₂ (cong (_+ patsSize qs 0) defaultP≡P , n<1+n _)
-
--- -- specialise strictly reduces the problem size if the constructor is in the first column of the matrix
--- ∈⇒specialise-⊏ : (c : Con α) (P : PatMat (α ∷ αs)) (qs : Pats αs)
---   → Any (λ ps → c ∈ headAll ps) P
---   → (-, specialise c P , ++All⁺ ∙* qs) ⊏ (-, P , ∙ ∷ qs)
--- ∈⇒specialise-⊏ {α} c P qs c∈P
---   rewrite patsSize-++ (∙* {αs = argsTy α c}) qs 0
---   | patsSize∙* (argsTy α c) (patsSize qs 0)
---   = inj₁ (+-monoˡ-< (patsSize qs 0) (∈⇒specialise-< c P c∈P))
-
--- -- Choosing the left pattern strictly reduces the problem size
--- ∣-⊏ₗ : (P : PatMat (α ∷ αs)) (r₁ r₂ : Pat α) (ps : Pats αs)
---   → (_ , P , r₁ ∷ ps) ⊏ (_ , P , r₁ ∣ r₂ ∷ ps)
--- ∣-⊏ₗ P r₁ r₂ ps =
---   inj₁ (+-monoʳ-< (patMatSize P) (m≤m+n (suc (patsSize (r₁ ∷ ps) 0)) (patsSize (r₂ ∷ ps) 0)))
-
--- -- Choosing the right pattern strictly reduces the problem size
--- ∣-⊏ᵣ : (P : PatMat (α ∷ αs)) (r₁ r₂ : Pat α) (ps : Pats αs)
---   → (_ , P , r₂ ∷ ps) ⊏ (_ , P , r₁ ∣ r₂ ∷ ps)
--- ∣-⊏ᵣ P r₁ r₂ ps =
---   inj₁ (+-monoʳ-< (patMatSize P) (s<s (m≤n+m (patsSize (r₂ ∷ ps) 0) (patsSize (r₁ ∷ ps) 0))))
-
--- ∀UsefulAccAux : (P : PatMat αs) (ps : Pats αs)
---   → Acc _⊏_ (-, P , ps)
---   → UsefulAcc P ps
--- ∀UsefulAccAux P [] _ = done
--- ∀UsefulAccAux P (∙ ∷ ps) (acc h) =
---   step-∙
---     (λ _ → ∀UsefulAccAux (default P) ps (h (default-⊏ P ps)))
---     (λ c c∈P → ∀UsefulAccAux (specialise c P) (++All⁺ ∙* ps) (h (∈⇒specialise-⊏ c P ps c∈P)))
--- ∀UsefulAccAux P (con c rs ∷ ps) (acc h) =
---   step-con (∀UsefulAccAux (specialise c P) (++All⁺ rs ps) (h (specialise-⊏ P c rs ps)))
--- ∀UsefulAccAux P (r₁ ∣ r₂ ∷ ps) (acc h) =
---   step-∣
---     (∀UsefulAccAux P (r₁ ∷ ps) (h (∣-⊏ₗ P r₁ r₂ ps)))
---     (∀UsefulAccAux P (r₂ ∷ ps) (h (∣-⊏ᵣ P r₁ r₂ ps)))
-
--- ∀UsefulAcc : (P : PatMat αs) (ps : Pats αs) → UsefulAcc P ps
--- ∀UsefulAcc P ps = ∀UsefulAccAux P ps (⊏-wellFounded _)
-
--- --------------------------------------------------------------------------------
--- -- Entrypoint
-
--- useful? : (P : PatMat αs) (ps : Pats αs) → Dec (Useful P ps)
--- useful? P ps = useful?′ P ps (∀UsefulAcc P ps)

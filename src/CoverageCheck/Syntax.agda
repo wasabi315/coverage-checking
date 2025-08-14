@@ -37,47 +37,38 @@ syntax appendTypes αs βs = αs ◂◂ βs
 
 record Datatype (@0 d : NameData) : Set where
   field
-    dataCons : Rezz (conScope d)
-    argsTy   : (c : NameCon d) → Types
+    dataCons            : List Name
+    @0 {{fullDataCons}} : dataCons ≡ conScope d
+    argsTy              : (c : NameCon d) → Types
+
+  allNameCon : (NameCon d → Bool) → Bool
+  allNameCon f = allNameIn dataCons λ x → f (subst0 NameIn fullDataCons x)
+  {-# COMPILE AGDA2HS allNameCon inline #-}
+
+  decAllNameCon : {@0 p : NameCon d → Set}
+    → (∀ x → Dec (p x))
+    → Either (Erase (∀ x → p x)) (Erase (∃[ x ∈ _ ] ¬ p x))
+  decAllNameCon f = decAllNameIn dataCons fullDataCons f
+  {-# COMPILE AGDA2HS decAllNameCon inline #-}
+
+  anyNameCon : (NameCon d → Bool) → Bool
+  anyNameCon f = anyNameIn dataCons λ x → f (subst0 NameIn fullDataCons x)
+  {-# COMPILE AGDA2HS anyNameCon inline #-}
+
+  decAnyNameCon : {@0 p : NameCon d → Set}
+    → (∀ x → Dec (p x))
+    → Dec (∃[ x ∈ NameCon d ] p x)
+  decAnyNameCon f = decAnyNameIn dataCons fullDataCons f
+  {-# COMPILE AGDA2HS decAnyNameCon inline #-}
+
+  decPAnyNameCon : {p : @0 NameCon d → Set}
+    → (∀ x → DecP (p x))
+    → DecP (Σ[ x ∈ NameCon d ] p x)
+  decPAnyNameCon f = decPAnyNameIn dataCons fullDataCons f
+  {-# COMPILE AGDA2HS decPAnyNameCon inline #-}
 
 open Datatype public
 {-# COMPILE AGDA2HS Datatype #-}
-
-allNameCon : {@0 d : NameData} → Datatype d → (NameCon d → Bool) → Bool
-allNameCon dty f =
-  let xs ⟨ h ⟩ = dataCons dty in
-  allNameIn xs λ x → f (subst0 NameIn (sym h) x)
-{-# COMPILE AGDA2HS allNameCon #-}
-
-decAllNameCon : {@0 d : NameData} (dty : Datatype d) {@0 p : NameCon d → Set}
-  → ((x : NameCon d) → Dec (p x))
-  → Either (Erase (∀ x → p x)) (Erase (∃[ x ∈ _ ] ¬ p x))
-decAllNameCon dty f =
-  let xs ⟨ h ⟩ = dataCons dty in
-  decAllNameIn xs h f
-{-# COMPILE AGDA2HS decAllNameCon #-}
-
-anyNameCon : {@0 d : NameData} → Datatype d → (NameCon d → Bool) → Bool
-anyNameCon dty f =
-  let xs ⟨ h ⟩ = dataCons dty in
-  anyNameIn xs λ x → f (subst0 NameIn (sym h) x)
-{-# COMPILE AGDA2HS anyNameCon #-}
-
-decAnyNameCon : {@0 d : NameData} (dty : Datatype d) {@0 p : NameCon d → Set}
-  → ((x : NameCon d) → Dec (p x))
-  → Dec (∃[ x ∈ NameCon d ] p x)
-decAnyNameCon dty f =
-  let xs ⟨ h ⟩ = dataCons dty in
-  decAnyNameIn xs h f
-{-# COMPILE AGDA2HS decAnyNameCon #-}
-
-decPAnyNameCon : {@0 d : NameData} (dty : Datatype d) {p : @0 NameCon d → Set}
-  → ((x : NameCon d) → DecP (p x))
-  → DecP (Σ[ x ∈ NameCon d ] p x)
-decPAnyNameCon dty f =
-  let xs ⟨ h ⟩ = dataCons dty in
-  decPAnyNameIn xs h f
-{-# COMPILE AGDA2HS decPAnyNameCon #-}
 
 record Signature : Set where
   field

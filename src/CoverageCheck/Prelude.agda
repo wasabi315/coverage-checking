@@ -5,7 +5,6 @@ module CoverageCheck.Prelude where
 
 open import Haskell.Prim public
   using (⊥)
-  renaming (magic to exFalso)
 open import Haskell.Prim.Tuple public
   using (first; second)
 
@@ -28,6 +27,7 @@ open import Haskell.Law.Eq public
   using (IsLawfulEq; isEquality)
 
 open import Haskell.Prim.Foldable public
+  hiding (sum)
 
 open import Haskell.Law.Equality public
   using (cong; cong₂; subst0; sym)
@@ -60,25 +60,47 @@ open import Haskell.Extra.Sigma public
 --------------------------------------------------------------------------------
 -- agda standard library re-exports
 
-open import Data.List.Relation.Unary.All public
-  using (All; []; _∷_)
-  renaming (head to headAll; tail to tailAll; tabulate to tabulateAll)
+open import Data.List.Base public
+  using (sum)
+
+open import Data.List.Properties public
+  using (sum-++; map-++; ++-identityʳ)
+
+-- open import Data.List.Relation.Unary.All public
+--   using (All; []; _∷_)
+--   renaming (head to headAll; tail to tailAll; tabulate to tabulateAll)
 -- open import Data.List.Relation.Unary.All.Properties public
   -- using (¬All⇒Any¬; All¬⇒¬Any; ¬Any⇒All¬)
 
-open import Data.List.Relation.Unary.Any public
-  using (Any; here; there)
+-- open import Data.List.Relation.Unary.Any public
+--   using (Any; here; there)
   -- renaming (map to mapAny)
-open import Data.List.Relation.Unary.Any.Properties public
-  using ()
+-- open import Data.List.Relation.Unary.Any.Properties public
+--   using ()
   -- renaming (gmap to gmapAny; concat⁺ to concatAny⁺; concat⁻ to concatAny⁻;
   --           ++⁻ to ++Any⁻; ++⁺ˡ to ++Any⁺ˡ; ++⁺ʳ to ++Any⁺ʳ; map⁻ to mapAny⁻)
 
-open import Data.List.Relation.Unary.First public
-  using (First; _∷_; [_])
+-- open import Data.List.Relation.Unary.First public
+--   using (First; _∷_; [_])
   -- renaming (toAny to First⇒Any)
 -- open import Data.List.Relation.Unary.First.Properties public
 --   using (All⇒¬First)
+
+open import Data.Nat.Base public
+  using (ℕ; zero; suc; _+_; _≤_; _<_; s<s)
+open import Data.Nat.Induction public
+  using (<-wellFounded)
+open import Data.Nat.Properties public
+  using (+-identityʳ;
+         ≤-refl; module ≤-Reasoning; +-mono-≤; n≤1+n;
+         n<1+n; 0<1+n; <⇒≤; +-monoˡ-<; +-monoʳ-<;
+         +-mono-<-≤; +-mono-≤-<; m≤n⇒m<n∨m≡n; m≤m+n; m≤n+m)
+
+--------------------------------------------------------------------------------
+-- Equality
+
+cong0 : {@0 a : Set} {b : Set} {@0 x y : a} (f : a → b) → @0 x ≡ y → f x ≡ f y
+cong0 f refl = refl
 
 --------------------------------------------------------------------------------
 -- Bottom and negation
@@ -88,30 +110,64 @@ infix 3 ¬_
 ¬_ : Set → Set
 ¬ A = A → ⊥
 
-exFalso0 : {a : Set} → @0 ⊥ → a
-exFalso0 _ = undefined
+exFalso : {a : Set} → @0 ⊥ → a
+exFalso _ = undefined
 
 contradiction : {a b : Set} → a → @0 ¬ a → b
-contradiction a ¬a = exFalso0 (¬a a)
-
-@0 contradiction0 : {a b : Set} → a → ¬ a → b
-contradiction0 a ¬a = exFalso0 (¬a a)
+contradiction a ¬a = exFalso (¬a a)
 
 contraposition : {a b : Set} → (a → b) → (¬ b → ¬ a)
 contraposition f g = g ∘ f
 
 --------------------------------------------------------------------------------
--- Freshness
+-- Relations on lists
+
+infixr 5 _◂_
+
+data All {@0 a : Set} (p : @0 a → Set) : (@0 xs : List a) → Set where
+  AllNil  : All p []
+  AllCons : ∀ {@0 x xs} → p x → All p xs → All p (x ∷ xs)
+
+{-# COMPILE AGDA2HS All deriving Show #-}
+
+pattern ⌈⌉       = AllNil
+pattern _◂_ h hs = AllCons h hs
+
+headAll : ∀ {@0 a : Set} {p : @0 a → Set} {@0 x xs} → All p (x ∷ xs) → p x
+headAll (h ◂ _) = h
+{-# COMPILE AGDA2HS headAll #-}
+
+tailAll : ∀ {@0 a : Set} {p : @0 a → Set} {@0 x xs} → All p (x ∷ xs) → All p xs
+tailAll (_ ◂ hs) = hs
+{-# COMPILE AGDA2HS tailAll #-}
+
+data Any {@0 a : Set} (p : @0 a → Set) : (@0 xs : List a) → Set where
+  AnyHere  : ∀ {@0 x xs} → p x → Any p (x ∷ xs)
+  AnyThere : ∀ {@0 x xs} → Any p xs → Any p (x ∷ xs)
+
+{-# COMPILE AGDA2HS Any deriving Show #-}
+
+pattern here  h = AnyHere h
+pattern there h = AnyThere h
+
+@0 ¬Any⇒All¬ : {a : Set} {p : @0 a → Set} (xs : List a)
+  → ¬ Any p xs
+  → All (λ x → ¬ p x) xs
+¬Any⇒All¬ []       ¬p = ⌈⌉
+¬Any⇒All¬ (x ∷ xs) ¬p = ¬p ∘ here ◂ ¬Any⇒All¬ xs (¬p ∘ there)
+
+data First {@0 a : Set} (p : @0 a → Set) : (@0 xs : List a) → Set where
+  FirstHere  : ∀ {@0 x xs} → p x → First p (x ∷ xs)
+  FirstThere : ∀ {@0 x xs} → @0 ¬ p x → First p xs → First p (x ∷ xs)
+
+{-# COMPILE AGDA2HS First deriving Show #-}
+
+pattern [_] h    = FirstHere h
+pattern _◂_ h hs = FirstThere h hs
 
 @0 Fresh : {a : Set} → List a → Set
 Fresh []       = ⊤
 Fresh (x ∷ xs) = All (λ y → ¬ x ≡ y) xs × Fresh xs
-
-¬Any⇒All¬ : {a : Set} {p : a → Set} (xs : List a)
-  → ¬ Any p xs
-  → All (λ x → ¬ p x) xs
-¬Any⇒All¬ []       ¬p = []
-¬Any⇒All¬ (x ∷ xs) ¬p = ¬p ∘ here ∷ ¬Any⇒All¬ xs (¬p ∘ there)
 
 --------------------------------------------------------------------------------
 -- Decidable relations
@@ -130,7 +186,7 @@ negReflects {True}  a  = λ ¬a → ¬a a
 
 negDec : ∀ {@0 a} → Dec a → Dec (¬ a)
 negDec (ba ⟨ a ⟩) = not ba ⟨ negReflects a ⟩
-{-# COMPILE AGDA2HS negDec #-}
+{-# COMPILE AGDA2HS negDec inline #-}
 
 infix 3 tupleDec
 
@@ -153,28 +209,30 @@ eitherDec : ∀ {@0 a b} → Dec a → Dec b → Dec (Either a b)
 eitherDec (ba ⟨ a ⟩) (bb ⟨ b ⟩) = (ba || bb) ⟨ eitherReflects a b ⟩
 {-# COMPILE AGDA2HS eitherDec inline #-}
 
-anyDec : ∀ {a} {@0 p : a → Set}
-  → ((x : a) → Dec (p x))
-  → (xs : List a) → Dec (Any p xs)
+anyDec : ∀ {a} {@0 p : @0 a → Set}
+  → (∀ x → Dec (p x))
+  → (∀ xs → Dec (Any p xs))
 anyDec f []       = False ⟨ (λ ()) ⟩
 anyDec f (x ∷ xs) =
   mapDec
     (either here there)
-    (λ { (here h) → Left h; (there h) → Right h })
+    (λ where
+      (here h)  → Left h
+      (there h) → Right h)
     (eitherDec (f x) (anyDec f xs))
 {-# COMPILE AGDA2HS anyDec #-}
 
-firstDec : ∀ {a} {@0 p : a → Set}
-  → ((x : a) → Dec (p x))
-  → (xs : List a) → Dec (First (λ x → ¬ p x) p xs)
-firstDec f []       = False ⟨ (λ ()) ⟩
+firstDec : ∀ {a} {@0 p : @0 a → Set}
+  → (∀ x → Dec (p x))
+  → (∀ xs → Dec (First p xs))
+firstDec         f []       = False ⟨ (λ ()) ⟩
 firstDec {p = p} f (x ∷ xs) = ifDec (f x)
   (λ {{h}} → True ⟨ [ h ] ⟩)
-  (λ {{h}} → mapDec (h ∷_) (lem h) (firstDec f xs))
+  (λ {{h}} → mapDec (h ◂_) (lem h) (firstDec f xs))
   where
-    @0 lem : ¬ p x → First (λ x → ¬ p x) p (x ∷ xs) → First (λ x → ¬ p x) p xs
-    lem h [ h' ] = contradiction h' h
-    lem h (x ∷ h') = h'
+    @0 lem : ¬ p x → First p (x ∷ xs) → First p xs
+    lem h [ h' ]   = contradiction h' h
+    lem h (x ◂ h') = h'
 {-# COMPILE AGDA2HS firstDec #-}
 
 --------------------------------------------------------------------------------
@@ -187,10 +245,15 @@ data DecP (a : Set) : Set where
   No  : (@0 p : ¬ a) → DecP a
 {-# COMPILE AGDA2HS DecP deriving Show #-}
 
-fromDec : ∀ {a} → Dec a → DecP (Erase a)
-fromDec (True ⟨ p ⟩)  = Yes (Erased p)
-fromDec (False ⟨ p ⟩) = No λ (Erased x) → p x
-{-# COMPILE AGDA2HS fromDec #-}
+decPToDec : ∀ {a} → DecP a → Dec a
+decPToDec (Yes p) = True ⟨ p ⟩
+decPToDec (No p)  = False ⟨ p ⟩
+{-# COMPILE AGDA2HS decPToDec #-}
+
+decToDecP : ∀ {a} → Dec a → DecP (Erase a)
+decToDecP (True ⟨ p ⟩)  = Yes (Erased p)
+decToDecP (False ⟨ p ⟩) = No λ (Erased x) → p x
+{-# COMPILE AGDA2HS decToDecP #-}
 
 mapDecP : ∀ {a b} → (a → b) → @0 (b → a) → DecP a → DecP b
 mapDecP f g (Yes p) = Yes (f p)
@@ -214,6 +277,19 @@ eitherDecP (Yes p) _       = Yes (Left p)
 eitherDecP (No p)  (Yes q) = Yes (Right q)
 eitherDecP (No p)  (No q)  = No (either p q)
 {-# COMPILE AGDA2HS eitherDecP #-}
+
+firstDecP : ∀ {a} {p : @0 a → Set}
+  → (∀ x → DecP (p x))
+  → (∀ xs → DecP (First p xs))
+firstDecP         f []       = No λ ()
+firstDecP {p = p} f (x ∷ xs) = ifDecP (f x)
+  (λ {{h}} → Yes [ h ])
+  (λ {{h}} → mapDecP (h ◂_) (lem h) (firstDecP f xs))
+  where
+    @0 lem : ¬ p x → First p (x ∷ xs) → First p xs
+    lem h [ h' ]   = contradiction h' h
+    lem h (x ◂ h') = h'
+{-# COMPILE AGDA2HS firstDecP #-}
 
 --------------------------------------------------------------------------------
 
@@ -253,16 +329,6 @@ eitherDecP (No p)  (No q)  = No (either p q)
 -- open import Data.List.Relation.Unary.First.Properties public
 --   using (All⇒¬First)
 --   renaming (cofirst? to first?)
-
--- open import Data.Nat.Base public
---   using (ℕ; zero; suc; _+_; _≤_; _<_; s<s)
--- open import Data.Nat.Induction public
---   using (<-wellFounded)
--- open import Data.Nat.Properties public
---   using (+-identityʳ;
---          ≤-refl; module ≤-Reasoning; +-mono-≤; n≤1+n;
---          n<1+n; 0<1+n; <⇒≤; +-monoˡ-<; +-monoʳ-<;
---          +-mono-<-≤; +-mono-≤-<; m≤n⇒m<n∨m≡n; m≤m+n; m≤n+m)
 
 -- open import Data.Product.Base public
 --   using (∃-syntax; _×_; -,_; _,_; uncurry; proj₁; proj₂)

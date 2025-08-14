@@ -21,4 +21,3 @@ record Globals : Set where
   {-# COMPILE AGDA2HS NameCon inline #-}
 
 open Globals public
-{-# COMPILE AGDA2HS Globals #-}

@@ -6,7 +6,7 @@ module CoverageCheck.Name where
 
 Name : Set
 Name = String
-{-# COMPILE AGDA2HS Name inline #-}
+{-# COMPILE AGDA2HS Name #-}
 
 data In (x : Name) : (xs : List Name) → Set where
   InHere  : ∀ {xs} → In x (x ∷ xs)
@@ -19,26 +19,30 @@ NameIn xs = ∃[ x ∈ Name ] In x xs
 strengthenNameInFun : ∀ {@0 x : Name} {@0 xs : List Name} {@0 ℓ} {p : @0 NameIn (x ∷ xs) → Set ℓ}
   → ((y : NameIn (x ∷ xs)) → p y)
   → (((y ⟨ h ⟩) : NameIn xs) → p (y ⟨ InThere h ⟩))
-strengthenNameInFun f (x ⟨ h ⟩) = f (x ⟨ InThere h ⟩)
-{-# COMPILE AGDA2HS strengthenNameInFun #-}
+strengthenNameInFun f = λ where (x ⟨ h ⟩) → f (x ⟨ InThere h ⟩)
+{-# COMPILE AGDA2HS strengthenNameInFun inline #-}
 
 allNameIn : (xs : List Name) → (NameIn xs → Bool) → Bool
 allNameIn []       f = True
 allNameIn (x ∷ xs) f = f (x ⟨ InHere ⟩) && allNameIn xs (strengthenNameInFun f)
 {-# COMPILE AGDA2HS allNameIn #-}
 
+anyNameIn : (xs : List Name) → (NameIn xs → Bool) → Bool
+anyNameIn []       f = False
+anyNameIn (x ∷ xs) f = f (x ⟨ InHere ⟩) || anyNameIn xs (strengthenNameInFun f)
+{-# COMPILE AGDA2HS anyNameIn #-}
+
 decAllNameIn : (xs : List Name)
-  → {@0 ys : List Name} (@0 eq : ys ≡ xs)
+  → {@0 ys : List Name} (@0 eq : xs ≡ ys)
   → {@0 p : NameIn ys → Set}
   → (∀ x → Dec (p x))
   → Either (Erase (∀ x → p x)) (Erase (∃[ x ∈ _ ] ¬ p x))
-decAllNameIn []       refl f = Left (Erased λ _ → undefined)
+decAllNameIn []       refl     f = Left (Erased λ _ → undefined)
 decAllNameIn (x ∷ xs) refl {p} f =
   ifDec (f (x ⟨ InHere ⟩))
-    (λ {{h}} → case decAllNameIn xs refl (strengthenNameInFun f) of λ
-      { (Left (Erased h'))  → Left (Erased (lem1 h h'))
-      ; (Right (Erased h')) → Right (Erased (lem2 h'))
-      })
+    (λ {{h}} → case decAllNameIn xs refl (strengthenNameInFun f) of λ where
+      (Left (Erased h'))  → Left (Erased (lem1 h h'))
+      (Right (Erased h')) → Right (Erased (lem2 h')))
     (λ {{h}} → Right (Erased ((x ⟨ InHere ⟩) ⟨ h ⟩)))
   where
     @0 lem1 :
@@ -54,13 +58,8 @@ decAllNameIn (x ∷ xs) refl {p} f =
     lem2 ((y ⟨ h ⟩) ⟨ h' ⟩) = (y ⟨ (InThere h) ⟩) ⟨ h' ⟩
 {-# COMPILE AGDA2HS decAllNameIn #-}
 
-anyNameIn : (xs : List Name) → (NameIn xs → Bool) → Bool
-anyNameIn []       f = False
-anyNameIn (x ∷ xs) f = f (x ⟨ InHere ⟩) || anyNameIn xs (strengthenNameInFun f)
-{-# COMPILE AGDA2HS anyNameIn #-}
-
 decAnyNameIn : (xs : List Name)
-  → {@0 ys : List Name} (@0 eq : ys ≡ xs)
+  → {@0 ys : List Name} (@0 eq : xs ≡ ys)
   → {@0 p : NameIn ys → Set}
   → (∀ x → Dec (p x))
   → Dec (∃[ x ∈ _ ] p x)
@@ -69,7 +68,7 @@ decAnyNameIn (x ∷ xs) refl {p} f =
   mapDec
     (either
       (λ h → (x ⟨ InHere ⟩) ⟨ h ⟩)
-      (λ { ((y ⟨ h ⟩) ⟨ h' ⟩) → (y ⟨ InThere h ⟩) ⟨ h' ⟩ }))
+      (λ where ((y ⟨ h ⟩) ⟨ h' ⟩) → (y ⟨ InThere h ⟩) ⟨ h' ⟩))
     lem
     (eitherDec (f (x ⟨ InHere ⟩)) (decAnyNameIn xs refl (strengthenNameInFun f)))
   where
@@ -79,18 +78,17 @@ decAnyNameIn (x ∷ xs) refl {p} f =
     lem ((y ⟨ InThere h ⟩) ⟨ h' ⟩) = Right ((y ⟨ h ⟩) ⟨ h' ⟩)
 {-# COMPILE AGDA2HS decAnyNameIn #-}
 
-
 decPAnyNameIn : (xs : List Name)
-  → {@0 ys : List Name} (@0 eq : ys ≡ xs)
+  → {@0 ys : List Name} (@0 eq : xs ≡ ys)
   → {p : @0 NameIn ys → Set}
   → (∀ x → DecP (p x))
   → DecP (Σ[ x ∈ _ ] p x)
-decPAnyNameIn [] refl f = No λ _ → undefined
+decPAnyNameIn []       refl     f = No λ _ → undefined
 decPAnyNameIn (x ∷ xs) refl {p} f =
   mapDecP
     (either
-      (λ h → (x ⟨ InHere ⟩) , h )
-      (λ { ((y ⟨ h ⟩) , h') → (y ⟨ InThere h ⟩) , h' }))
+      (λ h → (x ⟨ InHere ⟩) , h)
+      (λ where ((y ⟨ h ⟩) , h') → (y ⟨ InThere h ⟩) , h'))
     lem
     (eitherDecP (f (x ⟨ InHere ⟩)) (decPAnyNameIn xs refl (strengthenNameInFun f)))
   where
@@ -100,17 +98,15 @@ decPAnyNameIn (x ∷ xs) refl {p} f =
     lem ((y ⟨ InThere h ⟩) , h') = Right ((y ⟨ h ⟩) , h')
 {-# COMPILE AGDA2HS decPAnyNameIn #-}
 
-
-module @0 _ where
+module _ where
   private
-    lem : {x : Name} {xs : List Name}
+    @0 lem : {x : Name} {xs : List Name}
       → All (λ y → ¬ x ≡ y) xs
-      → In x xs
-      → ⊥
-    lem (h ∷ hs) InHere      = h refl
-    lem (h ∷ hs) (InThere p) = lem hs p
+      → ¬ In x xs
+    lem (h ◂ hs) InHere      = h refl
+    lem (h ◂ hs) (InThere p) = lem hs p
 
-    fresh⇒uniqueIn : (x : Name) (xs : List Name)
+    @0 fresh⇒uniqueIn : (x : Name) (xs : List Name)
       → Fresh xs
       → (p q : In x xs)
       → p ≡ q
@@ -119,11 +115,12 @@ module @0 _ where
     fresh⇒uniqueIn x (y ∷ xs) (h , h') InHere      (InThere q) = exFalso (lem h q)
     fresh⇒uniqueIn x (y ∷ xs) (h , h') (InThere p) InHere      = exFalso (lem h p)
 
-  name-injective : {xs : List Name} {{_ : Fresh xs}}
-    → {x y : NameIn xs} → value x ≡ value y → x ≡ y
-  name-injective {xs} {{h}} {x ⟨ p ⟩} {y ⟨ q ⟩} refl
-    rewrite fresh⇒uniqueIn x xs h p q
-    = refl
+  @0 nameInjective : ∀ {@0 xs} {{@0 _ : Fresh xs}} {x y : NameIn xs}
+    → value x ≡ value y
+    → x ≡ y
+  nameInjective {xs} {{h}} {x ⟨ p ⟩} {y ⟨ q ⟩} refl
+    = cong0 (x ⟨_⟩) (fresh⇒uniqueIn x xs h p q)
+
 
 instance
   -- import instances
@@ -135,4 +132,4 @@ instance
 
   @0 iLawfulEqNameIn : {@0 xs : List Name} {{_ : Fresh xs}} → IsLawfulEq (NameIn xs)
   iLawfulEqNameIn .isEquality x y
-    = mapReflects name-injective (cong value) (isEquality (value x) (value y))
+    = mapReflects nameInjective (cong value) (isEquality (value x) (value y))
