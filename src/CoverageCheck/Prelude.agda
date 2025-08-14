@@ -61,7 +61,7 @@ open import Haskell.Extra.Sigma public
 -- agda standard library re-exports
 
 open import Data.List.Base public
-  using (sum; map; _++_; concatMap; length)
+  using (sum; map; _++_; concat; concatMap; length)
 
 
 -- open import Data.List.Relation.Unary.All public
@@ -84,11 +84,22 @@ open import Data.List.Base public
 -- open import Data.List.Relation.Unary.First.Properties public
 --   using (All⇒¬First)
 
+postulate sorry : {a : Set} → a
+{-# COMPILE AGDA2HS sorry #-}
+
 --------------------------------------------------------------------------------
 -- Equality
 
 cong0 : {@0 a : Set} {b : Set} {@0 x y : a} (f : a → b) → @0 x ≡ y → f x ≡ f y
 cong0 f refl = refl
+
+--------------------------------------------------------------------------------
+-- Either
+
+mapEither : {a b c d : Set} → (a → c) → (b → d) → Either a b → Either c d
+mapEither f g (Left x)  = Left (f x)
+mapEither f g (Right y) = Right (g y)
+{-# COMPILE AGDA2HS mapEither #-}
 
 --------------------------------------------------------------------------------
 -- Bottom and negation
@@ -138,11 +149,49 @@ data Any {@0 a : Set} (p : @0 a → Set) : (@0 xs : List a) → Set where
 pattern here  h = AnyHere h
 pattern there h = AnyThere h
 
-@0 ¬Any⇒All¬ : {a : Set} {p : @0 a → Set} (xs : List a)
-  → ¬ Any p xs
-  → All (λ x → ¬ p x) xs
-¬Any⇒All¬ []       ¬p = ⌈⌉
-¬Any⇒All¬ (x ∷ xs) ¬p = ¬p ∘ here ◂ ¬Any⇒All¬ xs (¬p ∘ there)
+module @0 _ {a : Set} {p : @0 a → Set} where
+
+  ++Any⁺ˡ : ∀ {xs ys} → Any p xs → Any p (xs ++ ys)
+  ++Any⁺ˡ (here x)  = here x
+  ++Any⁺ˡ (there h) = there (++Any⁺ˡ h)
+
+  ++Any⁺ʳ : ∀ {xs ys} → Any p ys → Any p (xs ++ ys)
+  ++Any⁺ʳ {[]}     h = h
+  ++Any⁺ʳ {x ∷ xs} h = there (++Any⁺ʳ h)
+
+  ++Any⁻ : ∀ xs {ys} → Any p (xs ++ ys) → Either (Any p xs) (Any p ys)
+  ++Any⁻ []       h = Right h
+  ++Any⁻ (x ∷ xs) (here h) = Left (here h)
+  ++Any⁻ (x ∷ xs) (there h) with ++Any⁻ xs h
+  ... | Left h'  = Left (there h')
+  ... | Right h' = Right h'
+
+  concatAny⁺ : ∀ {xss} → Any (Any p) xss → Any p (concat xss)
+  concatAny⁺ (here h) = ++Any⁺ˡ h
+  concatAny⁺ (there h) = ++Any⁺ʳ (concatAny⁺ h)
+
+  concatAny⁻ : ∀ xss → Any p (concat xss) → Any (Any p) xss
+  concatAny⁻ ([] ∷ xss)       h         = there (concatAny⁻ xss h)
+  concatAny⁻ ((x ∷ xs) ∷ xss) (here h)  = here (here h)
+  concatAny⁻ ((x ∷ xs) ∷ xss) (there h) with concatAny⁻ (xs ∷ xss) h
+  ... | here h'  = here (there h')
+  ... | there h' = there h'
+
+  gmapAny⁺ : {b : Set} {q : @0 b → Set} {f : a → b}
+    → (∀ {x} → p x → q (f x))
+    → (∀ {xs} → Any p xs → Any q (map f xs))
+  gmapAny⁺ g (here h)  = here (g h)
+  gmapAny⁺ g (there h) = there (gmapAny⁺ g h)
+
+  gmapAny⁻ : {b : Set} {q : @0 b → Set} {f : a → b}
+    → (∀ {x} → q (f x) → p x)
+    → (∀ {xs} → Any q (map f xs) → Any p xs)
+  gmapAny⁻ g {x ∷ xs} (here h)  = here (g h)
+  gmapAny⁻ g {x ∷ xs} (there h) = there (gmapAny⁻ g h)
+
+  ¬Any⇒All¬ : ∀ xs → ¬ Any p xs → All (λ x → ¬ p x) xs
+  ¬Any⇒All¬ []       ¬p = ⌈⌉
+  ¬Any⇒All¬ (x ∷ xs) ¬p = ¬p ∘ here ◂ ¬Any⇒All¬ xs (¬p ∘ there)
 
 data First {@0 a : Set} (p : @0 a → Set) : (@0 xs : List a) → Set where
   FirstHere  : ∀ {@0 x xs} → p x → First p (x ∷ xs)
@@ -317,12 +366,6 @@ firstDecP {p = p} f (x ∷ xs) = ifDecP (f x)
 -- open import Data.List.Relation.Unary.First.Properties public
 --   using (All⇒¬First)
 --   renaming (cofirst? to first?)
-
--- open import Data.Product.Base public
---   using (∃-syntax; _×_; -,_; _,_; uncurry; proj₁; proj₂)
---   renaming (map to map-×; map₁ to map-×₁; map₂ to map-×₂)
--- open import Data.Product.Relation.Binary.Lex.Strict public
---   using (×-Lex; ×-wellFounded)
 
 -- open import Data.Sum.Base public
 --   using (_⊎_; inj₁; inj₂; [_,_])

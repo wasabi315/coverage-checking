@@ -13,7 +13,7 @@ alllib: lib \
   lib/CoverageCheck/Instance.hs \
   lib/CoverageCheck/Usefulness.hs \
   lib/CoverageCheck/Usefulness/Algorithm.hs \
-  lib/CoverageCheck/Usefulness/Usefulness1.hs \
+  lib/CoverageCheck/Usefulness/UsefulV.hs \
   lib/CoverageCheck/Exhaustiveness.hs \
   lib/CoverageCheck.hs
 

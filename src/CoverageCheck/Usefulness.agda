@@ -10,7 +10,21 @@ module CoverageCheck.Usefulness
 
 private open module @0 G = Globals globals
 
+private
+  variable
+    αs : Types
+
 --------------------------------------------------------------------------------
 
 open import CoverageCheck.Usefulness.Algorithm public
-open import CoverageCheck.Usefulness.Usefulness1 public
+open import CoverageCheck.Usefulness.UsefulV as UsefulV public
+  hiding (iUsefulnessUsefulV)
+
+module _
+  ⦃ sig : Signature ⦄
+  ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+  where
+
+  decUseful1Term : (pss : PatternMatrix αs) (ps : Patterns αs) → DecP (UsefulV pss ps)
+  decUseful1Term = decUsefulTerm UsefulV
+  {-# COMPILE AGDA2HS decUseful1Term #-}

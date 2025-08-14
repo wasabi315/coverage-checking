@@ -138,57 +138,59 @@ module _ ⦃ sig : Signature ⦄ {d : NameData} where
   {-# COMPILE AGDA2HS decExistsMissingCon #-}
 
 
+record Usefulness ⦃ @0 sig : Signature ⦄ (u : ∀ {@0 αs0} (@0 P : PatternMatrix αs0) (@0 ps : Patterns αs0) → Set) : Set where
+  field
+    nilNil : ⦃ sig' : Rezz sig ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+      → u [] ⌈⌉
+    @0 consNil : ⦃ sig' : Rezz sig ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+      → {ps : Patterns ⌈⌉} {pss : PatternMatrix ⌈⌉}
+      → ¬ u (ps ∷ pss) ⌈⌉
+
+    orHead : ⦃ sig' : Rezz sig ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+      → {pss : PatternMatrix (α0 ◂ αs0)} {r₁ r₂ : Pattern α0} {ps : Patterns αs0}
+      → Either (u pss (r₁ ◂ ps)) (u pss (r₂ ◂ ps)) → u pss (r₁ ∣ r₂ ◂ ps)
+    @0 orHeadInv : ⦃ sig' : Rezz sig ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+      → {pss : PatternMatrix (α0 ◂ αs0)} {r₁ r₂ : Pattern α0} {ps : Patterns αs0}
+      → u pss (r₁ ∣ r₂ ◂ ps) → Either (u pss (r₁ ◂ ps)) (u pss (r₂ ◂ ps))
+
+    conHead : ⦃ sig' : Rezz sig ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+      → {pss : PatternMatrix (TyData d0 ◂ βs0)} {c : NameCon d0}
+      (let αs = argsTy (dataDefs sig d0) c)
+      {rs : Patterns αs} {ps : Patterns βs0}
+      → u (specialise c pss) (rs ◂◂ᵖ ps) → u pss (con c rs ◂ ps)
+    @0 conHeadInv : ⦃ sig' : Rezz sig ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+      → {pss : PatternMatrix (TyData d0 ◂ βs0)} {c : NameCon d0}
+      (let αs = argsTy (dataDefs sig d0) c)
+      {rs : Patterns αs} {ps : Patterns βs0}
+      → u pss (con c rs ◂ ps) → u (specialise c pss) (rs ◂◂ᵖ ps)
+
+    wildHeadMiss : ⦃ sig' : Rezz sig ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+      → {pss : PatternMatrix (TyData d ◂ αs0)} {ps : Patterns αs0}
+      → ∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) pss
+      → u (default' pss) ps
+      → u pss (— ◂ ps)
+    @0 wildHeadMissInv : ⦃ sig' : Rezz sig ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+      → {pss : PatternMatrix (TyData d ◂ αs0)} {ps : Patterns αs0}
+      → ∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) pss
+      → u pss (— ◂ ps)
+      → u (default' pss) ps
+
+    wildHeadComp : ⦃ sig' : Rezz sig ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+      → {pss : PatternMatrix (TyData d ◂ αs0)} {ps : Patterns αs0}
+      → @0 (∀ c → Any (λ ps → c ∈ headPattern ps) pss)
+      → Σ[ c ∈ NameCon d ] u (specialise c pss) (—* ◂◂ᵖ ps)
+      → u pss (— ◂ ps)
+    @0 wildHeadCompInv : ⦃ sig' : Rezz sig ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+      → {pss : PatternMatrix (TyData d ◂ αs0)} {ps : Patterns αs0}
+      → (∀ c → Any (λ ps → c ∈ headPattern ps) pss)
+      → u pss (— ◂ ps)
+      → Σ[ c ∈ NameCon d ] u (specialise c pss) (—* ◂◂ᵖ ps)
+
+open Usefulness ⦃ ... ⦄ public
+{-# COMPILE AGDA2HS Usefulness class #-}
+
+
 module _ ⦃ @0 sig : Signature ⦄ where
-
-  record Usefulness (u : ∀ {@0 αs0} (@0 P : PatternMatrix αs0) (@0 ps : Patterns αs0) → Set) : Set where
-    field
-      nilNil : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄ → u [] ⌈⌉
-      @0 consNil : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
-        → {ps : Patterns ⌈⌉} {pss : PatternMatrix ⌈⌉}
-        → ¬ u (ps ∷ pss) ⌈⌉
-
-      orHead : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
-        → {@0 pss : PatternMatrix (α0 ◂ αs0)} {@0 r₁ r₂ : Pattern α0} {@0 ps : Patterns αs0}
-        → Either (u pss (r₁ ◂ ps)) (u pss (r₂ ◂ ps)) → u pss (r₁ ∣ r₂ ◂ ps)
-      @0 orHeadInv : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
-        → {pss : PatternMatrix (α0 ◂ αs0)} {@0 r₁ r₂ : Pattern α0} {@0 ps : Patterns αs0}
-        → u pss (r₁ ∣ r₂ ◂ ps) → Either (u pss (r₁ ◂ ps)) (u pss (r₂ ◂ ps))
-
-      conHead : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
-        → {pss : PatternMatrix (TyData d0 ◂ βs0)} {c : NameCon d0}
-        (let αs = argsTy (dataDefs sig d0) c)
-        {rs : Patterns αs} {ps : Patterns βs0}
-        → u (specialise c pss) (rs ◂◂ᵖ ps) → u pss (con c rs ◂ ps)
-      @0 conHeadInv : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
-        → {pss : PatternMatrix (TyData d0 ◂ βs0)} {c : NameCon d0}
-        (let αs = argsTy (dataDefs sig d0) c)
-        {rs : Patterns αs} {ps : Patterns βs0}
-        → u pss (con c rs ◂ ps) → u (specialise c pss) (rs ◂◂ᵖ ps)
-
-      wildHeadMiss : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
-        → {@0 pss : PatternMatrix (TyData d0 ◂ αs0)} {@0 ps : Patterns αs0}
-        → ∃[ c ∈ NameCon d0 ] All (λ ps → c ∉ headPattern ps) pss
-        → u (default' pss) ps
-        → u pss (— ◂ ps)
-      @0 wildHeadMissInv : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
-        → {pss : PatternMatrix (TyData d0 ◂ αs0)} {ps : Patterns αs0}
-        → ∃[ c ∈ NameCon d0 ] All (λ ps → c ∉ headPattern ps) pss
-        → u pss (— ◂ ps)
-        → u (default' pss) ps
-
-      wildHeadComp : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
-        → {pss : PatternMatrix (TyData d0 ◂ αs0)} {ps : Patterns αs0}
-        → @0 (∀ c → Any (λ ps → c ∈ headPattern ps) pss)
-        → Σ[ c ∈ NameCon d0 ] u (specialise c pss) (—* ◂◂ᵖ ps)
-        → u pss (— ◂ ps)
-      @0 wildHeadCompInv : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
-        → {pss : PatternMatrix (TyData d0 ◂ αs0)} {ps : Patterns αs0}
-        → (∀ c → Any (λ ps → c ∈ headPattern ps) pss)
-        → u pss (— ◂ ps)
-        → Σ[ c ∈ NameCon d0 ] u (specialise c pss) (—* ◂◂ᵖ ps)
-
-  open Usefulness ⦃ ... ⦄ public
-  {-# COMPILE AGDA2HS Usefulness class #-}
 
   -- Specialized accessibility predicate for usefulness checking algorithm
   -- for separating termination proof from the algorithm
@@ -219,6 +221,10 @@ module _
   ⦃ _ : Usefulness u ⦄
   ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
   where
+
+  instance sig' : Rezz sig
+  sig' = sig ⟨ refl ⟩
+  {-# COMPILE AGDA2HS sig' inline #-}
 
   decUseful : (P : PatternMatrix αs) (ps : Patterns αs) → @0 UsefulAcc P ps → DecP (u P ps)
   decUseful {⌈⌉}            []      ⌈⌉              done             = Yes nilNil

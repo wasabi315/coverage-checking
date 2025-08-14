@@ -122,6 +122,11 @@ module _ ⦃ @0 sig : Signature ⦄ where
   syntax appendValues us vs = us ◂◂ᵛ vs
   {-# COMPILE AGDA2HS appendValues #-}
 
+  tabulateValues : (∀ α → Value α) → Values αs
+  tabulateValues {⌈⌉}     f = ⌈⌉
+  tabulateValues {α ◂ αs} f = f α ◂ tabulateValues f
+  {-# COMPILE AGDA2HS tabulateValues #-}
+
   data Pattern  : (@0 α : Type) → Set
   data Patterns : (@0 αs : Types) → Set
 
