@@ -13,7 +13,7 @@ open import Haskell.Prelude public
          ⊤; tt;
          Bool; True; False; not; _&&_; _||_; if_then_else_;
          Nat; zero; suc;
-         List; []; _∷_; _++_; map; concatMap;
+         List; []; _∷_;
          String;
          _×_; _,_; fst; snd; uncurry;
          Either; Left; Right; either;
@@ -27,7 +27,7 @@ open import Haskell.Law.Eq public
   using (IsLawfulEq; isEquality)
 
 open import Haskell.Prim.Foldable public
-  hiding (sum)
+  using (iFoldableList; Foldable; any)
 
 open import Haskell.Law.Equality public
   using (cong; cong₂; subst0; sym)
@@ -61,10 +61,8 @@ open import Haskell.Extra.Sigma public
 -- agda standard library re-exports
 
 open import Data.List.Base public
-  using (sum)
+  using (sum; map; _++_; concatMap; length)
 
-open import Data.List.Properties public
-  using (sum-++; map-++; ++-identityʳ)
 
 -- open import Data.List.Relation.Unary.All public
 --   using (All; []; _∷_)
@@ -85,16 +83,6 @@ open import Data.List.Properties public
   -- renaming (toAny to First⇒Any)
 -- open import Data.List.Relation.Unary.First.Properties public
 --   using (All⇒¬First)
-
-open import Data.Nat.Base public
-  using (ℕ; zero; suc; _+_; _≤_; _<_; s<s)
-open import Data.Nat.Induction public
-  using (<-wellFounded)
-open import Data.Nat.Properties public
-  using (+-identityʳ;
-         ≤-refl; module ≤-Reasoning; +-mono-≤; n≤1+n;
-         n<1+n; 0<1+n; <⇒≤; +-monoˡ-<; +-monoʳ-<;
-         +-mono-<-≤; +-mono-≤-<; m≤n⇒m<n∨m≡n; m≤m+n; m≤n+m)
 
 --------------------------------------------------------------------------------
 -- Equality
@@ -172,12 +160,12 @@ Fresh (x ∷ xs) = All (λ y → ¬ x ≡ y) xs × Fresh xs
 --------------------------------------------------------------------------------
 -- Decidable relations
 
-_≟_ : {a : Set} {{_ : Eq a}} {{@0 _ : IsLawfulEq a}} → (x y : a) → Dec (x ≡ y)
+_≟_ : {a : Set} ⦃ _ : Eq a ⦄ ⦃ @0 _ : IsLawfulEq a ⦄ → (x y : a) → Dec (x ≡ y)
 x ≟ y = (x == y) ⟨ isEquality x y ⟩
 {-# COMPILE AGDA2HS _≟_ inline #-}
 
-ifDec : {@0 a : Set} {b : Set} → Dec a → (@0 {{a}} → b) → (@0 {{¬ a}} → b) → b
-ifDec (b ⟨ p ⟩) x y = if b then (λ where {{refl}} → x {{p}}) else (λ where {{refl}} → y {{p}})
+ifDec : {@0 a : Set} {b : Set} → Dec a → (@0 ⦃ a ⦄ → b) → (@0 ⦃ ¬ a ⦄ → b) → b
+ifDec (b ⟨ p ⟩) x y = if b then (λ where ⦃ refl ⦄ → x ⦃ p ⦄) else (λ where ⦃ refl ⦄ → y ⦃ p ⦄)
 {-# COMPILE AGDA2HS ifDec inline #-}
 
 @0 negReflects : ∀ {ba a} → Reflects a ba → Reflects (¬ a) (not ba)
@@ -227,8 +215,8 @@ firstDec : ∀ {a} {@0 p : @0 a → Set}
   → (∀ xs → Dec (First p xs))
 firstDec         f []       = False ⟨ (λ ()) ⟩
 firstDec {p = p} f (x ∷ xs) = ifDec (f x)
-  (λ {{h}} → True ⟨ [ h ] ⟩)
-  (λ {{h}} → mapDec (h ◂_) (lem h) (firstDec f xs))
+  (λ ⦃ h ⦄ → True ⟨ [ h ] ⟩)
+  (λ ⦃ h ⦄ → mapDec (h ◂_) (lem h) (firstDec f xs))
   where
     @0 lem : ¬ p x → First p (x ∷ xs) → First p xs
     lem h [ h' ]   = contradiction h' h
@@ -260,9 +248,9 @@ mapDecP f g (Yes p) = Yes (f p)
 mapDecP f g (No p)  = No (contraposition g p)
 {-# COMPILE AGDA2HS mapDecP #-}
 
-ifDecP : {a b : Set} → DecP a → ({{a}} → b) → (@0 {{¬ a}} → b) → b
-ifDecP (Yes p) t e = t {{p}}
-ifDecP (No p)  t e = e {{p}}
+ifDecP : {a b : Set} → DecP a → (⦃ a ⦄ → b) → (@0 ⦃ ¬ a ⦄ → b) → b
+ifDecP (Yes p) t e = t ⦃ p ⦄
+ifDecP (No p)  t e = e ⦃ p ⦄
 {-# COMPILE AGDA2HS ifDecP #-}
 
 tupleDecP : ∀ {a b} → DecP a → DecP b → DecP (a × b)
@@ -283,8 +271,8 @@ firstDecP : ∀ {a} {p : @0 a → Set}
   → (∀ xs → DecP (First p xs))
 firstDecP         f []       = No λ ()
 firstDecP {p = p} f (x ∷ xs) = ifDecP (f x)
-  (λ {{h}} → Yes [ h ])
-  (λ {{h}} → mapDecP (h ◂_) (lem h) (firstDecP f xs))
+  (λ ⦃ h ⦄ → Yes [ h ])
+  (λ ⦃ h ⦄ → mapDecP (h ◂_) (lem h) (firstDecP f xs))
   where
     @0 lem : ¬ p x → First p (x ∷ xs) → First p xs
     lem h [ h' ]   = contradiction h' h

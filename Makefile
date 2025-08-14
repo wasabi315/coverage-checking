@@ -1,4 +1,4 @@
-FLAGS =
+FLAGS = --config rewrite-rules.yaml
 LIBRARIES =
 
 .PHONY: app alllib clean clean-lib clean-agdai
@@ -12,6 +12,8 @@ alllib: lib \
   lib/CoverageCheck/Syntax.hs \
   lib/CoverageCheck/Instance.hs \
   lib/CoverageCheck/Usefulness.hs \
+  lib/CoverageCheck/Usefulness/Algorithm.hs \
+  lib/CoverageCheck/Usefulness/Usefulness1.hs \
   lib/CoverageCheck/Exhaustiveness.hs \
   lib/CoverageCheck.hs
 

@@ -4,8 +4,8 @@ open import CoverageCheck.GlobalScope using (Globals)
 open import CoverageCheck.Syntax
 
 module CoverageCheck.Instance
-  {{@0 globals : Globals}}
-  {{@0 sig : Signature}}
+  ⦃ @0 globals : Globals ⦄
+  ⦃ @0 sig : Signature ⦄
   where
 
 private open module @0 G = Globals globals
@@ -18,8 +18,10 @@ private
   variable
     α β : Type
     αs βs : Types
+    d : NameData
     @0 α0 β0 : Type
     @0 αs0 βs0 : Types
+    @0 d0 : NameData
 
 --------------------------------------------------------------------------------
 -- Instance relation
@@ -34,9 +36,9 @@ syntax Instances ps vs = ps ≼* vs
 data Instance where
   IWild : {@0 v : Value α0} → — ≼ v
 
-  ICon : {@0 d : NameData} {c : NameCon d}
+  ICon : {c : NameCon d0}
     (let @0 αs : Types
-         αs = argsTy (dataDefs sig d) c)
+         αs = argsTy (dataDefs sig d0) c)
     {@0 ps : Patterns αs}
     {@0 vs : Values αs}
     → (is : ps ≼* vs)
@@ -103,9 +105,9 @@ module _ {@0 p q : Pattern α0} {@0 v : Value α0} where
   syntax iOrInv = ∣≼⁻
 
 
-module _ {@0 d : NameData} {@0 c : NameCon d}
+module _ {@0 c : NameCon d0}
   (let @0 αs : Types
-       αs = argsTy (dataDefs sig d) c)
+       αs = argsTy (dataDefs sig d0) c)
   {@0 ps : Patterns αs}
   {@0 vs : Values αs}
   where
@@ -177,13 +179,11 @@ module _ {@0 p q : Pattern α0} {@0 ps : Patterns αs0} {@0 v : Value α0} {@0 v
   {-# COMPILE AGDA2HS orHeadLemmaInv #-}
 
 
-module _ {@0 d : NameData} {c : NameCon d}
+module _ {c : NameCon d0}
   (let @0 αs : Types
-       αs = argsTy (dataDefs sig d) c)
-  {rs : Patterns αs}
-  {@0 ps : Patterns βs0}
-  {@0 us : Values αs}
-  {@0 vs : Values βs0}
+       αs = argsTy (dataDefs sig d0) c)
+  {rs : Patterns αs} {@0 ps : Patterns βs0}
+  {@0 us : Values αs} {@0 vs : Values βs0}
   where
 
   conHeadLemma : (rs ◂◂ᵖ ps) ≼* (us ◂◂ᵛ vs)
@@ -193,13 +193,11 @@ module _ {@0 d : NameData} {c : NameCon d}
   {-# COMPILE AGDA2HS conHeadLemma #-}
 
 
-module _ {@0 d : NameData} {@0 c : NameCon d}
+module _ {@0 c : NameCon d0}
   (let @0 αs : Types
-       αs = argsTy (dataDefs sig d) c)
-  {rs : Patterns αs}
-  {@0 ps : Patterns βs0}
-  {@0 us : Values αs}
-  {@0 vs : Values βs0}
+       αs = argsTy (dataDefs sig d0) c)
+  {rs : Patterns αs} {@0 ps : Patterns βs0}
+  {@0 us : Values αs} {@0 vs : Values βs0}
   where
 
   conHeadLemmaInv : (con c rs ◂ ps) ≼* (con c us ◂ vs)
@@ -208,13 +206,12 @@ module _ {@0 d : NameData} {@0 c : NameCon d}
   {-# COMPILE AGDA2HS conHeadLemmaInv #-}
 
 
-module _ {@0 d : NameData} {@0 c c' : NameCon d}
+module _ {c c' : NameCon d0}
   (let @0 αs : Types
-       αs = argsTy (dataDefs sig d) c
+       αs = argsTy (dataDefs sig d0) c
        @0 αs' : Types
-       αs' = argsTy (dataDefs sig d) c')
-  {@0 ps : Patterns αs}
-  {@0 vs : Values αs'}
+       αs' = argsTy (dataDefs sig d0) c')
+  {@0 ps : Patterns αs} {@0 vs : Values αs'}
   where
 
   c≼c'⇒c≡c' : con c ps ≼ con c' vs → c ≡ c'
@@ -233,8 +230,8 @@ syntax decInstances ps vs = ps ≼*? vs
 (p ∣ q)  ≼? v         = mapDecP (either ∣≼ˡ ∣≼ʳ) ∣≼⁻ (eitherDecP (p ≼? v) (q ≼? v))
 con c ps ≼? con c' vs =
   ifDec (c ≟ c')
-    (λ where {{refl}} → mapDecP con≼ con≼⁻ (ps ≼*? vs))
-    (λ {{h}} → No (contraposition c≼c'⇒c≡c' h))
+    (λ where ⦃ refl ⦄ → mapDecP con≼ con≼⁻ (ps ≼*? vs))
+    (λ ⦃ h ⦄ → No (contraposition c≼c'⇒c≡c' h))
 
 ⌈⌉       ≼*? ⌈⌉       = Yes ⌈⌉
 (p ◂ ps) ≼*? (v ◂ vs) = mapDecP (uncurry _◂_) ◂ⁱ⁻ (p ≼? v ×-decP ps ≼*? vs)

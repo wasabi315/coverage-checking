@@ -8,9 +8,9 @@ open import CoverageCheck.Name
 record Globals : Set where
   field
     dataScope : List Name
-    @0 {{freshDataScope}} : Fresh dataScope
+    @0 ⦃ freshDataScope ⦄ : Fresh dataScope
     conScope  : NameIn dataScope → List Name
-    @0 {{freshConScope}} : ∀ {d} → Fresh (conScope d)
+    @0 ⦃ freshConScope ⦄ : ∀ {d} → Fresh (conScope d)
 
   NameData : Set
   NameData = NameIn dataScope

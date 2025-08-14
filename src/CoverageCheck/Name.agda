@@ -35,15 +35,15 @@ anyNameIn (x ∷ xs) f = f (x ⟨ InHere ⟩) || anyNameIn xs (strengthenNameInF
 decAllNameIn : (xs : List Name)
   → {@0 ys : List Name} (@0 eq : xs ≡ ys)
   → {@0 p : NameIn ys → Set}
-  → (∀ x → Dec (p x))
-  → Either (Erase (∀ x → p x)) (Erase (∃[ x ∈ _ ] ¬ p x))
-decAllNameIn []       refl     f = Left (Erased λ _ → undefined)
+  → ((x : NameIn ys) → Dec (p x))
+  → Either (Erase (∀ x → p x)) (∃[ x ∈ NameIn ys ] ¬ p x)
+decAllNameIn []       refl {p} f = Left (Erased λ _ → undefined)
 decAllNameIn (x ∷ xs) refl {p} f =
   ifDec (f (x ⟨ InHere ⟩))
-    (λ {{h}} → case decAllNameIn xs refl (strengthenNameInFun f) of λ where
-      (Left (Erased h'))  → Left (Erased (lem1 h h'))
-      (Right (Erased h')) → Right (Erased (lem2 h')))
-    (λ {{h}} → Right (Erased ((x ⟨ InHere ⟩) ⟨ h ⟩)))
+    (λ ⦃ h ⦄ → case decAllNameIn xs refl (strengthenNameInFun f) of λ where
+      (Left (Erased h')) → Left (Erased (lem1 h h'))
+      (Right h') → Right (lem2 h'))
+    (λ ⦃ h ⦄ → Right ((x ⟨ InHere ⟩) ⟨ h ⟩))
   where
     @0 lem1 :
         p (x ⟨ InHere ⟩)
@@ -52,7 +52,7 @@ decAllNameIn (x ∷ xs) refl {p} f =
     lem1 h h' (y ⟨ InHere      ⟩) = h
     lem1 h h' (y ⟨ InThere h'' ⟩) = h' (y ⟨ h'' ⟩)
 
-    @0 lem2 :
+    lem2 :
         ∃[ (y ⟨ h ⟩) ∈ NameIn xs ] ¬ p (y ⟨ InThere h ⟩)
       → ∃[ y ∈ NameIn (x ∷ xs) ] ¬ p y
     lem2 ((y ⟨ h ⟩) ⟨ h' ⟩) = (y ⟨ (InThere h) ⟩) ⟨ h' ⟩
@@ -115,10 +115,10 @@ module _ where
     fresh⇒uniqueIn x (y ∷ xs) (h , h') InHere      (InThere q) = exFalso (lem h q)
     fresh⇒uniqueIn x (y ∷ xs) (h , h') (InThere p) InHere      = exFalso (lem h p)
 
-  @0 nameInjective : ∀ {@0 xs} {{@0 _ : Fresh xs}} {x y : NameIn xs}
+  @0 nameInjective : ∀ {@0 xs} ⦃ @0 _ : Fresh xs ⦄ {x y : NameIn xs}
     → value x ≡ value y
     → x ≡ y
-  nameInjective {xs} {{h}} {x ⟨ p ⟩} {y ⟨ q ⟩} refl
+  nameInjective {xs} ⦃ h ⦄ {x ⟨ p ⟩} {y ⟨ q ⟩} refl
     = cong0 (x ⟨_⟩) (fresh⇒uniqueIn x xs h p q)
 
 
@@ -130,6 +130,6 @@ instance
   iEqNameIn : {@0 xs : List Name} → Eq (NameIn xs)
   iEqNameIn ._==_ x y = value x == value y
 
-  @0 iLawfulEqNameIn : {@0 xs : List Name} {{_ : Fresh xs}} → IsLawfulEq (NameIn xs)
+  @0 iLawfulEqNameIn : {@0 xs : List Name} ⦃ _ : Fresh xs ⦄ → IsLawfulEq (NameIn xs)
   iLawfulEqNameIn .isEquality x y
     = mapReflects nameInjective (cong value) (isEquality (value x) (value y))

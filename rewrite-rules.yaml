@@ -1,0 +1,7 @@
+rewrites:
+  - from: "Data.List.Base._++_"
+    to: "_++_"
+    importing: "Data.List"
+  - from: "Data.List.Base.concatMap"
+    to: "concatMap"
+    importing: "Data.List"
