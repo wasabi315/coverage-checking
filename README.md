@@ -30,7 +30,7 @@ Q =
   (—        ◂ cons — — ◂ ⌈⌉) ∷
   []
 
--- Q is exhaustive, so we get a total matching function of type `∀ vs → Match Q vs` inside the inj₁
+-- Q is exhaustive, so we get a total matching function of type `∀ vs → Match Q vs`
 _ : decNonExhaustive Q ≡ Left (Erased (the (∀ vs → Match Q vs) _))
 _ = refl
 
