@@ -63,36 +63,6 @@ open import Haskell.Extra.Sigma public
 open import Data.List.Base public
   using (sum; map; _++_; concat; concatMap; length)
 
-
--- open import Data.List.Relation.Unary.All public
---   using (All; []; _∷_)
---   renaming (head to headAll; tail to tailAll; tabulate to tabulateAll)
--- open import Data.List.Relation.Unary.All.Properties public
-  -- using (¬All⇒Any¬; All¬⇒¬Any; ¬Any⇒All¬)
-
--- open import Data.List.Relation.Unary.Any public
---   using (Any; here; there)
-  -- renaming (map to mapAny)
--- open import Data.List.Relation.Unary.Any.Properties public
---   using ()
-  -- renaming (gmap to gmapAny; concat⁺ to concatAny⁺; concat⁻ to concatAny⁻;
-  --           ++⁻ to ++Any⁻; ++⁺ˡ to ++Any⁺ˡ; ++⁺ʳ to ++Any⁺ʳ; map⁻ to mapAny⁻)
-
--- open import Data.List.Relation.Unary.First public
---   using (First; _∷_; [_])
-  -- renaming (toAny to First⇒Any)
--- open import Data.List.Relation.Unary.First.Properties public
---   using (All⇒¬First)
-
-postulate sorry : {a : Set} → a
-{-# COMPILE AGDA2HS sorry #-}
-
---------------------------------------------------------------------------------
--- Equality
-
-cong0 : {@0 a : Set} {b : Set} {@0 x y : a} (f : a → b) → @0 x ≡ y → f x ≡ f y
-cong0 f refl = refl
-
 --------------------------------------------------------------------------------
 -- Either
 
@@ -201,6 +171,15 @@ data First {@0 a : Set} (p : @0 a → Set) : (@0 xs : List a) → Set where
 
 pattern [_] h    = FirstHere h
 pattern _◂_ h hs = FirstThere h hs
+
+firstToAny : ∀ {@0 a : Set} {p : @0 a → Set} {@0 xs} → First p xs → Any p xs
+firstToAny [ h ]   = here h
+firstToAny (_ ◂ h) = there (firstToAny h)
+{-# COMPILE AGDA2HS firstToAny #-}
+
+notFirstToNotAny : ∀ {@0 a : Set} {p : @0 a → Set} {@0 xs} → ¬ First p xs → ¬ Any p xs
+notFirstToNotAny h (here h')  = h [ h' ]
+notFirstToNotAny h (there h') = notFirstToNotAny (h ∘ (h ∘ [_] ◂_)) h'
 
 @0 Fresh : {a : Set} → List a → Set
 Fresh []       = ⊤
@@ -327,94 +306,3 @@ firstDecP {p = p} f (x ∷ xs) = ifDecP (f x)
     lem h [ h' ]   = contradiction h' h
     lem h (x ◂ h') = h'
 {-# COMPILE AGDA2HS firstDecP #-}
-
---------------------------------------------------------------------------------
-
--- open import Data.Empty public
---   using (⊥; ⊥-elim)
-
--- open import Data.Fin.Base public
---   using (Fin; zero; suc)
--- open import Data.Fin.Properties public
---   using (¬Fin0)
---   renaming (_≟_ to _≟Fin_; any? to anyFin?)
-
--- open import Data.List.Base public
---   using (List; []; _∷_; _++_; concatMap; length)
---   renaming (sum to sumList; map to mapList)
--- open import Data.List.Properties public
---   using (sum-++; map-++; ++-identityʳ)
-
--- open import Data.List.Relation.Unary.All public
---   using (All; []; _∷_)
---   renaming (head to headAll; tail to tailAll; tabulate to tabulateAll)
--- open import Data.List.Relation.Unary.All.Properties public
---   using (¬All⇒Any¬; All¬⇒¬Any; ¬Any⇒All¬)
---   renaming (++⁺ to ++All⁺)
-
--- open import Data.List.Relation.Unary.Any public
---   using (Any; here; there; any?)
---   renaming (map to mapAny)
--- open import Data.List.Relation.Unary.Any.Properties public
---   using (¬Any[])
---   renaming (gmap to gmapAny; concat⁺ to concatAny⁺; concat⁻ to concatAny⁻;
---             ++⁻ to ++Any⁻; ++⁺ˡ to ++Any⁺ˡ; ++⁺ʳ to ++Any⁺ʳ; map⁻ to mapAny⁻)
-
--- open import Data.List.Relation.Unary.First public
---   using (First; _∷_)
---   renaming (toAny to First⇒Any)
--- open import Data.List.Relation.Unary.First.Properties public
---   using (All⇒¬First)
---   renaming (cofirst? to first?)
-
--- open import Data.Sum.Base public
---   using (_⊎_; inj₁; inj₂; [_,_])
---   renaming (map to map-⊎)
-
--- open import Function.Base public
---   using (id; _∘_; flip; _on_)
-
--- open import Function.Bundles public
---   using (_⇔_; mk⇔)
-
--- open import Induction.WellFounded public
---   using (WellFounded; Acc; acc)
-
--- open import Relation.Binary.Construct.On public
---   using ()
---   renaming (wellFounded to on-wellFounded)
-
--- open import Relation.Binary.PropositionalEquality.Core public
---   using (_≡_; _≢_; refl; sym; ≢-sym; trans; cong; cong₂)
-
--- open import Relation.Nullary.Decidable public
---   using (Dec; yes; no; ¬?; _⊎-dec_; _×-dec_)
---   renaming (map to mapDec; map′ to mapDec′)
-
--- open import Relation.Nullary.Negation.Core public
---   using (¬_; contradiction; contraposition)
-
--- -- extra lemmas
-
--- module _ where
---   open import Data.Empty using (⊥-elim)
---   open import Data.Fin.Properties using (∀-cons)
---   open import Data.List.Relation.Unary.First using ([_])
---   open import Relation.Unary using (Pred; ∁; _⊆_; Decidable)
---   open import Relation.Nullary.Decidable.Core using (toSum)
-
---   ¬First⇒¬Any : ∀ {a p q} {A : Set a} {P : Pred A p} {Q : Pred A q}
---     → ∁ Q ⊆ P
---     → ∁ (First P Q) ⊆ ∁ (Any Q)
---   ¬First⇒¬Any ¬q⇒p ¬pqxxs (here qx) = ¬pqxxs [ qx ]
---   ¬First⇒¬Any ¬q⇒p ¬pqxxs (there qxs) =
---     ¬First⇒¬Any ¬q⇒p (¬pqxxs ∘ (¬q⇒p (¬pqxxs ∘ [_]) ∷_)) qxs
-
---   allOrCounterexample : ∀ {p n} {P : Fin n → Set p}
---     → Decidable P
---     → (∀ x → P x) ⊎ (∃[ x ] ¬ P x)
---   allOrCounterexample {n = zero} P? = inj₁ (⊥-elim ∘ ¬Fin0)
---   allOrCounterexample {n = suc n} P? with P? zero
---   ... | no ¬P0 = inj₂ (zero , ¬P0)
---   ... | yes P0 =
---         map-⊎ (∀-cons P0) (map-× suc id) (allOrCounterexample (P? ∘ suc))

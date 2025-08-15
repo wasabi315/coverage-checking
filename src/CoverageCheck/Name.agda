@@ -119,7 +119,7 @@ module _ where
     → value x ≡ value y
     → x ≡ y
   nameInjective {xs} ⦃ h ⦄ {x ⟨ p ⟩} {y ⟨ q ⟩} refl
-    = cong0 (x ⟨_⟩) (fresh⇒uniqueIn x xs h p q)
+    = cong (x ⟨_⟩) (fresh⇒uniqueIn x xs h p q)
 
 
 instance

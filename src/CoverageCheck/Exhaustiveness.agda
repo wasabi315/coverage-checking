@@ -1,63 +1,80 @@
-module CoverageCheck.Exhaustiveness where
-
 open import CoverageCheck.Prelude
+open import CoverageCheck.GlobalScope using (Globals)
 open import CoverageCheck.Instance
 open import CoverageCheck.Syntax
+open import CoverageCheck.Name
 open import CoverageCheck.Usefulness
 
--- private
---   variable
---     α β : Ty
---     αs βs : Tys
+module CoverageCheck.Exhaustiveness
+  ⦃ @0 globals : Globals ⦄
+  where
 
--- --------------------------------------------------------------------------------
--- -- Exhaustiveness and usefulness
+private open module @0 G = Globals globals
 
--- -- There is a matching row in P for every list of values
--- Exhaustive : PatMat αs → Set
--- Exhaustive P = ∀ vs → Match P vs
+private
+  variable
+    α β : Type
+    αs βs : Types
+    d : NameData
+    @0 α0 β0 : Type
+    @0 αs0 βs0 : Types
+    @0 d0 : NameData
 
--- -- There is a list of values that does not match any row in P
--- NonExhaustive : PatMat αs → Set
--- NonExhaustive P = ∃[ vs ] ¬ Match P vs
+--------------------------------------------------------------------------------
+-- Exhaustiveness
 
--- -- non-exhaustiveness defined in terms of usefulness:
--- -- P is non-exhaustive if ∙* is useful with respect to P
--- NonExhaustive′ : PatMat αs → Set
--- NonExhaustive′ P = Useful P ∙*
+module _ ⦃ @0 sig : Signature ⦄ where
 
--- -- P is exhaustive if ∙* is not useful with respect to P
--- Exhaustive′ : PatMat αs → Set
--- Exhaustive′ P = ¬ NonExhaustive′ P
+  -- There is a matching row in P for every list of values
+  Exhaustive : PatternMatrix αs0 → Set
+  Exhaustive P = ∀ vs → Match P vs
 
--- module _ {P : PatMat αs} where
+  -- There is a list of values that does not match any row in P
+  NonExhaustive : PatternMatrix αs0 → Set
+  NonExhaustive P = ∃[ vs ∈ _ ] ¬ Match P vs
+  {-# COMPILE AGDA2HS NonExhaustive inline #-}
 
---   NonExhaustive′→NonExhaustive : NonExhaustive′ P → NonExhaustive P
---   NonExhaustive′→NonExhaustive (vs , ∙*ps⋠vs , _) = vs , contraposition First⇒Any ∙*ps⋠vs
+  -- non-exhaustiveness defined in terms of usefulness:
+  -- P is non-exhaustive if —* is useful with respect to P
+  NonExhaustive' : PatternMatrix αs0 → Set
+  NonExhaustive' P = UsefulV P —*
+  {-# COMPILE AGDA2HS NonExhaustive' inline #-}
 
---   NonExhaustive→NonExhaustive′ : NonExhaustive P → NonExhaustive′ P
---   NonExhaustive→NonExhaustive′ (vs , P⋠vs) = vs , ¬First⇒¬Any id P⋠vs , ∙*≼
+  -- P is exhaustive if —* is not useful with respect to P
+  Exhaustive' : PatternMatrix αs0 → Set
+  Exhaustive' P = ¬ NonExhaustive' P
 
---   -- The two definitions of non-exhaustiveness are equivalent
---   NonExhaustive′⇔NonExhaustive : NonExhaustive′ P ⇔ NonExhaustive P
---   NonExhaustive′⇔NonExhaustive = mk⇔ NonExhaustive′→NonExhaustive NonExhaustive→NonExhaustive′
+  module _ {@0 P : PatternMatrix αs0} where
 
---   Exhaustive→Exhaustive′ : Exhaustive P → Exhaustive′ P
---   Exhaustive→Exhaustive′ exh (vs , P⋠vs , _) = P⋠vs (First⇒Any (exh vs))
+    nonExhaustive'ToNonExhaustive : NonExhaustive' P → NonExhaustive P
+    nonExhaustive'ToNonExhaustive = λ where
+      (MkUsefulV vs nis _) → vs ⟨ contraposition firstToAny nis ⟩
+    {-# COMPILE AGDA2HS nonExhaustive'ToNonExhaustive inline #-}
 
---   Exhaustive′→Exhaustive : Exhaustive′ P → Exhaustive P
---   Exhaustive′→Exhaustive exh vs with match? P vs
---   ... | yes P≼vs = P≼vs
---   ... | no P⋠vs = contradiction (vs , ¬First⇒¬Any id P⋠vs , ∙*≼) exh
+    nonExhaustiveToNonExhaustive' : NonExhaustive P → NonExhaustive' P
+    nonExhaustiveToNonExhaustive' (vs ⟨ h ⟩) =
+      MkUsefulV vs (notFirstToNotAny h) —≼*
 
---   -- The two definitions of exhaustiveness are equivalent
---   Exhaustive′⇔Exhaustive : Exhaustive′ P ⇔ Exhaustive P
---   Exhaustive′⇔Exhaustive = mk⇔ Exhaustive′→Exhaustive Exhaustive→Exhaustive′
+    exhaustiveToExhaustive' : Exhaustive P → Exhaustive' P
+    exhaustiveToExhaustive' h (MkUsefulV vs nis _) =
+      contradiction (firstToAny (h vs)) nis
 
--- --------------------------------------------------------------------------------
--- -- Entrypoint
 
--- exhaustive? : (P : PatMat αs) → Exhaustive P ⊎ NonExhaustive P
--- exhaustive? P with useful? P ∙*
--- ... | yes h = inj₂ (NonExhaustive′→NonExhaustive h)
--- ... | no h = inj₁ (Exhaustive′→Exhaustive h)
+  module _ {P : PatternMatrix αs0} where
+
+    exhaustive'ToExhaustive : Exhaustive' P → Exhaustive P
+    exhaustive'ToExhaustive h vs =
+      case decMatch P vs of λ where
+        (Yes h') → h'
+        (No h')  → contradiction (MkUsefulV vs (notFirstToNotAny h') —≼*) h
+
+--------------------------------------------------------------------------------
+-- Entrypoint
+
+module _ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄ where
+
+  decNonExhaustive : (pss : PatternMatrix αs) → DecP (NonExhaustive pss)
+  decNonExhaustive pss =
+    mapDecP nonExhaustive'ToNonExhaustive nonExhaustiveToNonExhaustive'
+      (decUsefulVTerm pss —*)
+  {-# COMPILE AGDA2HS decNonExhaustive #-}

@@ -25,6 +25,6 @@ module _
   ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
   where
 
-  decUseful1Term : (pss : PatternMatrix αs) (ps : Patterns αs) → DecP (UsefulV pss ps)
-  decUseful1Term = decUsefulTerm UsefulV
-  {-# COMPILE AGDA2HS decUseful1Term #-}
+  decUsefulVTerm : (pss : PatternMatrix αs) (ps : Patterns αs) → DecP (UsefulV pss ps)
+  decUsefulVTerm = decUsefulTerm UsefulV
+  {-# COMPILE AGDA2HS decUsefulVTerm inline #-}
