@@ -143,11 +143,11 @@ unappendInstances (p ◂ ps) {_ ◂ _} (i ◂ is) = first (i ◂_) (unappendInst
 {-# COMPILE AGDA2HS unappendInstances #-}
 syntax unappendInstances = ◂◂ⁱ⁻
 
-splitInstances : (ps : Patterns αs0) {@0 qs : Patterns βs0} {us : Values (αs0 ◂◂ βs0)}
+splitInstances : (@0 ps : Patterns αs) {@0 qs : Patterns βs0} {us : Values (αs ◂◂ βs0)}
   → @0 (ps ◂◂ᵖ qs) ≼* us
-  → ∃[ (vs , ws) ∈ (Values αs0 × Values βs0) ] (vs ◂◂ᵛ ws ≡ us) × ((ps ≼* vs) × (qs ≼* ws))
-splitInstances ⌈⌉       {us = us}     is       = (⌈⌉ , us) ⟨ refl , (⌈⌉ , is) ⟩
-splitInstances (p ◂ ps) {us = u ◂ us} (i ◂ is) =
+  → ∃[ (vs , ws) ∈ (Values αs × Values βs0) ] (vs ◂◂ᵛ ws ≡ us) × ((ps ≼* vs) × (qs ≼* ws))
+splitInstances {αs = ⌈⌉}     ⌈⌉       {us = us}     is       = (⌈⌉ , us) ⟨ refl , (⌈⌉ , is) ⟩
+splitInstances {αs = α ◂ αs} (p ◂ ps) {us = u ◂ us} (i ◂ is) =
   case splitInstances ps is of λ where
     ((vs , ws) ⟨ eq , is' ⟩) → (u ◂ vs , ws) ⟨ cong (u ◂_) eq , first (i ◂_) is' ⟩
 {-# COMPILE AGDA2HS splitInstances #-}
