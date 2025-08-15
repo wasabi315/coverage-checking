@@ -145,45 +145,49 @@ record Usefulness
     nilNil : ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       → u [] ⌈⌉
     @0 consNil : ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
-      → {ps : Patterns ⌈⌉} {pss : PatternMatrix ⌈⌉}
+      {@0 ps : Patterns ⌈⌉} {@0 pss : PatternMatrix ⌈⌉}
       → ¬ u (ps ∷ pss) ⌈⌉
 
-    orHead : ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
-      {pss : PatternMatrix (α ◂ αs0)} {r₁ r₂ : Pattern α} {ps : Patterns αs0}
-      → Either (u pss (r₁ ◂ ps)) (u pss (r₂ ◂ ps)) → u pss (r₁ ∣ r₂ ◂ ps)
-    @0 orHeadInv : ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
-      {pss : PatternMatrix (α ◂ αs0)} {r₁ r₂ : Pattern α} {ps : Patterns αs0}
-      → u pss (r₁ ∣ r₂ ◂ ps) → Either (u pss (r₁ ◂ ps)) (u pss (r₂ ◂ ps))
+    orHead : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+      {@0 pss : PatternMatrix (α0 ◂ αs0)} {@0 r₁ r₂ : Pattern α0} {@0 ps : Patterns αs0}
+      → Either (u pss (r₁ ◂ ps)) (u pss (r₂ ◂ ps))
+      → u pss (r₁ ∣ r₂ ◂ ps)
+    @0 orHeadInv : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+      {@0 pss : PatternMatrix (α0 ◂ αs0)} {@0 r₁ r₂ : Pattern α0} {@0 ps : Patterns αs0}
+      → u pss (r₁ ∣ r₂ ◂ ps)
+      → Either (u pss (r₁ ◂ ps)) (u pss (r₂ ◂ ps))
 
-    conHead : ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
-      {pss : PatternMatrix (TyData d ◂ βs0)} {c : NameCon d}
+    conHead : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+      {d} {@0 pss : PatternMatrix (TyData d ◂ βs0)} {c : NameCon d}
       (let αs = argsTy (dataDefs sig d) c)
-      {rs : Patterns αs} {ps : Patterns βs0}
-      → u (specialise c pss) (rs ◂◂ᵖ ps) → u pss (con c rs ◂ ps)
-    @0 conHeadInv : ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
-      {pss : PatternMatrix (TyData d ◂ βs0)} {c : NameCon d}
+      {@0 rs : Patterns αs} {@0 ps : Patterns βs0}
+      → u (specialise c pss) (rs ◂◂ᵖ ps)
+      → u pss (con c rs ◂ ps)
+    @0 conHeadInv : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+      {d} {@0 pss : PatternMatrix (TyData d ◂ βs0)} {c : NameCon d}
       (let αs = argsTy (dataDefs sig d) c)
-      {rs : Patterns αs} {ps : Patterns βs0}
-      → u pss (con c rs ◂ ps) → u (specialise c pss) (rs ◂◂ᵖ ps)
+      {@0 rs : Patterns αs} {@0 ps : Patterns βs0}
+      → u pss (con c rs ◂ ps)
+      → u (specialise c pss) (rs ◂◂ᵖ ps)
 
-    wildHeadMiss : ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
-      {pss : PatternMatrix (TyData d ◂ αs0)} {ps : Patterns αs0}
+    wildHeadMiss : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+      {d} {@0 pss : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
       → ∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) pss
       → u (default' pss) ps
       → u pss (— ◂ ps)
-    @0 wildHeadMissInv : ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
-      {pss : PatternMatrix (TyData d ◂ αs0)} {ps : Patterns αs0}
+    @0 wildHeadMissInv : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+      {d} {@0 pss : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
       → ∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) pss
       → u pss (— ◂ ps)
       → u (default' pss) ps
 
-    wildHeadComp : ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
-      {pss : PatternMatrix (TyData d ◂ αs0)} {ps : Patterns αs0}
+    wildHeadComp : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+      {d} {@0 pss : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
       → @0 (∀ c → Any (λ ps → c ∈ headPattern ps) pss)
       → Σ[ c ∈ NameCon d ] u (specialise c pss) (—* ◂◂ᵖ ps)
       → u pss (— ◂ ps)
-    @0 wildHeadCompInv : ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
-      {pss : PatternMatrix (TyData d ◂ αs0)} {ps : Patterns αs0}
+    @0 wildHeadCompInv : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+      {d} {@0 pss : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
       → (∀ c → Any (λ ps → c ∈ headPattern ps) pss)
       → u pss (— ◂ ps)
       → Σ[ c ∈ NameCon d ] u (specialise c pss) (—* ◂◂ᵖ ps)
