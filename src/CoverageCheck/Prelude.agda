@@ -38,8 +38,7 @@ open import Haskell.Extra.Dec public
 
 open import Haskell.Extra.Erase public
   using (Erase; Erased; get;
-         Σ0; ⟨_⟩_; <_>;
-         Rezz; rezz; rezzCong; rezzCong2)
+         Σ0; ⟨_⟩_; <_>)
 
 Σ0-syntax = Σ0
 {-# COMPILE AGDA2HS Σ0-syntax inline #-}

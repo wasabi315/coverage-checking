@@ -26,5 +26,5 @@ module _
   where
 
   decUsefulVTerm : (pss : PatternMatrix αs) (ps : Patterns αs) → DecP (UsefulV pss ps)
-  decUsefulVTerm = decUsefulTerm UsefulV
+  decUsefulVTerm = decUsefulTerm λ ⦃ sig' ⦄ → UsefulV ⦃ sig = sig' ⦄
   {-# COMPILE AGDA2HS decUsefulVTerm inline #-}

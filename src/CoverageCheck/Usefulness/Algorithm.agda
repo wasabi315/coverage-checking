@@ -138,49 +138,51 @@ module _ ⦃ sig : Signature ⦄ {d : NameData} where
   {-# COMPILE AGDA2HS decExistsMissingCon #-}
 
 
-record Usefulness ⦃ @0 sig : Signature ⦄ (u : ∀ {@0 αs0} (@0 P : PatternMatrix αs0) (@0 ps : Patterns αs0) → Set) : Set where
+record Usefulness
+  (u : ∀ ⦃ @0 sig : Signature ⦄ {@0 αs0} (@0 P : PatternMatrix αs0) (@0 ps : Patterns αs0) → Set)
+  : Set where
   field
-    nilNil : ⦃ sig' : Rezz sig ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+    nilNil : ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       → u [] ⌈⌉
-    @0 consNil : ⦃ sig' : Rezz sig ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+    @0 consNil : ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       → {ps : Patterns ⌈⌉} {pss : PatternMatrix ⌈⌉}
       → ¬ u (ps ∷ pss) ⌈⌉
 
-    orHead : ⦃ sig' : Rezz sig ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+    orHead : ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       → {pss : PatternMatrix (α0 ◂ αs0)} {r₁ r₂ : Pattern α0} {ps : Patterns αs0}
       → Either (u pss (r₁ ◂ ps)) (u pss (r₂ ◂ ps)) → u pss (r₁ ∣ r₂ ◂ ps)
-    @0 orHeadInv : ⦃ sig' : Rezz sig ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+    @0 orHeadInv : ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       → {pss : PatternMatrix (α0 ◂ αs0)} {r₁ r₂ : Pattern α0} {ps : Patterns αs0}
       → u pss (r₁ ∣ r₂ ◂ ps) → Either (u pss (r₁ ◂ ps)) (u pss (r₂ ◂ ps))
 
-    conHead : ⦃ sig' : Rezz sig ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+    conHead : ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       → {pss : PatternMatrix (TyData d0 ◂ βs0)} {c : NameCon d0}
       (let αs = argsTy (dataDefs sig d0) c)
       {rs : Patterns αs} {ps : Patterns βs0}
       → u (specialise c pss) (rs ◂◂ᵖ ps) → u pss (con c rs ◂ ps)
-    @0 conHeadInv : ⦃ sig' : Rezz sig ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+    @0 conHeadInv : ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       → {pss : PatternMatrix (TyData d0 ◂ βs0)} {c : NameCon d0}
       (let αs = argsTy (dataDefs sig d0) c)
       {rs : Patterns αs} {ps : Patterns βs0}
       → u pss (con c rs ◂ ps) → u (specialise c pss) (rs ◂◂ᵖ ps)
 
-    wildHeadMiss : ⦃ sig' : Rezz sig ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+    wildHeadMiss : ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       → {pss : PatternMatrix (TyData d ◂ αs0)} {ps : Patterns αs0}
       → ∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) pss
       → u (default' pss) ps
       → u pss (— ◂ ps)
-    @0 wildHeadMissInv : ⦃ sig' : Rezz sig ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+    @0 wildHeadMissInv : ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       → {pss : PatternMatrix (TyData d ◂ αs0)} {ps : Patterns αs0}
       → ∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) pss
       → u pss (— ◂ ps)
       → u (default' pss) ps
 
-    wildHeadComp : ⦃ sig' : Rezz sig ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+    wildHeadComp : ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       → {pss : PatternMatrix (TyData d ◂ αs0)} {ps : Patterns αs0}
       → @0 (∀ c → Any (λ ps → c ∈ headPattern ps) pss)
       → Σ[ c ∈ NameCon d ] u (specialise c pss) (—* ◂◂ᵖ ps)
       → u pss (— ◂ ps)
-    @0 wildHeadCompInv : ⦃ sig' : Rezz sig ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+    @0 wildHeadCompInv : ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       → {pss : PatternMatrix (TyData d ◂ αs0)} {ps : Patterns αs0}
       → (∀ c → Any (λ ps → c ∈ headPattern ps) pss)
       → u pss (— ◂ ps)
@@ -216,15 +218,11 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
 
 module _
-  ⦃ sig : Signature ⦄
-  (u : ∀ {@0 αs0} (@0 P : PatternMatrix αs0) (@0 ps : Patterns αs0) → Set)
+  (u : ∀ ⦃ @0 sig : Signature ⦄ {@0 αs0} (@0 P : PatternMatrix αs0) (@0 ps : Patterns αs0) → Set)
   ⦃ _ : Usefulness u ⦄
+  ⦃ sig : Signature ⦄
   ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
   where
-
-  instance sig' : Rezz sig
-  sig' = sig ⟨ refl ⟩
-  {-# COMPILE AGDA2HS sig' inline #-}
 
   decUseful : (P : PatternMatrix αs) (ps : Patterns αs) → @0 UsefulAcc P ps → DecP (u P ps)
   decUseful {⌈⌉}            []      ⌈⌉              done             = Yes nilNil
@@ -479,12 +477,12 @@ module @0 _ ⦃ sig : Signature ⦄ where
 -- Entrypoint
 
 module _
-  ⦃ sig : Signature ⦄
-  (u : ∀ {@0 αs0} (@0 P : PatternMatrix αs0) (@0 ps : Patterns αs0) → Set)
+  (u : ∀ ⦃ @0 sig : Signature ⦄ {@0 αs0} (@0 P : PatternMatrix αs0) (@0 ps : Patterns αs0) → Set)
   ⦃ _ : Usefulness u ⦄
+  ⦃ sig : Signature ⦄
   ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
   where
 
   decUsefulTerm : (pss : PatternMatrix αs) (ps : Patterns αs) → DecP (u pss ps)
-  decUsefulTerm pss ps = decUseful u pss ps (∀UsefulAcc pss ps)
+  decUsefulTerm pss ps = decUseful (λ ⦃ sig' ⦄ → u ⦃ sig' ⦄) pss ps (∀UsefulAcc pss ps)
   {-# COMPILE AGDA2HS decUsefulTerm inline #-}

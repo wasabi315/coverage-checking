@@ -7,7 +7,6 @@ open import CoverageCheck.Usefulness.Algorithm
 
 module CoverageCheck.Usefulness.UsefulV
   ⦃ @0 globals : Globals ⦄
-  ⦃ @0 sig : Signature ⦄
   where
 
 -- agda2hs does not import class methods for some reason, so we need to import them manually
@@ -28,14 +27,10 @@ private
 
 --------------------------------------------------------------------------------
 
-module _ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄ where
+module _ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄ where
 
-  inhabAtArgs : ⦃ sig' : Rezz sig ⦄ (c : NameCon d) → Values (argsTy (dataDefs sig d) c)
-  inhabAtArgs ⦃ rezz sig' ⦄ c = tabulateValues ⦃ sig = sig' ⦄ λ α → nonEmptyAxiom
-  {-# COMPILE AGDA2HS inhabAtArgs #-}
-
-  inhabAt : ⦃ sig' : Rezz sig ⦄ (c : NameCon d) → Value (TyData d)
-  inhabAt c = con c (inhabAtArgs c)
+  inhabAt : (c : NameCon d) → Value (TyData d)
+  inhabAt c = con c (tabulateValues λ α → nonEmptyAxiom)
   {-# COMPILE AGDA2HS inhabAt inline #-}
 
 --------------------------------------------------------------------------------
@@ -45,7 +40,7 @@ module _ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄ where
 --   1. there is a list of values that matches ps (say vs)
 --   2. vs does not match any row in P
 -- Usefulness can also be used to formulate redundancy
-record UsefulV (@0 P : PatternMatrix αs0) (@0 ps : Patterns αs0) : Set where
+record UsefulV ⦃ @0 sig : Signature ⦄ (@0 P : PatternMatrix αs0) (@0 ps : Patterns αs0) : Set where
   constructor MkUsefulV
   field
     witness       : Values αs0
@@ -57,7 +52,7 @@ open UsefulV public
 --------------------------------------------------------------------------------
 -- Properties of ≼ and specialise/default
 
-module @0 _ {c : NameCon d}
+module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}
   (let αs = argsTy (dataDefs sig d) c)
   {us : Values αs} {vs : Values βs}
   where
@@ -105,7 +100,7 @@ module @0 _ {c : NameCon d}
   specialise-preserves-≼⁻ = gmapAny⁻ specialiseAux-preserves-≼⁻ ∘ concatAny⁻ _
 
 
-module @0 _ {c : NameCon d} {us : Values (argsTy (dataDefs sig d) c)} {vs : Values βs} where
+module @0 _ ⦃ @0 sig : Signature ⦄ {c : NameCon d} {us : Values (argsTy (dataDefs sig d) c)} {vs : Values βs} where
 
   defaultAux-preserves-≼ : {ps : Patterns (TyData d ◂ βs)}
     → c ∉ headPattern ps
@@ -130,7 +125,7 @@ module @0 _ {c : NameCon d} {us : Values (argsTy (dataDefs sig d) c)} {vs : Valu
     ++Any⁺ʳ (default-preserves-≼ h is)
 
 
-module @0 _ {v : Value (TyData d)} {vs : Values αs} where
+module @0 _ ⦃ @0 sig : Signature ⦄ {v : Value (TyData d)} {vs : Values αs} where
 
   defaultAux-preserves-≼⁻ : {ps : Patterns (TyData d ◂ αs)}
     → defaultAux ps ≼** vs
@@ -149,16 +144,18 @@ module @0 _ {v : Value (TyData d)} {vs : Values αs} where
 --------------------------------------------------------------------------------
 -- Properties of usefulness
 
--- ⌈⌉ is useful wrt []
-usefulVNilNil : UsefulV [] ⌈⌉
-usefulVNilNil = MkUsefulV ⌈⌉ (λ ()) ⌈⌉
-{-# COMPILE AGDA2HS usefulVNilNil #-}
+module _ ⦃ @0 sig : Signature ⦄ where
 
--- [] is not wrt any non-empty matrix
-usefulVConsNil : {ps : Patterns ⌈⌉} {P : PatternMatrix ⌈⌉} → ¬ UsefulV (ps ∷ P) ⌈⌉
-usefulVConsNil {⌈⌉} (MkUsefulV ⌈⌉ h _) = contradiction (here ⌈⌉) h
+  -- ⌈⌉ is useful wrt []
+  usefulVNilNil : UsefulV [] ⌈⌉
+  usefulVNilNil = MkUsefulV ⌈⌉ (λ ()) ⌈⌉
+  {-# COMPILE AGDA2HS usefulVNilNil #-}
 
-module _ {@0 P : PatternMatrix (α0 ◂ αs0)} {@0 r₁ r₂ : Pattern α0} {@0 ps : Patterns αs0} where
+  -- [] is not wrt any non-empty matrix
+  usefulVConsNil : {ps : Patterns ⌈⌉} {P : PatternMatrix ⌈⌉} → ¬ UsefulV (ps ∷ P) ⌈⌉
+  usefulVConsNil {⌈⌉} (MkUsefulV ⌈⌉ h _) = contradiction (here ⌈⌉) h
+
+module _ ⦃ @0 sig : Signature ⦄ {@0 P : PatternMatrix (α0 ◂ αs0)} {@0 r₁ r₂ : Pattern α0} {@0 ps : Patterns αs0} where
 
   usefulVOrHead : Either (UsefulV P (r₁ ◂ ps)) (UsefulV P (r₂ ◂ ps)) → UsefulV P (r₁ ∣ r₂ ◂ ps)
   usefulVOrHead (Left (MkUsefulV (v ◂ vs) nis (i ◂ is))) =
@@ -172,7 +169,7 @@ module _ {@0 P : PatternMatrix (α0 ◂ αs0)} {@0 r₁ r₂ : Pattern α0} {@0 
   usefulVOrHeadInv (MkUsefulV vs nis (∣≼ʳ i ◂ is)) = Right (MkUsefulV vs nis (i ◂ is))
 
 
-module _ {@0 P : PatternMatrix (TyData d0 ◂ αs0)} {c : NameCon d0} {rs : Patterns (argsTy (dataDefs sig d0) c)} {@0 ps : Patterns αs0} where
+module _ ⦃ @0 sig : Signature ⦄ {@0 P : PatternMatrix (TyData d0 ◂ αs0)} {c : NameCon d0} {rs : Patterns (argsTy (dataDefs sig d0) c)} {@0 ps : Patterns αs0} where
 
   usefulVConHead : UsefulV (specialise c P) (rs ◂◂ᵖ ps) → UsefulV P (con c rs ◂ ps)
   usefulVConHead (MkUsefulV usvs nis is) = case splitInstances rs is of λ where
@@ -181,15 +178,14 @@ module _ {@0 P : PatternMatrix (TyData d0 ◂ αs0)} {c : NameCon d0} {rs : Patt
   {-# COMPILE AGDA2HS usefulVConHead #-}
 
 
-module _ {@0 P : PatternMatrix (TyData d0 ◂ αs0)} {@0 c : NameCon d0} {@0 rs : Patterns (argsTy (dataDefs sig d0) c)} {@0 ps : Patterns αs0} where
+module _ ⦃ @0 sig : Signature ⦄ {@0 P : PatternMatrix (TyData d0 ◂ αs0)} {@0 c : NameCon d0} {@0 rs : Patterns (argsTy (dataDefs sig d0) c)} {@0 ps : Patterns αs0} where
 
   usefulVConHeadInv : UsefulV P (con c rs ◂ ps) → UsefulV (specialise c P) (rs ◂◂ᵖ ps)
   usefulVConHeadInv (MkUsefulV (con c vs ◂ us) nis (con≼ is ◂ is')) =
     MkUsefulV (vs ◂◂ᵛ us) (contraposition specialise-preserves-≼⁻ nis) (is ◂◂ⁱ is')
 
 
-module _ {@0 P : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
-  ⦃ sig' : Rezz sig ⦄
+module _ ⦃ sig : Signature ⦄ {@0 P : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
   where
 
   -- If there exists a constructor c such that `∙* ++ ps` is useful wrt `specialise c P`, `∙ ∷ ps` is also useful wrt P
@@ -197,11 +193,9 @@ module _ {@0 P : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
       Σ[ c ∈ NameCon d ] UsefulV (specialise c P) (—* ◂◂ᵖ ps)
     → UsefulV P (— ◂ ps)
   usefulVWildHeadComp (c , MkUsefulV usvs nis is) =
-    case sig' of λ where
-      (rezz sig) → let instance _ = sig in
-        case splitInstances (—* {αs = argsTy (dataDefs sig d) c}) is of λ where
-        ((us , vs) ⟨ refl , (_ , is') ⟩) →
-          MkUsefulV (con c us ◂ vs) (contraposition specialise-preserves-≼ nis) (—≼ ◂ is')
+    case splitInstances (—* {αs = argsTy (dataDefs sig d) c}) is of λ where
+    ((us , vs) ⟨ refl , (_ , is') ⟩) →
+      MkUsefulV (con c us ◂ vs) (contraposition specialise-preserves-≼ nis) (—≼ ◂ is')
   {-# COMPILE AGDA2HS usefulVWildHeadComp #-}
 
   -- If `∙ ∷ ps` is useful wrt P, there exists a constructor c such that `∙* ++ ps` is useful wrt `specialise c P`
@@ -212,8 +206,7 @@ module _ {@0 P : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
     c , MkUsefulV (us ◂◂ᵛ vs) (contraposition specialise-preserves-≼⁻ nis) (—≼* ◂◂ⁱ is)
 
 
-module _ {@0 P : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
-  ⦃ sig' : Rezz sig ⦄
+module _ ⦃ sig : Signature ⦄ {@0 P : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
   ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
   where
 
