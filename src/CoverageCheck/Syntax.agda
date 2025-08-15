@@ -46,9 +46,9 @@ private
 
 record Datatype (@0 d : NameData) : Set where
   field
-    dataCons            : List Name
-    @0 ⦃ fullDataCons ⦄ : dataCons ≡ conScope d
-    argsTy              : (c : NameCon d) → Types
+    dataCons        : List Name
+    @0 fullDataCons : dataCons ≡ conScope d
+    argsTy          : (c : NameCon d) → Types
 
   allNameCon : (NameCon d → Bool) → Bool
   allNameCon f = allNameIn dataCons λ x → f (subst0 NameIn fullDataCons x)

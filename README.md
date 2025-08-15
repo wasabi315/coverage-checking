@@ -8,42 +8,32 @@ Specifically, we formalise the usefulness checking algorithm $\mathcal{U}_\text{
 We prove that a matrix of pattern is indeed exhaustive if the algorithm returns `true`, and there exists a sequence of values that are not covered if the algorithm returns `false`.
 
 ```agda
--- data Mylist a = Nil | One a | Cons a (Mylist a)
-mylist : Ty → Ty
-mylist α .numCons = 3
-mylist α .argsTy zero = []
-mylist α .argsTy (suc zero) = α ∷ []
-mylist α .argsTy (suc (suc zero)) = α ∷ mylist α ∷ []
-mylist α .inhabCon = zero
-mylist α .inhabArgs = []
+-- type list = Nil | One unit | Cons unit list
 
-pattern nil = con zero []
-pattern one x = con (suc zero) (x ∷ [])
-pattern cons x xs = con (suc (suc zero)) (x ∷ xs ∷ [])
-
-P : PatMat (mylist α ∷ mylist β ∷ [])
+P : PatternMatrix (TyData ⟨list⟩ ∷ TyData ⟨list⟩ ∷ [])
 P =
-  (nil ∷ ∙   ∷ []) ∷
-  (∙   ∷ nil ∷ []) ∷
+  (nil ◂ —   ◂ ⌈⌉) ∷
+  (—   ◂ nil ◂ ⌈⌉) ∷
   []
 
--- P is non-exhaustive, witnessed by one (inhab α) ∷ one (inhab β) ∷ []
-_ : exhaustive? (P {α} {β}) ≡ inj₂ (one (inhab α) ∷ one (inhab β) ∷ [] , _)
+-- P is non-exhaustive, witnessed by one unit ∷ one unit ∷ []
+_ : decNonExhaustive P ≡ Right ((one unit ◂ one unit ◂ ⌈⌉) ⟨ _ ⟩)
 _ = refl
 
-Q : PatMat (mylist α ∷ mylist β ∷ [])
+Q : PatternMatrix (TyData ⟨list⟩ ∷ TyData ⟨list⟩ ∷ [])
 Q =
-  (nil      ∷ ∙        ∷ []) ∷
-  (∙        ∷ nil      ∷ []) ∷
-  (one ∙    ∷ ∙        ∷ []) ∷
-  (∙        ∷ one ∙    ∷ []) ∷
-  (cons ∙ ∙ ∷ ∙        ∷ []) ∷
-  (∙        ∷ cons ∙ ∙ ∷ []) ∷
+  (nil      ◂ —        ◂ ⌈⌉) ∷
+  (—        ◂ nil      ◂ ⌈⌉) ∷
+  (one —    ◂ —        ◂ ⌈⌉) ∷
+  (—        ◂ one —    ◂ ⌈⌉) ∷
+  (cons — — ◂ —        ◂ ⌈⌉) ∷
+  (—        ◂ cons — — ◂ ⌈⌉) ∷
   []
 
--- Q is exhaustive, so we get a "total" matching function of type `∀ vs → Match Q vs` inside the inj₁
-_ : exhaustive? (Q {α} {β}) ≡ inj₁ _
+-- Q is exhaustive, so we get a total matching function of type `∀ vs → Match Q vs` inside the inj₁
+_ : decNonExhaustive Q ≡ Left (Erased (the (∀ vs → Match Q vs) _))
 _ = refl
+
 ```
 
 Tested with Agda v2.7.0 and agda-stdlib v2.0.

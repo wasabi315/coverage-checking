@@ -4,7 +4,7 @@ module CoverageCheck.Prelude where
 -- agda2hs re-exports
 
 open import Haskell.Prim public
-  using (⊥)
+  using (⊥; the)
 open import Haskell.Prim.Tuple public
   using (first; second)
 

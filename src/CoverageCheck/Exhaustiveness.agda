@@ -73,8 +73,8 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
 module _ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄ where
 
-  decNonExhaustive : (pss : PatternMatrix αs) → DecP (NonExhaustive pss)
-  decNonExhaustive pss =
-    mapDecP nonExhaustive'ToNonExhaustive nonExhaustiveToNonExhaustive'
-      (decUsefulVTerm pss —*)
+  decNonExhaustive : (pss : PatternMatrix αs) → Either (Erase (Exhaustive pss)) (NonExhaustive pss)
+  decNonExhaustive pss = ifDecP (decUsefulVTerm pss pWilds)
+    (λ ⦃ h ⦄ → Right (nonExhaustive'ToNonExhaustive h))
+    (λ ⦃ h ⦄ → Left (Erased (exhaustive'ToExhaustive h)))
   {-# COMPILE AGDA2HS decNonExhaustive #-}
