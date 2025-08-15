@@ -148,8 +148,8 @@ splitInstances : (@0 ps : Patterns αs) {@0 qs : Patterns βs0} {us : Values (α
   → ∃[ (vs , ws) ∈ (Values αs × Values βs0) ] (vs ◂◂ᵛ ws ≡ us) × ((ps ≼* vs) × (qs ≼* ws))
 splitInstances {αs = ⌈⌉}     ⌈⌉       {us = us}     is       = (⌈⌉ , us) ⟨ refl , (⌈⌉ , is) ⟩
 splitInstances {αs = α ◂ αs} (p ◂ ps) {us = u ◂ us} (i ◂ is) =
-  case splitInstances ps is of λ where
-    ((vs , ws) ⟨ eq , is' ⟩) → (u ◂ vs , ws) ⟨ cong (u ◂_) eq , first (i ◂_) is' ⟩
+  let vsws ⟨ eq , is' ⟩ = splitInstances ps is in
+  first (u ◂_) vsws ⟨ cong (u ◂_) eq , first (i ◂_) is' ⟩
 {-# COMPILE AGDA2HS splitInstances #-}
 
 module _ {@0 ps : Patterns αs0} {@0 vs : Values αs0} {@0 u : Value β0} {@0 us : Values βs} where

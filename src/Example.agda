@@ -24,8 +24,8 @@ pattern cons x xs = con ⟨cons⟩ (x ◂ xs ◂ ⌈⌉)
 
 instance
   globals : Globals
-  globals .dataScope                  = `unit ∷ `list ∷ []
-  globals .freshDataScope             = (λ ()) ◂ ⌈⌉ , (⌈⌉ , tt)
+  globals .dataScope                   = `unit ∷ `list ∷ []
+  globals .freshDataScope              = (λ ()) ◂ ⌈⌉ , (⌈⌉ , tt)
   globals .conScope      (`unit ⟨ _ ⟩) = `unit ∷ []
   globals .conScope      (`list ⟨ _ ⟩) = `nil ∷ `one ∷ `cons ∷ []
   globals .freshConScope {`unit ⟨ _ ⟩} = ⌈⌉ , tt
@@ -35,8 +35,8 @@ instance
 
   -- type unit = Unit
   unitDef : {p : In `unit (dataScope globals)} → Datatype (`unit ⟨ p ⟩)
-  unitDef .dataCons            = _
-  unitDef .fullDataCons        = refl
+  unitDef .dataCons             = _
+  unitDef .fullDataCons         = refl
   unitDef .argsTy (`unit ⟨ _ ⟩) = []
   unitDef .argsTy (_ ⟨ InThere () ⟩)
 

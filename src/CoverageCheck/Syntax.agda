@@ -55,8 +55,8 @@ record Datatype (@0 d : NameData) : Set where
   {-# COMPILE AGDA2HS allNameCon inline #-}
 
   decAllNameCon : {@0 p : NameCon d → Set}
-    → ((x : NameCon d) → Dec (p x))
-    → Either (Erase (∀ x → p x)) (∃[ x ∈ NameCon d ] ¬ p x)
+    → (∀ x → Dec (p x))
+    → Either (Erase (∀ x → p x)) (NonEmpty (∃[ x ∈ NameCon d ] ¬ p x))
   decAllNameCon f = decAllNameIn dataCons fullDataCons f
   {-# COMPILE AGDA2HS decAllNameCon inline #-}
 
@@ -66,13 +66,13 @@ record Datatype (@0 d : NameData) : Set where
 
   decAnyNameCon : {@0 p : NameCon d → Set}
     → (∀ x → Dec (p x))
-    → Dec (∃[ x ∈ NameCon d ] p x)
+    → Dec (NonEmpty (∃[ x ∈ NameCon d ] p x))
   decAnyNameCon f = decAnyNameIn dataCons fullDataCons f
   {-# COMPILE AGDA2HS decAnyNameCon inline #-}
 
   decPAnyNameCon : {p : @0 NameCon d → Set}
     → (∀ x → DecP (p x))
-    → DecP (Σ[ x ∈ NameCon d ] p x)
+    → DecP (NonEmpty (Σ[ x ∈ NameCon d ] p x))
   decPAnyNameCon f = decPAnyNameIn dataCons fullDataCons f
   {-# COMPILE AGDA2HS decPAnyNameCon inline #-}
 

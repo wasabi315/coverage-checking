@@ -63,7 +63,11 @@ open import Data.List.Base public
   using (sum; map; _++_; concat; concatMap; length)
 
 --------------------------------------------------------------------------------
--- Either
+-- Utils
+
+_,,_ : {a b : Set} → a → b → a × b
+_,,_ = _,_
+{-# COMPILE AGDA2HS _,,_ inline #-}
 
 mapEither : {a b c d : Set} → (a → c) → (b → d) → Either a b → Either c d
 mapEither f g (Left x)  = Left (f x)
@@ -185,6 +189,73 @@ Fresh []       = ⊤
 Fresh (x ∷ xs) = All (λ y → ¬ x ≡ y) xs × Fresh xs
 
 --------------------------------------------------------------------------------
+-- Non-empty lists
+
+infixr 5 consNonEmpty appendNonEmpty
+
+record NonEmpty (a : Set) : Set where
+  constructor MkNonEmpty
+  field
+    head : a
+    tail : List a
+
+open NonEmpty public
+{-# COMPILE AGDA2HS NonEmpty deriving Show #-}
+
+pattern _◂_ x xs = MkNonEmpty x xs
+
+consNonEmpty : {a : Set} → a → NonEmpty a → NonEmpty a
+consNonEmpty x (y ◂ ys) = x ◂ (y ∷ ys)
+{-# COMPILE AGDA2HS consNonEmpty #-}
+syntax consNonEmpty x xs = x ◂′ xs
+
+mapNonEmpty : {a b : Set} → (a → b) → NonEmpty a → NonEmpty b
+mapNonEmpty f (x ◂ xs) = f x ◂ map f xs
+{-# COMPILE AGDA2HS mapNonEmpty #-}
+
+appendNonEmpty : {a : Set} → NonEmpty a → NonEmpty a → NonEmpty a
+appendNonEmpty (x ◂ xs) (y ◂ ys) = x ◂ (xs ++ y ∷ ys)
+{-# COMPILE AGDA2HS appendNonEmpty #-}
+syntax appendNonEmpty xs ys = xs ◂◂ⁿᵉ ys
+
+--------------------------------------------------------------------------------
+-- These
+
+data These (a b : Set) : Set where
+  This : a → These a b
+  That : b → These a b
+  Both : a → b → These a b
+
+{-# COMPILE AGDA2HS These deriving Show #-}
+
+these : {a b c : Set} → (a → c) → (b → c) → (a → b → c) → These a b → c
+these f g h (This x)   = f x
+these f g h (That y)   = g y
+these f g h (Both x y) = h x y
+{-# COMPILE AGDA2HS these #-}
+
+mapThese : {a b c d : Set} → (a → c) → (b → d) → These a b → These c d
+mapThese f g (This x) = This (f x)
+mapThese f g (That x) = That (g x)
+mapThese f g (Both x y) = Both (f x) (g y)
+{-# COMPILE AGDA2HS mapThese #-}
+
+partitionEither : {a b : Set} → NonEmpty (Either a b) → These (NonEmpty a) (NonEmpty b)
+partitionEither (x ◂ xs) = go x xs
+  where
+    go : {a b : Set} → Either a b → List (Either a b) → These (NonEmpty a) (NonEmpty b)
+    go x         (y ∷ xs) = case (x ,, go y xs) of λ where
+      (Left x  , This xs)    → This (x ◂′ xs)
+      (Left x  , That ys)    → Both (x ◂ []) ys
+      (Left x  , Both xs ys) → Both (x ◂′ xs) ys
+      (Right y , This xs)    → Both xs (y ◂ [])
+      (Right y , That ys)    → That (y ◂′ ys)
+      (Right y , Both xs ys) → Both xs (y ◂′ ys)
+    go (Left x)  []       = This (x ◂ [])
+    go (Right y) []       = That (y ◂ [])
+{-# COMPILE AGDA2HS partitionEither #-}
+
+--------------------------------------------------------------------------------
 -- Decidable relations
 
 _≟_ : {a : Set} ⦃ _ : Eq a ⦄ ⦃ @0 _ : IsLawfulEq a ⦄ → (x y : a) → Dec (x ≡ y)
@@ -223,6 +294,16 @@ eitherReflects {False} {False} ¬a ¬b = either ¬a ¬b
 eitherDec : ∀ {@0 a b} → Dec a → Dec b → Dec (Either a b)
 eitherDec (ba ⟨ a ⟩) (bb ⟨ b ⟩) = (ba || bb) ⟨ eitherReflects a b ⟩
 {-# COMPILE AGDA2HS eitherDec inline #-}
+
+@0 theseReflects : ∀ {ba bb a b} → Reflects a ba → Reflects b bb → Reflects (These a b) (ba || bb)
+theseReflects {True}  {True}  a  b  = Both a b
+theseReflects {True}  {False} a  ¬b = This a
+theseReflects {False} {True}  ¬a b  = That b
+theseReflects {False} {False} ¬a ¬b = these ¬a ¬b (λ a _ → ¬a a)
+
+theseDec : ∀ {@0 a b} → Dec a → Dec b → Dec (These a b)
+theseDec (ba ⟨ a ⟩) (bb ⟨ b ⟩) = (ba || bb) ⟨ theseReflects a b ⟩
+{-# COMPILE AGDA2HS theseDec inline #-}
 
 anyDec : ∀ {a} {@0 p : @0 a → Set}
   → (∀ x → Dec (p x))
@@ -292,6 +373,13 @@ eitherDecP (Yes p) _       = Yes (Left p)
 eitherDecP (No p)  (Yes q) = Yes (Right q)
 eitherDecP (No p)  (No q)  = No (either p q)
 {-# COMPILE AGDA2HS eitherDecP #-}
+
+theseDecP : ∀ {a b} → DecP a → DecP b → DecP (These a b)
+theseDecP (Yes p) (Yes q) = Yes (Both p q)
+theseDecP (Yes p) (No q)  = Yes (This p)
+theseDecP (No p)  (Yes q) = Yes (That q)
+theseDecP (No p)  (No q)  = No (these p q (λ a _ → p a))
+{-# COMPILE AGDA2HS theseDecP #-}
 
 firstDecP : ∀ {a} {p : @0 a → Set}
   → (∀ x → DecP (p x))

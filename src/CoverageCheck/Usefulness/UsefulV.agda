@@ -26,14 +26,6 @@ private
     @0 d0 : NameData
 
 --------------------------------------------------------------------------------
-
-module _ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄ where
-
-  inhabAt : (c : NameCon d) → Value (TyData d)
-  inhabAt c = con c (tabulateValues λ α → nonEmptyAxiom)
-  {-# COMPILE AGDA2HS inhabAt inline #-}
-
---------------------------------------------------------------------------------
 -- Usefulness
 
 -- ps is useful with respect to P if
@@ -45,7 +37,7 @@ record UsefulV ⦃ @0 sig : Signature ⦄ (@0 P : PatternMatrix αs0) (@0 ps : P
   field
     witness       : Values αs0
     @0 P⋠witness  : P ⋠** witness
-    @0 witness≼ps : ps ≼* witness
+    @0 ps≼witness : ps ≼* witness
 open UsefulV public
 {-# COMPILE AGDA2HS UsefulV newtype #-}
 
@@ -144,6 +136,13 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {v : Value (TyData d)} {vs : Values αs} 
 --------------------------------------------------------------------------------
 -- Properties of usefulness
 
+module _ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄ where
+
+  inhabAt : (c : NameCon d) → Value (TyData d)
+  inhabAt c = con c (tabulateValues λ α → nonEmptyAxiom)
+  {-# COMPILE AGDA2HS inhabAt inline #-}
+
+
 module _ ⦃ @0 sig : Signature ⦄ where
 
   -- ⌈⌉ is useful wrt []
@@ -157,16 +156,18 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
 module _ ⦃ @0 sig : Signature ⦄ {@0 P : PatternMatrix (α0 ◂ αs0)} {@0 r₁ r₂ : Pattern α0} {@0 ps : Patterns αs0} where
 
-  usefulVOrHead : Either (UsefulV P (r₁ ◂ ps)) (UsefulV P (r₂ ◂ ps)) → UsefulV P (r₁ ∣ r₂ ◂ ps)
-  usefulVOrHead (Left (MkUsefulV (v ◂ vs) nis (i ◂ is))) =
+  usefulVOrHead : These (UsefulV P (r₁ ◂ ps)) (UsefulV P (r₂ ◂ ps)) → UsefulV P (r₁ ∣ r₂ ◂ ps)
+  usefulVOrHead (This (MkUsefulV (v ◂ vs) nis (i ◂ is))) =
     MkUsefulV (v ◂ vs) nis (∣≼ˡ i ◂ is)
-  usefulVOrHead (Right (MkUsefulV (v ◂ vs) nis (i ◂ is))) =
+  usefulVOrHead (That (MkUsefulV (v ◂ vs) nis (i ◂ is))) =
     MkUsefulV (v ◂ vs) nis (∣≼ʳ i ◂ is)
+  usefulVOrHead (Both (MkUsefulV (v ◂ vs) nis (i ◂ is)) _) =
+    MkUsefulV (v ◂ vs) nis (∣≼ˡ i ◂ is)
   {-# COMPILE AGDA2HS usefulVOrHead #-}
 
-  @0 usefulVOrHeadInv : UsefulV P (r₁ ∣ r₂ ◂ ps) → Either (UsefulV P (r₁ ◂ ps)) (UsefulV P (r₂ ◂ ps))
-  usefulVOrHeadInv (MkUsefulV vs nis (∣≼ˡ i ◂ is)) = Left (MkUsefulV vs nis (i ◂ is))
-  usefulVOrHeadInv (MkUsefulV vs nis (∣≼ʳ i ◂ is)) = Right (MkUsefulV vs nis (i ◂ is))
+  @0 usefulVOrHeadInv : UsefulV P (r₁ ∣ r₂ ◂ ps) → These (UsefulV P (r₁ ◂ ps)) (UsefulV P (r₂ ◂ ps))
+  usefulVOrHeadInv (MkUsefulV vs nis (∣≼ˡ i ◂ is)) = This (MkUsefulV vs nis (i ◂ is))
+  usefulVOrHeadInv (MkUsefulV vs nis (∣≼ʳ i ◂ is)) = That (MkUsefulV vs nis (i ◂ is))
 
 
 module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ◂ αs0)} {c : NameCon d} {@0 rs : Patterns (argsTy (dataDefs sig d) c)} {@0 ps : Patterns αs0} where
@@ -190,9 +191,9 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ◂ αs0)} 
 
   -- If there exists a constructor c such that `∙* ++ ps` is useful wrt `specialise c P`, `∙ ∷ ps` is also useful wrt P
   usefulVWildHeadComp :
-      Σ[ c ∈ NameCon d ] UsefulV (specialise c P) (—* ◂◂ᵖ ps)
+      NonEmpty (Σ[ c ∈ NameCon d ] UsefulV (specialise c P) (—* ◂◂ᵖ ps))
     → UsefulV P (— ◂ ps)
-  usefulVWildHeadComp (c , MkUsefulV usvs nis is) =
+  usefulVWildHeadComp ((c , MkUsefulV usvs nis is) ◂ _) =
     case splitInstances {αs = argsTy (dataDefs sig d) c} —* is of λ where
       ((us , vs) ⟨ refl , (_ , is') ⟩) →
         MkUsefulV (con c us ◂ vs) (contraposition specialise-preserves-≼ nis) (—≼ ◂ is')
@@ -201,9 +202,9 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ◂ αs0)} 
   -- If `∙ ∷ ps` is useful wrt P, there exists a constructor c such that `∙* ++ ps` is useful wrt `specialise c P`
   usefulVWildHeadCompInv :
       UsefulV P (— ◂ ps)
-    → Σ[ c ∈ NameCon d ] UsefulV (specialise c P) (—* ◂◂ᵖ ps)
+    → NonEmpty (Σ[ c ∈ NameCon d ] UsefulV (specialise c P) (—* ◂◂ᵖ ps))
   usefulVWildHeadCompInv (MkUsefulV (con c us ◂ vs) nis (_ ◂ is)) =
-    c , MkUsefulV (us ◂◂ᵛ vs) (contraposition specialise-preserves-≼⁻ nis) (—≼* ◂◂ⁱ is)
+    (c , MkUsefulV (us ◂◂ᵛ vs) (contraposition specialise-preserves-≼⁻ nis) (—≼* ◂◂ⁱ is)) ◂ []
 
 
 module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
@@ -211,9 +212,10 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ◂ αs0)} 
   where
 
   -- If there is a constructor c that does not appear in the first column of P, and ps is useful wrt default P, ∙ ∷ ps is also useful wrt P.
-  usefulVWildHeadMiss : ∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) P
+  usefulVWildHeadMiss :
+      NonEmpty (∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) P)
     → UsefulV (default' P) ps → UsefulV P (— ◂ ps)
-  usefulVWildHeadMiss (c ⟨ h ⟩) (MkUsefulV vs nis is) =
+  usefulVWildHeadMiss (c ⟨ h ⟩ ◂ _) (MkUsefulV vs nis is) =
     MkUsefulV (inhabAt c ◂ vs) (contraposition (default-preserves-≼ h) nis) (—≼ ◂ is)
   {-# COMPILE AGDA2HS usefulVWildHeadMiss #-}
 

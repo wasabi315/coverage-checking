@@ -123,10 +123,10 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
 module _ ⦃ sig : Signature ⦄ {d : NameData} where
 
-  -- Is there a constructor that does not appear in the first column of P?
+  -- Are there constructors that does not appear in the first column of P?
   decExistsMissingCon : (P : PatternMatrix (TyData d ◂ αs0))
     → Either
-        (∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) P)
+        (NonEmpty (∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) P))
         (Erase (∀ c → Any (λ ps → c ∈ headPattern ps) P))
   decExistsMissingCon pss =
     case
@@ -134,7 +134,7 @@ module _ ⦃ sig : Signature ⦄ {d : NameData} where
         anyDec (λ ps → c ∈? headPattern ps) pss)
     of λ where
       (Left (Erased h)) → Right (Erased h)
-      (Right (c ⟨ h ⟩)) → Left (c ⟨ (¬Any⇒All¬ pss h) ⟩)
+      (Right hs) → Left (mapNonEmpty (λ where (c ⟨ h ⟩) → (c ⟨ ¬Any⇒All¬ pss h ⟩)) hs)
   {-# COMPILE AGDA2HS decExistsMissingCon #-}
 
 
@@ -150,12 +150,12 @@ record Usefulness
 
     orHead : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {@0 pss : PatternMatrix (α0 ◂ αs0)} {@0 r₁ r₂ : Pattern α0} {@0 ps : Patterns αs0}
-      → Either (u pss (r₁ ◂ ps)) (u pss (r₂ ◂ ps))
+      → These (u pss (r₁ ◂ ps)) (u pss (r₂ ◂ ps))
       → u pss (r₁ ∣ r₂ ◂ ps)
     @0 orHeadInv : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {@0 pss : PatternMatrix (α0 ◂ αs0)} {@0 r₁ r₂ : Pattern α0} {@0 ps : Patterns αs0}
       → u pss (r₁ ∣ r₂ ◂ ps)
-      → Either (u pss (r₁ ◂ ps)) (u pss (r₂ ◂ ps))
+      → These (u pss (r₁ ◂ ps)) (u pss (r₂ ◂ ps))
 
     conHead : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ◂ βs0)} {c : NameCon d}
@@ -172,25 +172,25 @@ record Usefulness
 
     wildHeadMiss : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
-      → ∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) pss
+      → NonEmpty (∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) pss)
       → u (default' pss) ps
       → u pss (— ◂ ps)
     @0 wildHeadMissInv : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
-      → ∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) pss
+      → NonEmpty (∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) pss)
       → u pss (— ◂ ps)
       → u (default' pss) ps
 
     wildHeadComp : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
       → @0 (∀ c → Any (λ ps → c ∈ headPattern ps) pss)
-      → Σ[ c ∈ NameCon d ] u (specialise c pss) (—* ◂◂ᵖ ps)
+      → NonEmpty (Σ[ c ∈ NameCon d ] u (specialise c pss) (—* ◂◂ᵖ ps))
       → u pss (— ◂ ps)
     @0 wildHeadCompInv : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
       → (∀ c → Any (λ ps → c ∈ headPattern ps) pss)
       → u pss (— ◂ ps)
-      → Σ[ c ∈ NameCon d ] u (specialise c pss) (—* ◂◂ᵖ ps)
+      → NonEmpty (Σ[ c ∈ NameCon d ] u (specialise c pss) (—* ◂◂ᵖ ps))
 
 open Usefulness ⦃ ... ⦄ public
 {-# COMPILE AGDA2HS Usefulness class #-}
@@ -205,7 +205,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
     done : {P : PatternMatrix ⌈⌉} → UsefulAcc P ⌈⌉
 
     step-wild : {P : PatternMatrix (TyData d ◂ αs)} {ps : Patterns αs}
-      → (∃[ c ∈ _ ] All (λ ps → c ∉ headPattern ps) P → UsefulAcc (default' P) ps)
+      → (NonEmpty (∃[ c ∈ _ ] All (λ ps → c ∉ headPattern ps) P) → UsefulAcc (default' P) ps)
       → (∀ c → Any (λ ps → c ∈ headPattern ps) P → UsefulAcc (specialise c P) (—* ◂◂ᵖ ps))
       → UsefulAcc P (— ◂ ps)
 
@@ -244,7 +244,7 @@ module _
     mapDecP conHead conHeadInv (decUseful (specialise c pss) (rs ◂◂ᵖ ps) h)
   decUseful {TyData d ◂ αs} pss     (r₁ ∣ r₂  ◂ ps) (step-∣ h h')    =
     mapDecP orHead orHeadInv
-      (eitherDecP (decUseful pss (r₁ ◂ ps) h) (decUseful pss (r₂ ◂ ps) h'))
+      (theseDecP (decUseful pss (r₁ ◂ ps) h) (decUseful pss (r₂ ◂ ps) h'))
   {-# COMPILE AGDA2HS decUseful #-}
 
 --------------------------------------------------------------------------------
