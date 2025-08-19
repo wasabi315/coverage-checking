@@ -67,11 +67,11 @@ infix 2 ∃-syntax
 open import Haskell.Extra.Sigma public
   using (Σ-syntax; _,_; fst; snd)
 
-open import Data.Set public
-  using (Set; empty; singleton; union; fromList; null; member; difference; toAscList;
-         prop-member-insert; prop-member-empty; prop-member-union; prop-member-null;
-         prop-member-difference; prop-member-fromList; prop-member-toAscList;
-         prop-null→empty)
+-- open import Data.Set public
+--   using (Set; empty; singleton; union; fromList; null; member; difference; toAscList;
+--          prop-member-insert; prop-member-empty; prop-member-union; prop-member-null;
+--          prop-member-difference; prop-member-fromList; prop-member-toAscList;
+--          prop-null→empty)
 
 --------------------------------------------------------------------------------
 -- Bottom and negation
@@ -105,7 +105,9 @@ mapEither f g (Right y) = Right (g y)
 {-# COMPILE AGDA2HS mapEither #-}
 
 --------------------------------------------------------------------------------
--- Set properties
+-- Sets
+
+open import Data.Set as Set using (Set)
 
 ifTrueFalse : (b : Bool) → (if b then True else False) ≡ b
 ifTrueFalse False = refl
@@ -114,36 +116,36 @@ ifTrueFalse True  = refl
 module _ {a : Type} ⦃ _ : Ord a ⦄ where
 
   prop-member-singleton : (x y : a)
-    → member x (singleton y) ≡ (x == y)
+    → Set.member x (Set.singleton y) ≡ (x == y)
   prop-member-singleton x y
-    rewrite prop-member-insert x y empty
-    | prop-member-empty x
+    rewrite Set.prop-member-insert x y Set.empty
+    | Set.prop-member-empty x
     | ifTrueFalse (x == y)
     = refl
 
   prop-difference-empty : {sa sb : Set a}
-    → difference sa sb ≡ empty
+    → Set.difference sa sb ≡ Set.empty
     → ∀ {x}
-    → member x sa ≡ True
-    → member x sb ≡ True
+    → Set.member x sa ≡ True
+    → Set.member x sb ≡ True
   prop-difference-empty {sa} {sb} h {x} h'
-    with eq ← prop-member-difference x sa sb
-    rewrite h | h' | prop-member-empty x
-    = sym (not-involution False (member x sb) eq)
+    with eq ← Set.prop-member-difference x sa sb
+    rewrite h | h' | Set.prop-member-empty x
+    = sym (not-involution False (Set.member x sb) eq)
 
   prop-null-toAscList : {s : Set a}
-    → toAscList s ≡ []
-    → null s ≡ True
-  prop-null-toAscList {s} h = prop-member-null s λ x →
-    trans (sym (prop-member-toAscList x s)) (cong (elem x) h)
+    → Set.toAscList s ≡ []
+    → Set.null s ≡ True
+  prop-null-toAscList {s} h = Set.prop-member-null s λ x →
+    trans (sym (Set.prop-member-toAscList x s)) (cong (elem x) h)
 
   findMin : ⦃ @0 _ : IsLawfulEq a ⦄
-    → (s : Set a) ⦃ @0 _ : null s ≡ False ⦄
-    → ∃[ x ∈ a ] member x s ≡ True
-  findMin s ⦃ h ⦄ = case toAscList s of λ where
+    → (s : Set a) ⦃ @0 _ : Set.null s ≡ False ⦄
+    → ∃[ x ∈ a ] Set.member x s ≡ True
+  findMin s ⦃ h ⦄ = case Set.toAscList s of λ where
     []       ⦃ h' ⦄ → exFalso (prop-null-toAscList h') h
     (x ∷ xs) ⦃ h' ⦄ →
-      x ⟨ trans (sym (prop-member-toAscList x s))
+      x ⟨ trans (sym (Set.prop-member-toAscList x s))
           (trans (cong (elem x) h')
           (cong (_|| elem x xs) (eqReflexivity x))) ⟩
   {-# COMPILE AGDA2HS findMin #-}

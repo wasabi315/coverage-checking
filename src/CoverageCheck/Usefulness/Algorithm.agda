@@ -3,12 +3,11 @@ open import CoverageCheck.GlobalScope using (Globals)
 open import CoverageCheck.Instance
 open import CoverageCheck.Syntax
 open import CoverageCheck.Name
+open import Data.Set as Set using (Set)
 
 module CoverageCheck.Usefulness.Algorithm
   ⦃ @0 globals : Globals ⦄
   where
-
-{-# FOREIGN AGDA2HS import Prelude hiding (null) #-}
 
 private open module @0 G = Globals globals
 
@@ -54,13 +53,13 @@ module _ ⦃ sig : Signature ⦄ {d : NameData} (c : NameCon d)
 module _ ⦃ @0 sig : Signature ⦄ where
 
   rootConSet' : (p : Pattern (TyData d0)) → Set (NameCon d0)
-  rootConSet' —         = empty
-  rootConSet' (con c _) = singleton c
-  rootConSet' (p ∣ q)   = union (rootConSet' p) (rootConSet' q)
+  rootConSet' —         = Set.empty
+  rootConSet' (con c _) = Set.singleton c
+  rootConSet' (p ∣ q)   = Set.union (rootConSet' p) (rootConSet' q)
   {-# COMPILE AGDA2HS rootConSet' #-}
 
   rootConSet : (P : PatternMatrix (TyData d0 ◂ αs0)) → Set (NameCon d0)
-  rootConSet pss = foldr (λ ps → union (rootConSet' (headPattern ps))) empty pss
+  rootConSet pss = foldr (λ ps → Set.union (rootConSet' (headPattern ps))) Set.empty pss
   {-# COMPILE AGDA2HS rootConSet #-}
 
 
@@ -84,11 +83,11 @@ module Raw where
 
     -- Is there a constructor that does not appear in the first column of P?
     existMissCon : (P : PatternMatrix (TyData d ◂ αs0)) → Bool
-    existMissCon {d = d} pss = not (null missConSet)
+    existMissCon {d = d} pss = not (Set.null missConSet)
       where
         conSet missConSet : Set (NameCon d)
         conSet     = rootConSet pss
-        missConSet = difference (universalNameConSet (dataDefs sig d)) conSet
+        missConSet = Set.difference (universalNameConSet (dataDefs sig d)) conSet
     {-# COMPILE AGDA2HS existMissCon #-}
 
     -- The core usefulness checking algorithm in the paper
@@ -131,18 +130,18 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} where
 module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} (c : NameCon d0) where
 
   memberRootConSet' : (p : Pattern (TyData d0))
-    → Reflects (c ∈ p) (member c (rootConSet' p))
-  memberRootConSet' — rewrite prop-member-empty c = id
+    → Reflects (c ∈ p) (Set.member c (rootConSet' p))
+  memberRootConSet' — rewrite Set.prop-member-empty c = id
   memberRootConSet' (con c' _) rewrite prop-member-singleton c c' = isEquality c c'
   memberRootConSet' (p ∣ q)
-    rewrite prop-member-union c (rootConSet' p) (rootConSet' q)
+    rewrite Set.prop-member-union c (rootConSet' p) (rootConSet' q)
     = eitherReflects (memberRootConSet' p) (memberRootConSet' q)
 
   memberRootConSet : (pss : PatternMatrix (TyData d0 ◂ αs0))
-    → Reflects (c ∈** pss) (member c (rootConSet pss))
-  memberRootConSet ⌈⌉ rewrite prop-member-empty c = λ ()
+    → Reflects (c ∈** pss) (Set.member c (rootConSet pss))
+  memberRootConSet ⌈⌉ rewrite Set.prop-member-empty c = λ ()
   memberRootConSet (ps ◂ pss)
-    rewrite prop-member-union c (rootConSet' (headPattern ps)) (rootConSet pss)
+    rewrite Set.prop-member-union c (rootConSet' (headPattern ps)) (rootConSet pss)
     = mapReflects
         (either here there)
         (λ where (here h) → Left h; (there h) → Right h)
@@ -150,10 +149,10 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} (c : NameCon d0) where
 
   memberMissConSet : (pss : PatternMatrix (TyData d0 ◂ αs0))
     (let conSet     = rootConSet pss
-         missConSet = difference (universalNameConSet (dataDefs sig d0)) conSet)
-    → Reflects (c ∉** pss) (member c missConSet)
+         missConSet = Set.difference (universalNameConSet (dataDefs sig d0)) conSet)
+    → Reflects (c ∉** pss) (Set.member c missConSet)
   memberMissConSet pss
-    rewrite prop-member-difference c (universalNameConSet (dataDefs sig d0)) (rootConSet pss)
+    rewrite Set.prop-member-difference c (universalNameConSet (dataDefs sig d0)) (rootConSet pss)
     | universalNameConSetUniversal (dataDefs sig d0) c
     = mapReflects (¬Any⇒All¬ pss) All¬⇒¬Any (negReflects (memberRootConSet pss))
 
@@ -162,12 +161,12 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} where
 
   nullMissConSet : (pss : PatternMatrix (TyData d0 ◂ αs0))
     (let conSet     = rootConSet pss
-         missConSet = difference (universalNameConSet (dataDefs sig d0)) conSet)
-    → Reflects (∀ c → c ∈** pss) (null missConSet)
+         missConSet = Set.difference (universalNameConSet (dataDefs sig d0)) conSet)
+    → Reflects (∀ c → c ∈** pss) (Set.null missConSet)
   nullMissConSet pss
     using conSet     ← rootConSet pss
-    using missConSet ← difference (universalNameConSet (dataDefs sig d0)) conSet
-    with null missConSet in eq
+    using missConSet ← Set.difference (universalNameConSet (dataDefs sig d0)) conSet
+    with Set.null missConSet in eq
   ... | True = λ c →
           extractTrue
             ⦃ universalNameConSetUniversal' (dataDefs sig d0) _ eq _ ⦄
@@ -183,13 +182,13 @@ module _ ⦃ sig : Signature ⦄ {d : NameData} where
   decExistMissCon : (P : PatternMatrix (TyData d ◂ αs0))
     → Either (∃[ c ∈ NameCon d ] c ∉** P) (Erase (∀ c → c ∈** P))
   decExistMissCon pss =
-    if null missConSet
+    if Set.null missConSet
       then Right (Erased (extractTrue (nullMissConSet pss)))
       else Left (mapRefine (λ h → extractTrue ⦃ h ⦄ (memberMissConSet _ pss)) (findMin missConSet))
     where
       conSet missConSet : Set (NameCon d)
       conSet     = rootConSet pss
-      missConSet = difference (universalNameConSet (dataDefs sig d)) conSet
+      missConSet = Set.difference (universalNameConSet (dataDefs sig d)) conSet
   {-# COMPILE AGDA2HS decExistMissCon #-}
 
 
@@ -248,7 +247,7 @@ record Usefulness
 
     @0 wildCompCaseInv : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
-      → (∀ c → c ∈** pss)
+      → @0 (∀ c → c ∈** pss)
       → u pss (— ◂ ps)
       → Σ[ c ∈ NameCon d ] u (specialize c pss) (—* ◂◂ᵖ ps)
 

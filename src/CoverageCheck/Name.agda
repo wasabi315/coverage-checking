@@ -1,8 +1,7 @@
 open import CoverageCheck.Prelude
+open import Data.Set as Set using (Set)
 
 module CoverageCheck.Name where
-
-{-# FOREIGN AGDA2HS import Prelude hiding (null) #-}
 
 --------------------------------------------------------------------------------
 
@@ -90,19 +89,19 @@ universalNameInListUniversal' (x ∷ xs) weaken (y ⟨ InThere h ⟩) =
 universalNameInListUniversal xs x = universalNameInListUniversal' xs id x
 
 universalNameInSet : (xs : List Name) → Set (NameIn xs)
-universalNameInSet xs = fromList (universalNameInList xs)
+universalNameInSet xs = Set.fromList (universalNameInList xs)
 {-# COMPILE AGDA2HS universalNameInSet inline #-}
 
 @0 universalNameInSetUniversal : (xs : List Name)
-  → ∀ x → member x (universalNameInSet xs) ≡ True
-universalNameInSetUniversal xs x rewrite prop-member-fromList x (universalNameInList xs)
+  → ∀ x → Set.member x (universalNameInSet xs) ≡ True
+universalNameInSetUniversal xs x rewrite Set.prop-member-fromList x (universalNameInList xs)
   = universalNameInListUniversal xs x
 
 @0 universalNameInSetUniversal' : {xs : List Name} (s : Set (NameIn xs))
-  → null (difference (universalNameInSet xs) s) ≡ True
-  → ∀ x → member x s ≡ True
+  → Set.null (Set.difference (universalNameInSet xs) s) ≡ True
+  → ∀ x → Set.member x s ≡ True
 universalNameInSetUniversal' {xs} s eq x =
-  prop-difference-empty (prop-null→empty _ eq) (universalNameInSetUniversal xs x)
+  prop-difference-empty (Set.prop-null→empty _ eq) (universalNameInSetUniversal xs x)
 
 --------------------------------------------------------------------------------
 

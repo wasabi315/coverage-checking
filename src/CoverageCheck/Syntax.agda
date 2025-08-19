@@ -1,6 +1,7 @@
 open import CoverageCheck.Prelude
 open import CoverageCheck.Name
 open import CoverageCheck.GlobalScope using (Globals)
+open import Data.Set as Set using (Set)
 
 module CoverageCheck.Syntax
   ⦃ @0 globals : Globals ⦄
@@ -56,13 +57,13 @@ record Dataty (@0 d : NameData) : Type where
   {-# COMPILE AGDA2HS universalNameConSet inline #-}
 
   @0 universalNameConSetUniversal : (c : NameCon d)
-    → member c universalNameConSet ≡ True
+    → Set.member c universalNameConSet ≡ True
   universalNameConSetUniversal c rewrite fullDataCons =
     universalNameInSetUniversal (conScope d) c
 
   @0 universalNameConSetUniversal' : (s : Set (NameCon d))
-    → null (difference universalNameConSet s) ≡ True
-    → ∀ c → member c s ≡ True
+    → Set.null (Set.difference universalNameConSet s) ≡ True
+    → ∀ c → Set.member c s ≡ True
   universalNameConSetUniversal' rewrite fullDataCons =
     universalNameInSetUniversal'
 
