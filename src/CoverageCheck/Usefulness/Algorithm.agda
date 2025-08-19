@@ -320,22 +320,15 @@ or     |    < + = ⇒ <     |   =    |
 -}
 
 module @0 _ ⦃ @0 sig : Signature ⦄ where
-  open import Data.List.Properties
-    using (sum-++; map-++; ++-identityʳ)
-  open import Data.Nat.Base
-    using (_+_; zero; suc; _≤_; _<_; s<s)
-  open import Data.Nat.Induction
-    using (<-wellFounded)
+  open import Data.Nat.Base using (_≤_; _<_; s<s)
+  open import Data.Nat.Induction using (<-wellFounded)
   open import Data.Nat.Properties
-    using (+-identityʳ;
+    using (+-identityʳ; +-assoc;
           ≤-refl; module ≤-Reasoning; +-mono-≤; n≤1+n;
           n<1+n; 0<1+n; <⇒≤; +-monoˡ-<; +-monoʳ-<;
           +-mono-<-≤; +-mono-≤-<; m≤n⇒m<n∨m≡n; m≤m+n; m≤n+m)
-  open import Data.Product
-    using ()
-    renaming (_×_ to _×ₚ_; _,_ to _,ₚ_)
-  open import Data.Product.Relation.Binary.Lex.Strict
-    using (×-Lex; ×-wellFounded)
+  open import Data.Product using () renaming (_×_ to _×ₚ_; _,_ to infix -1 _,_)
+  open import Data.Product.Relation.Binary.Lex.Strict using (×-Lex; ×-wellFounded)
   open import Data.Sum using (inj₁; inj₂)
   open import Function.Base using (_on_)
   open import Induction.WellFounded using (WellFounded; Acc; acc)
@@ -360,6 +353,10 @@ module @0 _ ⦃ @0 sig : Signature ⦄ where
   patternsSize—* : ∀ αs n → patternsSize (—* {αs = αs}) n ≡ n
   patternsSize—* ⌈⌉       n = refl
   patternsSize—* (α ◂ αs) n = patternsSize—* αs n
+
+  sum-++ : (xs ys : List Nat) → sum (xs ++ ys) ≡ sum xs + sum ys
+  sum-++ []       ys = refl
+  sum-++ (x ∷ xs) ys rewrite sum-++ xs ys = sym (+-assoc x (sum xs) (sum ys))
 
   patternMatrixSize-◂◂ : (P Q : PatternMatrix αs0) → patternMatrixSize (P ++ Q) ≡ patternMatrixSize P + patternMatrixSize Q
   patternMatrixSize-◂◂ P Q
@@ -472,7 +469,7 @@ module @0 _ ⦃ @0 sig : Signature ⦄ where
   Problem = Σ[ αs ∈ _ ] PatternMatrix αs × Patterns αs
 
   problemSize : Problem → Nat ×ₚ Nat
-  problemSize (αs , (P , ps)) = (patternMatrixSize P + patternsSize ps 0) ,ₚ length αs
+  problemSize (αs , (P , ps)) = (patternMatrixSize P + patternsSize ps 0) , lengthNat αs
 
   -- Lexicographic ordering on Problem
   _⊏_ : (P Q : Problem) → Type
@@ -494,7 +491,7 @@ module @0 _ ⦃ @0 sig : Signature ⦄ where
     → (_ , (default_ P , qs)) ⊏ (_ , (P , — ◂ qs))
   default-⊏ P qs with m≤n⇒m<n∨m≡n (default-≤ P)
   ... | inj₁ defaultP<P = inj₁ (+-monoˡ-< (patternsSize qs 0) defaultP<P)
-  ... | inj₂ defaultP≡P = inj₂ (cong (_+ patternsSize qs 0) defaultP≡P ,ₚ n<1+n _)
+  ... | inj₂ defaultP≡P = inj₂ (cong (_+ patternsSize qs 0) defaultP≡P , n<1+n _)
 
   -- specialize strictly reduces the problem size if the constructor is in the first column of the matrix
   specializeWild-⊏ : (c : NameCon d0) (P : PatternMatrix (TyData d0 ◂ αs0)) (qs : Patterns αs0)

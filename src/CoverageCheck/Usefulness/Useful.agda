@@ -68,7 +68,7 @@ module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}
   specialize-preserves-≼ : {P : PatternMatrix (TyData d ◂ βs)}
     → P ≼** con c us ◂ vs
     → specialize c P ≼** (us ◂◂ᵛ vs)
-  specialize-preserves-≼ = concatAny⁺ ∘ gmapAny⁺ specialize'-preserves-≼
+  specialize-preserves-≼ = gconcatMapAny⁺ specialize'-preserves-≼
 
   specialize'-preserves-≼⁻ : {ps : Patterns (TyData d ◂ βs)}
     → specialize' c ps ≼** (us ◂◂ᵛ vs)
@@ -89,7 +89,7 @@ module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}
   specialize-preserves-≼⁻ : {P : PatternMatrix (TyData d ◂ βs)}
     → specialize c P ≼** (us ◂◂ᵛ vs)
     → P ≼** con c us ◂ vs
-  specialize-preserves-≼⁻ = gmapAny⁻ specialize'-preserves-≼⁻ ∘ concatAny⁻ _
+  specialize-preserves-≼⁻ = gconcatMapAny⁻ specialize'-preserves-≼⁻
 
 
 module @0 _ ⦃ @0 sig : Signature ⦄ {c : NameCon d} {us : Values (argsTy (dataDefs sig d) c)} {vs : Values βs} where
@@ -131,7 +131,7 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {v : Value (TyData d)} {vs : Values αs} 
   default-preserves-≼⁻ : {P : PatternMatrix (TyData d ◂ αs)}
     → default_ P ≼** vs
     → P ≼** v ◂ vs
-  default-preserves-≼⁻ = gmapAny⁻ default'-preserves-≼⁻ ∘ concatAny⁻ _
+  default-preserves-≼⁻ = gconcatMapAny⁻ default'-preserves-≼⁻
 
 --------------------------------------------------------------------------------
 -- Properties of usefulness

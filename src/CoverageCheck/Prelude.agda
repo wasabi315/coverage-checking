@@ -3,39 +3,45 @@ module CoverageCheck.Prelude where
 --------------------------------------------------------------------------------
 -- agda2hs re-exports
 
-open import Haskell.Prim public
-  using (⊥; the)
-open import Haskell.Prim.Tuple public
-  using (first; second)
-
 open import Haskell.Prelude public
-  using (Type; id; _∘_; flip; case_of_;
+  using (Type; id; _∘_; flip; case_of_; undefined;
          ⊤; tt;
          Bool; True; False; not; _&&_; _||_; if_then_else_;
-         Nat; zero; suc;
-         List; []; _∷_; foldr; elem;
+         Nat; zero; suc; _+_;
+         List; []; _∷_; _++_; map; foldr; elem; sum; concat; concatMap; lengthNat;
          String;
          _×_; _,_; fst; snd; uncurry;
          Either; Left; Right; either;
-         _≡_; refl;
-         undefined)
+         _≡_; refl)
+
+open import Haskell.Prim public
+  using (⊥)
 
 open import Haskell.Prim.Eq public
   using (Eq; _==_)
 open import Haskell.Law.Eq public
   using (IsLawfulEq; isEquality; eqReflexivity)
 
+open import Haskell.Prim.Foldable public
+  using (iFoldableList; Foldable; any)
+
+open import Haskell.Prim.Num public
+  using (iNumNat)
+
 open import Haskell.Prim.Ord public
   using (Ord; OrdFromLessThan)
 
-open import Haskell.Prim.Foldable public
-  using (iFoldableList; Foldable; any)
+open import Haskell.Prim.Tuple public
+  using (first; second)
 
 open import Haskell.Law.Bool public
   using (prop-x-||-True; not-involution)
 
 open import Haskell.Law.Equality public
   using (cong; cong₂; subst; subst0; sym; trans)
+
+open import Haskell.Law.List public
+  using (map-++)
 
 open import Haskell.Extra.Dec public
   using (Reflects; mapReflects; extractTrue; extractFalse;
@@ -66,12 +72,6 @@ open import Data.Set public
          prop-member-insert; prop-member-empty; prop-member-union; prop-member-null;
          prop-member-difference; prop-member-fromList; prop-member-toAscList;
          prop-null→empty)
-
---------------------------------------------------------------------------------
--- agda standard library re-exports
-
-open import Data.List.Base public
-  using (sum; map; _++_; concat; concatMap; length)
 
 --------------------------------------------------------------------------------
 -- Bottom and negation
@@ -105,11 +105,11 @@ mapEither f g (Right y) = Right (g y)
 {-# COMPILE AGDA2HS mapEither #-}
 
 --------------------------------------------------------------------------------
--- Type properties
+-- Set properties
 
 ifTrueFalse : (b : Bool) → (if b then True else False) ≡ b
 ifTrueFalse False = refl
-ifTrueFalse True = refl
+ifTrueFalse True  = refl
 
 module _ {a : Type} ⦃ _ : Ord a ⦄ where
 
@@ -181,6 +181,14 @@ pattern there h = AnyThere h
 
 module @0 _ {a : Type} {p : @0 a → Type} where
 
+  All¬⇒¬Any : ∀ {xs} → All (λ x → ¬ p x) xs → ¬ Any p xs
+  All¬⇒¬Any (¬p ◂ _)  (here  p) = ¬p p
+  All¬⇒¬Any (_  ◂ ¬p) (there p) = All¬⇒¬Any ¬p p
+
+  ¬Any⇒All¬ : ∀ xs → ¬ Any p xs → All (λ x → ¬ p x) xs
+  ¬Any⇒All¬ []       ¬p = ⌈⌉
+  ¬Any⇒All¬ (x ∷ xs) ¬p = ¬p ∘ here ◂ ¬Any⇒All¬ xs (¬p ∘ there)
+
   ++Any⁺ˡ : ∀ {xs ys} → Any p xs → Any p (xs ++ ys)
   ++Any⁺ˡ (here x)  = here x
   ++Any⁺ˡ (there h) = there (++Any⁺ˡ h)
@@ -190,42 +198,26 @@ module @0 _ {a : Type} {p : @0 a → Type} where
   ++Any⁺ʳ {x ∷ xs} h = there (++Any⁺ʳ h)
 
   ++Any⁻ : ∀ xs {ys} → Any p (xs ++ ys) → Either (Any p xs) (Any p ys)
-  ++Any⁻ []       h = Right h
-  ++Any⁻ (x ∷ xs) (here h) = Left (here h)
-  ++Any⁻ (x ∷ xs) (there h) with ++Any⁻ xs h
-  ... | Left h'  = Left (there h')
-  ... | Right h' = Right h'
+  ++Any⁻ []       h         = Right h
+  ++Any⁻ (x ∷ xs) (here h)  = Left (here h)
+  ++Any⁻ (x ∷ xs) (there h) = mapEither there id (++Any⁻ xs h)
 
-  concatAny⁺ : ∀ {xss} → Any (Any p) xss → Any p (concat xss)
-  concatAny⁺ (here h) = ++Any⁺ˡ h
-  concatAny⁺ (there h) = ++Any⁺ʳ (concatAny⁺ h)
 
-  concatAny⁻ : ∀ xss → Any p (concat xss) → Any (Any p) xss
-  concatAny⁻ ([] ∷ xss)       h         = there (concatAny⁻ xss h)
-  concatAny⁻ ((x ∷ xs) ∷ xss) (here h)  = here (here h)
-  concatAny⁻ ((x ∷ xs) ∷ xss) (there h) with concatAny⁻ (xs ∷ xss) h
-  ... | here h'  = here (there h')
-  ... | there h' = there h'
+module @0 _ {a b : Type} {p : @0 a → Type} {q : @0 b → Type} {@0 f : a → List b} where
 
-  gmapAny⁺ : {b : Type} {q : @0 b → Type} {@0 f : a → b}
-    → (∀ {x} → p x → q (f x))
-    → (∀ {xs} → Any p xs → Any q (map f xs))
-  gmapAny⁺ g (here h)  = here (g h)
-  gmapAny⁺ g (there h) = there (gmapAny⁺ g h)
+  gconcatMapAny⁺ :
+      (∀ {x} → p x → Any q (f x))
+    → (∀ {xs} → Any p xs → Any q (concatMap f xs))
+  gconcatMapAny⁺ g {x ∷ xs} (here h)  = ++Any⁺ˡ (g h)
+  gconcatMapAny⁺ g {x ∷ xs} (there h) = ++Any⁺ʳ (gconcatMapAny⁺ g h)
 
-  gmapAny⁻ : {b : Type} {q : @0 b → Type} {@0 f : a → b}
-    → (∀ {x} → q (f x) → p x)
-    → (∀ {xs} → Any q (map f xs) → Any p xs)
-  gmapAny⁻ g {x ∷ xs} (here h)  = here (g h)
-  gmapAny⁻ g {x ∷ xs} (there h) = there (gmapAny⁻ g h)
+  gconcatMapAny⁻ :
+      (∀ {x} → Any q (f x) → p x)
+    → (∀ {xs : List _} → Any q (concatMap f xs) → Any p xs)
+  gconcatMapAny⁻ g {x ∷ xs} h with ++Any⁻ (f x) h
+  ... | Left h'  = here (g h')
+  ... | Right h' = there (gconcatMapAny⁻ g h')
 
-  All¬⇒¬Any : ∀ {xs} → All (λ x → ¬ p x) xs → ¬ Any p xs
-  All¬⇒¬Any (¬p ◂ _)  (here  p) = ¬p p
-  All¬⇒¬Any (_  ◂ ¬p) (there p) = All¬⇒¬Any ¬p p
-
-  ¬Any⇒All¬ : ∀ xs → ¬ Any p xs → All (λ x → ¬ p x) xs
-  ¬Any⇒All¬ []       ¬p = ⌈⌉
-  ¬Any⇒All¬ (x ∷ xs) ¬p = ¬p ∘ here ◂ ¬Any⇒All¬ xs (¬p ∘ there)
 
 data First {@0 a : Type} (p : @0 a → Type) : (@0 xs : List a) → Type where
   FirstHere  : ∀ {@0 x xs} → p x → First p (x ∷ xs)

@@ -1,4 +1,4 @@
-FLAGS = --config rewrite-rules.yaml
+FLAGS =
 LIBRARIES =
 
 .PHONY: app alllib clean clean-lib clean-agdai
