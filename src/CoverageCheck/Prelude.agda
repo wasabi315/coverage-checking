@@ -9,7 +9,7 @@ open import Haskell.Prim.Tuple public
   using (first; second)
 
 open import Haskell.Prelude public
-  using (id; _∘_; flip; case_of_;
+  using (Type; id; _∘_; flip; case_of_;
          ⊤; tt;
          Bool; True; False; not; _&&_; _||_; if_then_else_;
          Nat; zero; suc;
@@ -19,7 +19,6 @@ open import Haskell.Prelude public
          Either; Left; Right; either;
          _≡_; refl;
          undefined)
-  renaming (Type to Set)
 
 open import Haskell.Prim.Eq public
   using (Eq; _==_)
@@ -63,11 +62,10 @@ open import Haskell.Extra.Sigma public
   using (Σ-syntax; _,_; fst; snd)
 
 open import Data.Set public
-  using (empty; singleton; union; fromList; null; member; difference; toAscList;
+  using (Set; empty; singleton; union; fromList; null; member; difference; toAscList;
          prop-member-insert; prop-member-empty; prop-member-union; prop-member-null;
          prop-member-difference; prop-member-fromList; prop-member-toAscList;
          prop-null→empty)
-  renaming (Set to Set')
 
 --------------------------------------------------------------------------------
 -- agda standard library re-exports
@@ -80,40 +78,40 @@ open import Data.List.Base public
 
 infix 3 ¬_
 
-¬_ : Set → Set
+¬_ : Type → Type
 ¬ A = A → ⊥
 
-explode : {a : Set} → @0 ⊥ → a
+explode : {a : Type} → @0 ⊥ → a
 explode _ = undefined
 {-# COMPILE AGDA2HS explode inline #-}
 
-exFalso : {x : Bool} {a : Set} → @0 x ≡ True → @0 x ≡ False → a
+exFalso : {x : Bool} {a : Type} → @0 x ≡ True → @0 x ≡ False → a
 exFalso h h' = explode (Haskell.Prim.exFalso h h')
 {-# COMPILE AGDA2HS exFalso inline #-}
 
-contradiction : {a b : Set} → a → @0 ¬ a → b
+contradiction : {a b : Type} → a → @0 ¬ a → b
 contradiction a ¬a = explode (¬a a)
 {-# COMPILE AGDA2HS contradiction inline #-}
 
-contraposition : {a b : Set} → (a → b) → (¬ b → ¬ a)
+contraposition : {a b : Type} → (a → b) → (¬ b → ¬ a)
 contraposition f g = g ∘ f
 
 --------------------------------------------------------------------------------
 -- Either
 
-mapEither : {a b c d : Set} → (a → c) → (b → d) → Either a b → Either c d
+mapEither : {a b c d : Type} → (a → c) → (b → d) → Either a b → Either c d
 mapEither f g (Left x)  = Left (f x)
 mapEither f g (Right y) = Right (g y)
 {-# COMPILE AGDA2HS mapEither #-}
 
 --------------------------------------------------------------------------------
--- Set properties
+-- Type properties
 
 ifTrueFalse : (b : Bool) → (if b then True else False) ≡ b
 ifTrueFalse False = refl
 ifTrueFalse True = refl
 
-module _ {a : Set} ⦃ _ : Ord a ⦄ where
+module _ {a : Type} ⦃ _ : Ord a ⦄ where
 
   prop-member-singleton : (x y : a)
     → member x (singleton y) ≡ (x == y)
@@ -123,7 +121,7 @@ module _ {a : Set} ⦃ _ : Ord a ⦄ where
     | ifTrueFalse (x == y)
     = refl
 
-  prop-difference-empty : {sa sb : Set' a}
+  prop-difference-empty : {sa sb : Set a}
     → difference sa sb ≡ empty
     → ∀ {x}
     → member x sa ≡ True
@@ -133,14 +131,14 @@ module _ {a : Set} ⦃ _ : Ord a ⦄ where
     rewrite h | h' | prop-member-empty x
     = sym (not-involution False (member x sb) eq)
 
-  prop-null-toAscList : {s : Set' a}
+  prop-null-toAscList : {s : Set a}
     → toAscList s ≡ []
     → null s ≡ True
   prop-null-toAscList {s} h = prop-member-null s λ x →
     trans (sym (prop-member-toAscList x s)) (cong (elem x) h)
 
   findMin : ⦃ @0 _ : IsLawfulEq a ⦄
-    → (s : Set' a) ⦃ @0 _ : null s ≡ False ⦄
+    → (s : Set a) ⦃ @0 _ : null s ≡ False ⦄
     → ∃[ x ∈ a ] member x s ≡ True
   findMin s ⦃ h ⦄ = case toAscList s of λ where
     []       ⦃ h' ⦄ → exFalso (prop-null-toAscList h') h
@@ -155,7 +153,7 @@ module _ {a : Set} ⦃ _ : Ord a ⦄ where
 
 infixr 5 _◂_
 
-data All {@0 a : Set} (p : @0 a → Set) : (@0 xs : List a) → Set where
+data All {@0 a : Type} (p : @0 a → Type) : (@0 xs : List a) → Type where
   AllNil  : All p []
   AllCons : ∀ {@0 x xs} → p x → All p xs → All p (x ∷ xs)
 
@@ -164,15 +162,15 @@ data All {@0 a : Set} (p : @0 a → Set) : (@0 xs : List a) → Set where
 pattern ⌈⌉       = AllNil
 pattern _◂_ h hs = AllCons h hs
 
-headAll : ∀ {@0 a : Set} {p : @0 a → Set} {@0 x xs} → All p (x ∷ xs) → p x
+headAll : ∀ {@0 a : Type} {p : @0 a → Type} {@0 x xs} → All p (x ∷ xs) → p x
 headAll (h ◂ _) = h
 {-# COMPILE AGDA2HS headAll #-}
 
-tailAll : ∀ {@0 a : Set} {p : @0 a → Set} {@0 x xs} → All p (x ∷ xs) → All p xs
+tailAll : ∀ {@0 a : Type} {p : @0 a → Type} {@0 x xs} → All p (x ∷ xs) → All p xs
 tailAll (_ ◂ hs) = hs
 {-# COMPILE AGDA2HS tailAll #-}
 
-data Any {@0 a : Set} (p : @0 a → Set) : (@0 xs : List a) → Set where
+data Any {@0 a : Type} (p : @0 a → Type) : (@0 xs : List a) → Type where
   AnyHere  : ∀ {@0 x xs} → p x → Any p (x ∷ xs)
   AnyThere : ∀ {@0 x xs} → Any p xs → Any p (x ∷ xs)
 
@@ -181,7 +179,7 @@ data Any {@0 a : Set} (p : @0 a → Set) : (@0 xs : List a) → Set where
 pattern here  h = AnyHere h
 pattern there h = AnyThere h
 
-module @0 _ {a : Set} {p : @0 a → Set} where
+module @0 _ {a : Type} {p : @0 a → Type} where
 
   ++Any⁺ˡ : ∀ {xs ys} → Any p xs → Any p (xs ++ ys)
   ++Any⁺ˡ (here x)  = here x
@@ -209,13 +207,13 @@ module @0 _ {a : Set} {p : @0 a → Set} where
   ... | here h'  = here (there h')
   ... | there h' = there h'
 
-  gmapAny⁺ : {b : Set} {q : @0 b → Set} {@0 f : a → b}
+  gmapAny⁺ : {b : Type} {q : @0 b → Type} {@0 f : a → b}
     → (∀ {x} → p x → q (f x))
     → (∀ {xs} → Any p xs → Any q (map f xs))
   gmapAny⁺ g (here h)  = here (g h)
   gmapAny⁺ g (there h) = there (gmapAny⁺ g h)
 
-  gmapAny⁻ : {b : Set} {q : @0 b → Set} {@0 f : a → b}
+  gmapAny⁻ : {b : Type} {q : @0 b → Type} {@0 f : a → b}
     → (∀ {x} → q (f x) → p x)
     → (∀ {xs} → Any q (map f xs) → Any p xs)
   gmapAny⁻ g {x ∷ xs} (here h)  = here (g h)
@@ -229,7 +227,7 @@ module @0 _ {a : Set} {p : @0 a → Set} where
   ¬Any⇒All¬ []       ¬p = ⌈⌉
   ¬Any⇒All¬ (x ∷ xs) ¬p = ¬p ∘ here ◂ ¬Any⇒All¬ xs (¬p ∘ there)
 
-data First {@0 a : Set} (p : @0 a → Set) : (@0 xs : List a) → Set where
+data First {@0 a : Type} (p : @0 a → Type) : (@0 xs : List a) → Type where
   FirstHere  : ∀ {@0 x xs} → p x → First p (x ∷ xs)
   FirstThere : ∀ {@0 x xs} → @0 ¬ p x → First p xs → First p (x ∷ xs)
 
@@ -238,16 +236,16 @@ data First {@0 a : Set} (p : @0 a → Set) : (@0 xs : List a) → Set where
 pattern [_] h    = FirstHere h
 pattern _◂_ h hs = FirstThere h hs
 
-firstToAny : ∀ {@0 a : Set} {p : @0 a → Set} {@0 xs} → First p xs → Any p xs
+firstToAny : ∀ {@0 a : Type} {p : @0 a → Type} {@0 xs} → First p xs → Any p xs
 firstToAny [ h ]   = here h
 firstToAny (_ ◂ h) = there (firstToAny h)
 {-# COMPILE AGDA2HS firstToAny #-}
 
-notFirstToNotAny : ∀ {@0 a : Set} {p : @0 a → Set} {@0 xs} → ¬ First p xs → ¬ Any p xs
+notFirstToNotAny : ∀ {@0 a : Type} {p : @0 a → Type} {@0 xs} → ¬ First p xs → ¬ Any p xs
 notFirstToNotAny h (here h')  = h [ h' ]
 notFirstToNotAny h (there h') = notFirstToNotAny (h ∘ (h ∘ [_] ◂_)) h'
 
-@0 Fresh : {a : Set} → List a → Set
+@0 Fresh : {a : Type} → List a → Type
 Fresh []       = ⊤
 Fresh (x ∷ xs) = All (λ y → ¬ x ≡ y) xs × Fresh xs
 
@@ -256,7 +254,7 @@ Fresh (x ∷ xs) = All (λ y → ¬ x ≡ y) xs × Fresh xs
 
 infixr 5 consNonEmpty appendNonEmpty
 
-record NonEmpty (a : Set) : Set where
+record NonEmpty (a : Type) : Type where
   constructor MkNonEmpty
   field
     head : a
@@ -267,40 +265,40 @@ open NonEmpty public
 
 pattern _◂_ x xs = MkNonEmpty x xs
 
-consNonEmpty : {a : Set} → a → NonEmpty a → NonEmpty a
+consNonEmpty : {a : Type} → a → NonEmpty a → NonEmpty a
 consNonEmpty x (y ◂ ys) = x ◂ (y ∷ ys)
 {-# COMPILE AGDA2HS consNonEmpty #-}
 syntax consNonEmpty x xs = x ◂′ xs
 
-mapNonEmpty : {a b : Set} → (a → b) → NonEmpty a → NonEmpty b
+mapNonEmpty : {a b : Type} → (a → b) → NonEmpty a → NonEmpty b
 mapNonEmpty f (x ◂ xs) = f x ◂ map f xs
 {-# COMPILE AGDA2HS mapNonEmpty #-}
 
-appendNonEmpty : {a : Set} → NonEmpty a → NonEmpty a → NonEmpty a
+appendNonEmpty : {a : Type} → NonEmpty a → NonEmpty a → NonEmpty a
 appendNonEmpty (x ◂ xs) (y ◂ ys) = x ◂ (xs ++ y ∷ ys)
 {-# COMPILE AGDA2HS appendNonEmpty #-}
 syntax appendNonEmpty xs ys = xs ◂◂ⁿᵉ ys
 
-concatNonEmpty : {a : Set} → NonEmpty (NonEmpty a) → NonEmpty a
+concatNonEmpty : {a : Type} → NonEmpty (NonEmpty a) → NonEmpty a
 concatNonEmpty (xs ◂ xss) = go xs xss
   where
-    go : {a : Set} → NonEmpty a → List (NonEmpty a) → NonEmpty a
+    go : {a : Type} → NonEmpty a → List (NonEmpty a) → NonEmpty a
     go xs []         = xs
     go xs (ys ∷ xss) = xs ◂◂ⁿᵉ go ys xss
 {-# COMPILE AGDA2HS concatNonEmpty #-}
 
-concatMapNonEmpty : {a b : Set} → (a → NonEmpty b) → NonEmpty a → NonEmpty b
+concatMapNonEmpty : {a b : Type} → (a → NonEmpty b) → NonEmpty a → NonEmpty b
 concatMapNonEmpty f xs = concatNonEmpty (mapNonEmpty f xs)
 {-# COMPILE AGDA2HS concatMapNonEmpty inline #-}
 
 --------------------------------------------------------------------------------
 -- Decidable relations
 
-_≟_ : {a : Set} ⦃ _ : Eq a ⦄ ⦃ @0 _ : IsLawfulEq a ⦄ → (x y : a) → Dec (x ≡ y)
+_≟_ : {a : Type} ⦃ _ : Eq a ⦄ ⦃ @0 _ : IsLawfulEq a ⦄ → (x y : a) → Dec (x ≡ y)
 x ≟ y = (x == y) ⟨ isEquality x y ⟩
 {-# COMPILE AGDA2HS _≟_ inline #-}
 
-ifDec : {@0 a : Set} {b : Set} → Dec a → (@0 ⦃ a ⦄ → b) → (@0 ⦃ ¬ a ⦄ → b) → b
+ifDec : {@0 a : Type} {b : Type} → Dec a → (@0 ⦃ a ⦄ → b) → (@0 ⦃ ¬ a ⦄ → b) → b
 ifDec (b ⟨ p ⟩) x y = if b then (λ where ⦃ refl ⦄ → x ⦃ p ⦄) else (λ where ⦃ refl ⦄ → y ⦃ p ⦄)
 {-# COMPILE AGDA2HS ifDec inline #-}
 
@@ -338,7 +336,7 @@ eitherDec (ba ⟨ a ⟩) (bb ⟨ b ⟩) = (ba || bb) ⟨ eitherReflects a b ⟩
 
 infix 3 tupleDecP
 
-data DecP (a : Set) : Set where
+data DecP (a : Type) : Type where
   Yes : (p : a) → DecP a
   No  : (@0 p : ¬ a) → DecP a
 {-# COMPILE AGDA2HS DecP deriving Show #-}
@@ -348,7 +346,7 @@ mapDecP f g (Yes p) = Yes (f p)
 mapDecP f g (No p)  = No (contraposition g p)
 {-# COMPILE AGDA2HS mapDecP #-}
 
-ifDecP : {a b : Set} → DecP a → (⦃ a ⦄ → b) → (@0 ⦃ ¬ a ⦄ → b) → b
+ifDecP : {a b : Type} → DecP a → (⦃ a ⦄ → b) → (@0 ⦃ ¬ a ⦄ → b) → b
 ifDecP (Yes p) t e = t ⦃ p ⦄
 ifDecP (No p)  t e = e ⦃ p ⦄
 {-# COMPILE AGDA2HS ifDecP #-}
@@ -366,7 +364,7 @@ eitherDecP (No p)  (Yes q) = Yes (Right q)
 eitherDecP (No p)  (No q)  = No (either p q)
 {-# COMPILE AGDA2HS eitherDecP #-}
 
-firstDecP : ∀ {a} {p : @0 a → Set}
+firstDecP : ∀ {a} {p : @0 a → Type}
   → (∀ x → DecP (p x))
   → (∀ xs → DecP (First p xs))
 firstDecP         f []       = No λ ()

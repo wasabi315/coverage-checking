@@ -5,18 +5,18 @@ open import CoverageCheck.Name
 
 --------------------------------------------------------------------------------
 
-record Globals : Set where
+record Globals : Type where
   field
     dataScope : List Name
     conScope : NameIn dataScope → List Name
     ⦃ freshDataScope  ⦄ : Fresh dataScope
     ⦃ freshConScope  ⦄ : ∀ {d} → Fresh (conScope d)
 
-  NameData : Set
+  NameData : Type
   NameData = NameIn dataScope
   {-# COMPILE AGDA2HS NameData inline #-}
 
-  NameCon : NameData → Set
+  NameCon : NameData → Type
   NameCon d = NameIn (conScope d)
   {-# COMPILE AGDA2HS NameCon inline #-}
 

@@ -6,15 +6,15 @@ module CoverageCheck.Name where
 
 --------------------------------------------------------------------------------
 
-Name : Set
+Name : Type
 Name = String
 {-# COMPILE AGDA2HS Name #-}
 
-data In (x : Name) : (xs : List Name) → Set where
+data In (x : Name) : (xs : List Name) → Type where
   InHere  : ∀ {xs} →  In x (x ∷ xs)
   InThere : ∀ {y xs} → In x xs → In x (y ∷ xs)
 
-NameIn : @0 List Name → Set
+NameIn : @0 List Name → Type
 NameIn xs = ∃[ x ∈ Name ] In x xs
 {-# COMPILE AGDA2HS NameIn inline #-}
 
@@ -64,32 +64,32 @@ instance
 
 --------------------------------------------------------------------------------
 
-universalNameInListAux : (xs : List Name) {@0 ys : List Name}
+universalNameInList' : (xs : List Name) {@0 ys : List Name}
   → (@0 weaken : ∀ {@0 x} → In x xs → In x ys)
   → List (NameIn ys)
-universalNameInListAux []       weaken = []
-universalNameInListAux (x ∷ xs) weaken =
-  (x ⟨ weaken InHere ⟩) ∷ universalNameInListAux xs (weaken ∘ InThere)
-{-# COMPILE AGDA2HS universalNameInListAux transparent #-}
+universalNameInList' []       weaken = []
+universalNameInList' (x ∷ xs) weaken =
+  (x ⟨ weaken InHere ⟩) ∷ universalNameInList' xs (weaken ∘ InThere)
+{-# COMPILE AGDA2HS universalNameInList' transparent #-}
 
 universalNameInList : (xs : List Name) → List (NameIn xs)
-universalNameInList xs = universalNameInListAux xs id
+universalNameInList xs = universalNameInList' xs id
 {-# COMPILE AGDA2HS universalNameInList inline #-}
 
-@0 universalNameInListUniversalAux : (xs : List Name) {@0 ys : List Name}
+@0 universalNameInListUniversal' : (xs : List Name) {@0 ys : List Name}
   → (@0 weaken : ∀ {@0 x} → In x xs → In x ys)
   → ∀ ((y ⟨ h ⟩) : NameIn xs)
-  → elem (y ⟨ weaken h ⟩) (universalNameInListAux xs weaken) ≡ True
-universalNameInListUniversalAux (x ∷ xs) weaken (y ⟨ InHere ⟩) rewrite eqReflexivity x = refl
-universalNameInListUniversalAux (x ∷ xs) weaken (y ⟨ InThere h ⟩) =
-  let ih = universalNameInListUniversalAux xs (weaken ∘ InThere) (y ⟨ h ⟩) in
+  → elem (y ⟨ weaken h ⟩) (universalNameInList' xs weaken) ≡ True
+universalNameInListUniversal' (x ∷ xs) weaken (y ⟨ InHere ⟩) rewrite eqReflexivity x = refl
+universalNameInListUniversal' (x ∷ xs) weaken (y ⟨ InThere h ⟩) =
+  let ih = universalNameInListUniversal' xs (weaken ∘ InThere) (y ⟨ h ⟩) in
   subst (λ b → (y == x || b) ≡ True) (sym ih) (prop-x-||-True (y == x))
 
 @0 universalNameInListUniversal : (xs : List Name)
   → ∀ x → elem x (universalNameInList xs) ≡ True
-universalNameInListUniversal xs x = universalNameInListUniversalAux xs id x
+universalNameInListUniversal xs x = universalNameInListUniversal' xs id x
 
-universalNameInSet : (xs : List Name) → Set' (NameIn xs)
+universalNameInSet : (xs : List Name) → Set (NameIn xs)
 universalNameInSet xs = fromList (universalNameInList xs)
 {-# COMPILE AGDA2HS universalNameInSet inline #-}
 
@@ -98,7 +98,7 @@ universalNameInSet xs = fromList (universalNameInList xs)
 universalNameInSetUniversal xs x rewrite prop-member-fromList x (universalNameInList xs)
   = universalNameInListUniversal xs x
 
-@0 universalNameInSetUniversal' : {xs : List Name} (s : Set' (NameIn xs))
+@0 universalNameInSetUniversal' : {xs : List Name} (s : Set (NameIn xs))
   → null (difference (universalNameInSet xs) s) ≡ True
   → ∀ x → member x s ≡ True
 universalNameInSetUniversal' {xs} s eq x =
@@ -106,7 +106,7 @@ universalNameInSetUniversal' {xs} s eq x =
 
 --------------------------------------------------------------------------------
 
-strengthenNameInFun : ∀ {@0 x : Name} {@0 xs : List Name} {@0 ℓ} {p : @0 NameIn (x ∷ xs) → Set ℓ}
+strengthenNameInFun : ∀ {@0 x : Name} {@0 xs : List Name} {@0 ℓ} {p : @0 NameIn (x ∷ xs) → Type ℓ}
   → ((y : NameIn (x ∷ xs)) → p y)
   → ((y ⟨ h ⟩) : NameIn xs) → p (y ⟨ InThere h ⟩)
 strengthenNameInFun f = λ where (x ⟨ h ⟩) → f (x ⟨ InThere h ⟩)
@@ -114,23 +114,23 @@ strengthenNameInFun f = λ where (x ⟨ h ⟩) → f (x ⟨ InThere h ⟩)
 
 module _ {@0 xs} (f : NameIn xs → Bool) where
 
-  anyNameInAux : (ys : List Name)
+  anyNameIn' : (ys : List Name)
     → (@0 weaken : ∀ {@0 x} → In x ys → In x xs)
     → Bool
-  anyNameInAux []       weaken = False
-  anyNameInAux (x ∷ ys) weaken =
-    f (x ⟨ weaken InHere ⟩) || anyNameInAux ys (weaken ∘ InThere)
-  {-# COMPILE AGDA2HS anyNameInAux #-}
+  anyNameIn' []       weaken = False
+  anyNameIn' (x ∷ ys) weaken =
+    f (x ⟨ weaken InHere ⟩) || anyNameIn' ys (weaken ∘ InThere)
+  {-# COMPILE AGDA2HS anyNameIn' #-}
 
 
 anyNameIn : (xs : List Name) → (NameIn xs → Bool) → Bool
-anyNameIn xs f = anyNameInAux f xs id
+anyNameIn xs f = anyNameIn' f xs id
 {-# COMPILE AGDA2HS anyNameIn inline #-}
 
 
 decPAnyNameIn : (xs : List Name)
   → {@0 ys : List Name} (@0 eq : xs ≡ ys)
-  → {p : @0 NameIn ys → Set}
+  → {p : @0 NameIn ys → Type}
   → (∀ x → DecP (p x))
   → DecP (Σ[ x ∈ _ ] p x)
 decPAnyNameIn []       refl     f = No λ _ → undefined

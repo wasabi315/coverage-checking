@@ -10,9 +10,9 @@ import CoverageCheck.Usefulness.Useful
 
 --------------------------------------------------------------------------------
 
-unitDef :: Datatype
+unitDef :: Dataty
 unitDef =
-  Datatype
+  Dataty
     { dataCons = ["()"],
       argsTy = \case
         "()" -> []
@@ -24,9 +24,9 @@ pattern Unit = VCon "()" VNil
 pattern UnitP :: Pattern
 pattern UnitP = PCon "()" PNil
 
-listDef :: Datatype
+listDef :: Dataty
 listDef =
-  Datatype
+  Dataty
     { dataCons = ["Nil", "One", "Cons"],
       argsTy = \case
         "Nil" -> []
@@ -60,12 +60,12 @@ signature =
         "List" -> listDef
     }
 
-nonEmptyAxiom :: Type -> Value
+nonEmptyAxiom :: Ty -> Value
 nonEmptyAxiom = \case
   TyData "Unit" -> Unit
   TyData "List" -> Nil
 
-types :: Types
+types :: Tys
 types = [TyData "List", TyData "List"]
 
 example1 :: [Patterns]

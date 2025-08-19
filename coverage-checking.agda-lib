@@ -1,4 +1,4 @@
 name: coverage-checking
 include: src
 depend: standard-library base containers
-flags: --with-K --erasure
+flags: --with-K --erasure --no-import-sorts

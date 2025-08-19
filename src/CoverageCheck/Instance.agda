@@ -16,18 +16,18 @@ infix  4 Instance Instances InstanceMatrix _⋠_ _⋠*_ _⋠**_
 
 private
   variable
-    α β : Type
-    αs βs : Types
+    α β : Ty
+    αs βs : Tys
     d : NameData
-    @0 α0 β0 : Type
-    @0 αs0 βs0 : Types
+    @0 α0 β0 : Ty
+    @0 αs0 βs0 : Tys
     @0 d0 : NameData
 
 --------------------------------------------------------------------------------
 -- Instance relation
 
-data Instance  : (@0 p : Pattern α0)    (@0 v : Value α0)    → Set
-data Instances : (@0 ps : Patterns αs0) (@0 vs : Values αs0) → Set
+data Instance  : (@0 p : Pattern α0)    (@0 v : Value α0)    → Type
+data Instances : (@0 ps : Patterns αs0) (@0 vs : Values αs0) → Type
 
 syntax Instance  p v   = p ≼ v
 syntax Instances ps vs = ps ≼* vs
@@ -37,7 +37,7 @@ data Instance where
   IWild : {@0 v : Value α0} → — ≼ v
 
   ICon : {c : NameCon d0}
-    (let @0 αs : Types
+    (let @0 αs : Tys
          αs = argsTy (dataDefs sig d0) c)
     {@0 ps : Patterns αs}
     {@0 vs : Values αs}
@@ -73,18 +73,18 @@ pattern ⌈⌉       = INil
 pattern _◂_ i is = ICons i is
 
 -- P ≼** vs : some row in P matches vs
-InstanceMatrix : (@0 P : PatternMatrix αs0) (@0 vs : Values αs0) → Set
+InstanceMatrix : (@0 P : PatternMatrix αs0) (@0 vs : Values αs0) → Type
 syntax InstanceMatrix P vs = P ≼** vs
 P ≼** vs = Any (λ ps → ps ≼* vs) P
 {-# COMPILE AGDA2HS InstanceMatrix #-}
 
-@0 _⋠_ : (p : Pattern α0) (v : Value α0) → Set
+@0 _⋠_ : (p : Pattern α0) (v : Value α0) → Type
 p ⋠ v = ¬ p ≼ v
 
-@0 _⋠*_ : (ps : Patterns αs0) (vs : Values αs0) → Set
+@0 _⋠*_ : (ps : Patterns αs0) (vs : Values αs0) → Type
 ps ⋠* vs = ¬ ps ≼* vs
 
-@0 _⋠**_ : (P : PatternMatrix αs0) (vs : Values αs0) → Set
+@0 _⋠**_ : (P : PatternMatrix αs0) (vs : Values αs0) → Type
 P ⋠** vs = ¬ P ≼** vs
 
 --------------------------------------------------------------------------------
@@ -106,7 +106,7 @@ module _ {@0 p q : Pattern α0} {@0 v : Value α0} where
 
 
 module _ {@0 c : NameCon d0}
-  (let @0 αs : Types
+  (let @0 αs : Tys
        αs = argsTy (dataDefs sig d0) c)
   {@0 ps : Patterns αs}
   {@0 vs : Values αs}
@@ -180,7 +180,7 @@ module _ {@0 p q : Pattern α0} {@0 ps : Patterns αs0} {@0 v : Value α0} {@0 v
 
 
 module _ {c : NameCon d0}
-  (let @0 αs : Types
+  (let @0 αs : Tys
        αs = argsTy (dataDefs sig d0) c)
   {rs : Patterns αs} {@0 ps : Patterns βs0}
   {@0 us : Values αs} {@0 vs : Values βs0}
@@ -194,7 +194,7 @@ module _ {c : NameCon d0}
 
 
 module _ {@0 c : NameCon d0}
-  (let @0 αs : Types
+  (let @0 αs : Tys
        αs = argsTy (dataDefs sig d0) c)
   {rs : Patterns αs} {@0 ps : Patterns βs0}
   {@0 us : Values αs} {@0 vs : Values βs0}
@@ -207,9 +207,9 @@ module _ {@0 c : NameCon d0}
 
 
 module _ {c c' : NameCon d0}
-  (let @0 αs : Types
+  (let @0 αs : Tys
        αs = argsTy (dataDefs sig d0) c
-       @0 αs' : Types
+       @0 αs' : Tys
        αs' = argsTy (dataDefs sig d0) c')
   {@0 ps : Patterns αs} {@0 vs : Values αs'}
   where
@@ -239,7 +239,7 @@ con c ps ≼? con c' vs =
 {-# COMPILE AGDA2HS decInstance   #-}
 {-# COMPILE AGDA2HS decInstances  #-}
 
-Match : (@0 P : PatternMatrix αs0) (@0 vs : Values αs0) → Set
+Match : (@0 P : PatternMatrix αs0) (@0 vs : Values αs0) → Type
 Match P vs = First (λ ps → ps ≼* vs) P
 {-# COMPILE AGDA2HS Match #-}
 

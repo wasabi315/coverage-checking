@@ -13,46 +13,46 @@ private
     d : NameData
     @0 d0 : NameData
 
-infixr 5 _◂_ appendTypes
+infixr 5 _◂_ appendTys
 
 --------------------------------------------------------------------------------
--- Types and Signatures
+-- Tys and Signatures
 
-data Type : Set
-Types : Set
+data Ty : Type
+Tys : Type
 
-data Type where
-  TyData : NameData → Type
+data Ty where
+  TyData : NameData → Ty
 
-Types = List Type
+Tys = List Ty
 
 pattern ⌈⌉       = []
 pattern _◂_ α αs = α ∷ αs
 
-{-# COMPILE AGDA2HS Type  deriving Show #-}
-{-# COMPILE AGDA2HS Types deriving Show #-}
+{-# COMPILE AGDA2HS Ty  deriving Show #-}
+{-# COMPILE AGDA2HS Tys deriving Show #-}
 
-appendTypes : Types → Types → Types
-appendTypes = _++_
-syntax appendTypes αs βs = αs ◂◂ βs
-{-# COMPILE AGDA2HS appendTypes inline #-}
+appendTys : Tys → Tys → Tys
+appendTys = _++_
+syntax appendTys αs βs = αs ◂◂ βs
+{-# COMPILE AGDA2HS appendTys inline #-}
 
 private
   variable
-    α β : Type
-    αs βs : Types
-    @0 α0 β0 : Type
-    @0 αs0 βs0 : Types
+    α β : Ty
+    αs βs : Tys
+    @0 α0 β0 : Ty
+    @0 αs0 βs0 : Tys
 
-record Datatype (@0 d : NameData) : Set where
+record Dataty (@0 d : NameData) : Type where
   field
     dataCons        : List Name
     @0 fullDataCons : dataCons ≡ conScope d
-    argsTy          : (c : NameCon d) → Types
+    argsTy          : (c : NameCon d) → Tys
 
-  universalNameConSet : Set' (NameCon d)
+  universalNameConSet : Set (NameCon d)
   universalNameConSet =
-    subst0 (λ xs → Set' (NameIn xs)) fullDataCons (universalNameInSet dataCons)
+    subst0 (λ xs → Set (NameIn xs)) fullDataCons (universalNameInSet dataCons)
   {-# COMPILE AGDA2HS universalNameConSet inline #-}
 
   @0 universalNameConSetUniversal : (c : NameCon d)
@@ -60,7 +60,7 @@ record Datatype (@0 d : NameData) : Set where
   universalNameConSetUniversal c rewrite fullDataCons =
     universalNameInSetUniversal (conScope d) c
 
-  @0 universalNameConSetUniversal' : (s : Set' (NameCon d))
+  @0 universalNameConSetUniversal' : (s : Set (NameCon d))
     → null (difference universalNameConSet s) ≡ True
     → ∀ c → member c s ≡ True
   universalNameConSetUniversal' rewrite fullDataCons =
@@ -70,18 +70,18 @@ record Datatype (@0 d : NameData) : Set where
   anyNameCon f = anyNameIn dataCons λ x → f (subst0 NameIn fullDataCons x)
   {-# COMPILE AGDA2HS anyNameCon inline #-}
 
-  decPAnyNameCon : {p : @0 NameCon d → Set}
+  decPAnyNameCon : {p : @0 NameCon d → Type}
     → (∀ x → DecP (p x))
     → DecP (Σ[ x ∈ NameCon d ] p x)
   decPAnyNameCon f = decPAnyNameIn dataCons fullDataCons f
   {-# COMPILE AGDA2HS decPAnyNameCon inline #-}
 
-open Datatype public
-{-# COMPILE AGDA2HS Datatype #-}
+open Dataty public
+{-# COMPILE AGDA2HS Dataty #-}
 
-record Signature : Set where
+record Signature : Type where
   field
-    dataDefs : (d : NameData) → Datatype d
+    dataDefs : (d : NameData) → Dataty d
 
 open Signature public
 {-# COMPILE AGDA2HS Signature newtype #-}
@@ -96,8 +96,8 @@ module _ ⦃ @0 sig : Signature ⦄ where
   infixr 6 _∣_
   infixr 5 _◂_ appendValues appendPatterns
 
-  data Value  : (@0 α : Type) → Set
-  data Values : (@0 αs : Types) → Set
+  data Value  : (@0 α : Ty) → Type
+  data Values : (@0 αs : Tys) → Type
 
   data Value where
     VCon : (c : NameCon d0)
@@ -127,8 +127,8 @@ module _ ⦃ @0 sig : Signature ⦄ where
   tabulateValues {α ◂ αs} f = f α ◂ tabulateValues f
   {-# COMPILE AGDA2HS tabulateValues #-}
 
-  data Pattern  : (@0 α : Type) → Set
-  data Patterns : (@0 αs : Types) → Set
+  data Pattern  : (@0 α : Ty) → Type
+  data Patterns : (@0 αs : Tys) → Type
 
   data Pattern where
     PWild : Pattern α0
@@ -148,7 +148,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
   pattern ⌈⌉         = PNil
   pattern _◂_ p ps   = PCons p ps
 
-  PatternMatrix : (@0 αs : Types) → Set
+  PatternMatrix : (@0 αs : Tys) → Type
   PatternMatrix αs = List (Patterns αs)
 
   {-# COMPILE AGDA2HS Pattern       deriving (Show, Eq) #-}
