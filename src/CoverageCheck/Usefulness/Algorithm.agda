@@ -108,7 +108,7 @@ module Raw where
 
 module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} where
 
-  infix 4 _∈_ _∉_
+  infix 4 _∈_ _∉_ _∈*_ _∉*_ _∈**_ _∉**_
 
   -- Does c appear in the set of root constructors of p?
   _∈_ : NameCon d0 → Pattern (TyData d0) → Type
@@ -118,6 +118,14 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} where
 
   _∉_ : NameCon d0 → Pattern (TyData d0) → Type
   c ∉ p = ¬ c ∈ p
+
+  _∈*_ _∉*_ : NameCon d0 → Patterns (TyData d0 ◂ αs0) → Type
+  c ∈* ps = c ∈ headPattern ps
+  c ∉* ps = c ∉ headPattern ps
+
+  _∈**_ _∉**_ : NameCon d0 → PatternMatrix (TyData d0 ◂ αs0) → Type
+  c ∈** pss = Any (c ∈*_) pss
+  c ∉** pss = All (c ∉*_) pss
 
 
 module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} (c : NameCon d0) where
@@ -131,7 +139,7 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} (c : NameCon d0) where
     = eitherReflects (memberRootConSet' p) (memberRootConSet' q)
 
   memberRootConSet : (pss : PatternMatrix (TyData d0 ◂ αs0))
-    → Reflects (Any (λ ps → c ∈ headPattern ps) pss) (member c (rootConSet pss))
+    → Reflects (c ∈** pss) (member c (rootConSet pss))
   memberRootConSet ⌈⌉ rewrite prop-member-empty c = λ ()
   memberRootConSet (ps ◂ pss)
     rewrite prop-member-union c (rootConSet' (headPattern ps)) (rootConSet pss)
@@ -143,9 +151,7 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} (c : NameCon d0) where
   memberMissConSet : (pss : PatternMatrix (TyData d0 ◂ αs0))
     (let conSet     = rootConSet pss
          missConSet = difference (universalNameConSet (dataDefs sig d0)) conSet)
-    → Reflects
-        (All (λ ps → c ∉ headPattern ps) pss)
-        (member c missConSet)
+    → Reflects (c ∉** pss) (member c missConSet)
   memberMissConSet pss
     rewrite prop-member-difference c (universalNameConSet (dataDefs sig d0)) (rootConSet pss)
     | universalNameConSetUniversal (dataDefs sig d0) c
@@ -157,9 +163,7 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} where
   nullMissConSet : (pss : PatternMatrix (TyData d0 ◂ αs0))
     (let conSet     = rootConSet pss
          missConSet = difference (universalNameConSet (dataDefs sig d0)) conSet)
-    → Reflects
-        (∀ c → Any (λ ps → c ∈ headPattern ps) pss)
-        (null missConSet)
+    → Reflects (∀ c → c ∈** pss) (null missConSet)
   nullMissConSet pss
     using conSet     ← rootConSet pss
     using missConSet ← difference (universalNameConSet (dataDefs sig d0)) conSet
@@ -177,9 +181,7 @@ module _ ⦃ sig : Signature ⦄ {d : NameData} where
 
   -- Are there constructors that does not appear in the first column of P?
   decExistMissCon : (P : PatternMatrix (TyData d ◂ αs0))
-    → Either
-        (∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) P)
-        (Erase (∀ c → Any (λ ps → c ∈ headPattern ps) P))
+    → Either (∃[ c ∈ NameCon d ] c ∉** P) (Erase (∀ c → c ∈** P))
   decExistMissCon pss =
     if null missConSet
       then Right (Erased (extractTrue (nullMissConSet pss)))
@@ -228,25 +230,25 @@ record Usefulness
 
     wildMissCase : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
-      → ∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) pss
+      → ∃[ c ∈ NameCon d ] c ∉** pss
       → u (default_ pss) ps
       → u pss (— ◂ ps)
 
     @0 wildMissCaseInv : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
-      → ∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) pss
+      → ∃[ c ∈ NameCon d ] c ∉** pss
       → u pss (— ◂ ps)
       → u (default_ pss) ps
 
     wildCompCase : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
-      → @0 (∀ c → Any (λ ps → c ∈ headPattern ps) pss)
+      → @0 (∀ c → c ∈** pss)
       → Σ[ c ∈ NameCon d ] u (specialize c pss) (—* ◂◂ᵖ ps)
       → u pss (— ◂ ps)
 
     @0 wildCompCaseInv : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
-      → (∀ c → Any (λ ps → c ∈ headPattern ps) pss)
+      → (∀ c → c ∈** pss)
       → u pss (— ◂ ps)
       → Σ[ c ∈ NameCon d ] u (specialize c pss) (—* ◂◂ᵖ ps)
 
@@ -263,8 +265,8 @@ module _ ⦃ @0 sig : Signature ⦄ where
     done : {P : PatternMatrix ⌈⌉} → UsefulAcc P ⌈⌉
 
     step-wild : {P : PatternMatrix (TyData d ◂ αs)} {ps : Patterns αs}
-      → (∃[ c ∈ _ ] All (λ ps → c ∉ headPattern ps) P → UsefulAcc (default_ P) ps)
-      → (∀ c → Any (λ ps → c ∈ headPattern ps) P → UsefulAcc (specialize c P) (—* ◂◂ᵖ ps))
+      → (∃[ c ∈ _ ] c ∉** P → UsefulAcc (default_ P) ps)
+      → (∀ c → c ∈** P → UsefulAcc (specialize c P) (—* ◂◂ᵖ ps))
       → UsefulAcc P (— ◂ ps)
 
     step-con : {P : PatternMatrix (TyData d ◂ βs)} {c : NameCon d}
@@ -402,7 +404,7 @@ module @0 _ ⦃ @0 sig : Signature ⦄ where
     = +-mono-≤ (specialize'-≤ c ps) (specialize-≤ c P)
 
   specialize'-< : (c : NameCon d0) (ps : Patterns (TyData d0 ◂ αs0))
-    → c ∈ headPattern ps
+    → c ∈* ps
     → patternMatrixSize (specialize' c ps) < patternsSize ps 0
   specialize'-< c (con c' rs ◂ ps) c≡c' = lem (c ≟ c')
     where
@@ -435,7 +437,7 @@ module @0 _ ⦃ @0 sig : Signature ⦄ where
 
   -- specialize strictly reduces the pattern matrix size if the constructor is in the first column of the matrix
   specialize-< : (c : NameCon d0) (P : PatternMatrix (TyData d0 ◂ αs0))
-    → Any (λ ps → c ∈ headPattern ps) P
+    → c ∈** P
     → patternMatrixSize (specialize c P) < patternMatrixSize P
   specialize-< c (ps ∷ P) (here c∈ps)
     rewrite patternMatrixSize-◂◂ (specialize' c ps) (specialize c P)
@@ -495,7 +497,7 @@ module @0 _ ⦃ @0 sig : Signature ⦄ where
 
   -- specialize strictly reduces the problem size if the constructor is in the first column of the matrix
   specializeWild-⊏ : (c : NameCon d0) (P : PatternMatrix (TyData d0 ◂ αs0)) (qs : Patterns αs0)
-    → Any (λ ps → c ∈ headPattern ps) P
+    → c ∈** P
     → (_ , (specialize c P , —* ◂◂ᵖ qs)) ⊏ (_ , (P , — ◂ qs))
   specializeWild-⊏ {d0} c P qs c∈P
     rewrite patternsSize-◂◂ (—* {αs = argsTy (dataDefs sig d0) c}) qs 0
