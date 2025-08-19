@@ -13,7 +13,7 @@ open import Haskell.Prelude public
          ⊤; tt;
          Bool; True; False; not; _&&_; _||_; if_then_else_;
          Nat; zero; suc;
-         List; []; _∷_;
+         List; []; _∷_; foldr; elem;
          String;
          _×_; _,_; fst; snd; uncurry;
          Either; Left; Right; either;
@@ -24,16 +24,22 @@ open import Haskell.Prelude public
 open import Haskell.Prim.Eq public
   using (Eq; _==_)
 open import Haskell.Law.Eq public
-  using (IsLawfulEq; isEquality)
+  using (IsLawfulEq; isEquality; eqReflexivity)
+
+open import Haskell.Prim.Ord public
+  using (Ord; OrdFromLessThan)
 
 open import Haskell.Prim.Foldable public
   using (iFoldableList; Foldable; any)
 
+open import Haskell.Law.Bool public
+  using (prop-x-||-True; not-involution)
+
 open import Haskell.Law.Equality public
-  using (cong; cong₂; subst0; sym)
+  using (cong; cong₂; subst; subst0; sym; trans)
 
 open import Haskell.Extra.Dec public
-  using (Reflects; mapReflects;
+  using (Reflects; mapReflects; extractTrue; extractFalse;
          Dec; mapDec)
 
 open import Haskell.Extra.Erase public
@@ -46,7 +52,7 @@ syntax Σ0-syntax A (λ x → B) = Σ0[ x ∈ A ] B
 infix 2 Σ0-syntax
 
 open import Haskell.Extra.Refinement public
-  using (∃; _⟨_⟩; value; proof)
+  using (∃; _⟨_⟩; value; proof; mapRefine)
 
 ∃-syntax = ∃
 {-# COMPILE AGDA2HS ∃-syntax inline #-}
@@ -56,23 +62,18 @@ infix 2 ∃-syntax
 open import Haskell.Extra.Sigma public
   using (Σ-syntax; _,_; fst; snd)
 
+open import Data.Set public
+  using (empty; singleton; union; fromList; null; member; difference; toAscList;
+         prop-member-insert; prop-member-empty; prop-member-union; prop-member-null;
+         prop-member-difference; prop-member-fromList; prop-member-toAscList;
+         prop-null→empty)
+  renaming (Set to Set')
+
 --------------------------------------------------------------------------------
 -- agda standard library re-exports
 
 open import Data.List.Base public
   using (sum; map; _++_; concat; concatMap; length)
-
---------------------------------------------------------------------------------
--- Utils
-
-_,,_ : {a b : Set} → a → b → a × b
-_,,_ = _,_
-{-# COMPILE AGDA2HS _,,_ inline #-}
-
-mapEither : {a b c d : Set} → (a → c) → (b → d) → Either a b → Either c d
-mapEither f g (Left x)  = Left (f x)
-mapEither f g (Right y) = Right (g y)
-{-# COMPILE AGDA2HS mapEither #-}
 
 --------------------------------------------------------------------------------
 -- Bottom and negation
@@ -82,14 +83,72 @@ infix 3 ¬_
 ¬_ : Set → Set
 ¬ A = A → ⊥
 
-exFalso : {a : Set} → @0 ⊥ → a
-exFalso _ = undefined
+explode : {a : Set} → @0 ⊥ → a
+explode _ = undefined
+{-# COMPILE AGDA2HS explode inline #-}
+
+exFalso : {x : Bool} {a : Set} → @0 x ≡ True → @0 x ≡ False → a
+exFalso h h' = explode (Haskell.Prim.exFalso h h')
+{-# COMPILE AGDA2HS exFalso inline #-}
 
 contradiction : {a b : Set} → a → @0 ¬ a → b
-contradiction a ¬a = exFalso (¬a a)
+contradiction a ¬a = explode (¬a a)
+{-# COMPILE AGDA2HS contradiction inline #-}
 
 contraposition : {a b : Set} → (a → b) → (¬ b → ¬ a)
 contraposition f g = g ∘ f
+
+--------------------------------------------------------------------------------
+-- Either
+
+mapEither : {a b c d : Set} → (a → c) → (b → d) → Either a b → Either c d
+mapEither f g (Left x)  = Left (f x)
+mapEither f g (Right y) = Right (g y)
+{-# COMPILE AGDA2HS mapEither #-}
+
+--------------------------------------------------------------------------------
+-- Set properties
+
+ifTrueFalse : (b : Bool) → (if b then True else False) ≡ b
+ifTrueFalse False = refl
+ifTrueFalse True = refl
+
+module _ {a : Set} ⦃ _ : Ord a ⦄ where
+
+  prop-member-singleton : (x y : a)
+    → member x (singleton y) ≡ (x == y)
+  prop-member-singleton x y
+    rewrite prop-member-insert x y empty
+    | prop-member-empty x
+    | ifTrueFalse (x == y)
+    = refl
+
+  prop-difference-empty : {sa sb : Set' a}
+    → difference sa sb ≡ empty
+    → ∀ {x}
+    → member x sa ≡ True
+    → member x sb ≡ True
+  prop-difference-empty {sa} {sb} h {x} h'
+    with eq ← prop-member-difference x sa sb
+    rewrite h | h' | prop-member-empty x
+    = sym (not-involution False (member x sb) eq)
+
+  prop-null-toAscList : {s : Set' a}
+    → toAscList s ≡ []
+    → null s ≡ True
+  prop-null-toAscList {s} h = prop-member-null s λ x →
+    trans (sym (prop-member-toAscList x s)) (cong (elem x) h)
+
+  findMin : ⦃ @0 _ : IsLawfulEq a ⦄
+    → (s : Set' a) ⦃ @0 _ : null s ≡ False ⦄
+    → ∃[ x ∈ a ] member x s ≡ True
+  findMin s ⦃ h ⦄ = case toAscList s of λ where
+    []       ⦃ h' ⦄ → exFalso (prop-null-toAscList h') h
+    (x ∷ xs) ⦃ h' ⦄ →
+      x ⟨ trans (sym (prop-member-toAscList x s))
+          (trans (cong (elem x) h')
+          (cong (_|| elem x xs) (eqReflexivity x))) ⟩
+  {-# COMPILE AGDA2HS findMin #-}
 
 --------------------------------------------------------------------------------
 -- Relations on lists
@@ -150,17 +209,21 @@ module @0 _ {a : Set} {p : @0 a → Set} where
   ... | here h'  = here (there h')
   ... | there h' = there h'
 
-  gmapAny⁺ : {b : Set} {q : @0 b → Set} {f : a → b}
+  gmapAny⁺ : {b : Set} {q : @0 b → Set} {@0 f : a → b}
     → (∀ {x} → p x → q (f x))
     → (∀ {xs} → Any p xs → Any q (map f xs))
   gmapAny⁺ g (here h)  = here (g h)
   gmapAny⁺ g (there h) = there (gmapAny⁺ g h)
 
-  gmapAny⁻ : {b : Set} {q : @0 b → Set} {f : a → b}
+  gmapAny⁻ : {b : Set} {q : @0 b → Set} {@0 f : a → b}
     → (∀ {x} → q (f x) → p x)
     → (∀ {xs} → Any q (map f xs) → Any p xs)
   gmapAny⁻ g {x ∷ xs} (here h)  = here (g h)
   gmapAny⁻ g {x ∷ xs} (there h) = there (gmapAny⁻ g h)
+
+  All¬⇒¬Any : ∀ {xs} → All (λ x → ¬ p x) xs → ¬ Any p xs
+  All¬⇒¬Any (¬p ◂ _)  (here  p) = ¬p p
+  All¬⇒¬Any (_  ◂ ¬p) (there p) = All¬⇒¬Any ¬p p
 
   ¬Any⇒All¬ : ∀ xs → ¬ Any p xs → All (λ x → ¬ p x) xs
   ¬Any⇒All¬ []       ¬p = ⌈⌉
@@ -218,42 +281,17 @@ appendNonEmpty (x ◂ xs) (y ◂ ys) = x ◂ (xs ++ y ∷ ys)
 {-# COMPILE AGDA2HS appendNonEmpty #-}
 syntax appendNonEmpty xs ys = xs ◂◂ⁿᵉ ys
 
---------------------------------------------------------------------------------
--- These
-
-data These (a b : Set) : Set where
-  This : a → These a b
-  That : b → These a b
-  Both : a → b → These a b
-
-{-# COMPILE AGDA2HS These deriving Show #-}
-
-these : {a b c : Set} → (a → c) → (b → c) → (a → b → c) → These a b → c
-these f g h (This x)   = f x
-these f g h (That y)   = g y
-these f g h (Both x y) = h x y
-{-# COMPILE AGDA2HS these #-}
-
-mapThese : {a b c d : Set} → (a → c) → (b → d) → These a b → These c d
-mapThese f g (This x) = This (f x)
-mapThese f g (That x) = That (g x)
-mapThese f g (Both x y) = Both (f x) (g y)
-{-# COMPILE AGDA2HS mapThese #-}
-
-partitionEither : {a b : Set} → NonEmpty (Either a b) → These (NonEmpty a) (NonEmpty b)
-partitionEither (x ◂ xs) = go x xs
+concatNonEmpty : {a : Set} → NonEmpty (NonEmpty a) → NonEmpty a
+concatNonEmpty (xs ◂ xss) = go xs xss
   where
-    go : {a b : Set} → Either a b → List (Either a b) → These (NonEmpty a) (NonEmpty b)
-    go x         (y ∷ xs) = case (x ,, go y xs) of λ where
-      (Left x  , This xs)    → This (x ◂′ xs)
-      (Left x  , That ys)    → Both (x ◂ []) ys
-      (Left x  , Both xs ys) → Both (x ◂′ xs) ys
-      (Right y , This xs)    → Both xs (y ◂ [])
-      (Right y , That ys)    → That (y ◂′ ys)
-      (Right y , Both xs ys) → Both xs (y ◂′ ys)
-    go (Left x)  []       = This (x ◂ [])
-    go (Right y) []       = That (y ◂ [])
-{-# COMPILE AGDA2HS partitionEither #-}
+    go : {a : Set} → NonEmpty a → List (NonEmpty a) → NonEmpty a
+    go xs []         = xs
+    go xs (ys ∷ xss) = xs ◂◂ⁿᵉ go ys xss
+{-# COMPILE AGDA2HS concatNonEmpty #-}
+
+concatMapNonEmpty : {a b : Set} → (a → NonEmpty b) → NonEmpty a → NonEmpty b
+concatMapNonEmpty f xs = concatNonEmpty (mapNonEmpty f xs)
+{-# COMPILE AGDA2HS concatMapNonEmpty inline #-}
 
 --------------------------------------------------------------------------------
 -- Decidable relations
@@ -295,42 +333,6 @@ eitherDec : ∀ {@0 a b} → Dec a → Dec b → Dec (Either a b)
 eitherDec (ba ⟨ a ⟩) (bb ⟨ b ⟩) = (ba || bb) ⟨ eitherReflects a b ⟩
 {-# COMPILE AGDA2HS eitherDec inline #-}
 
-@0 theseReflects : ∀ {ba bb a b} → Reflects a ba → Reflects b bb → Reflects (These a b) (ba || bb)
-theseReflects {True}  {True}  a  b  = Both a b
-theseReflects {True}  {False} a  ¬b = This a
-theseReflects {False} {True}  ¬a b  = That b
-theseReflects {False} {False} ¬a ¬b = these ¬a ¬b (λ a _ → ¬a a)
-
-theseDec : ∀ {@0 a b} → Dec a → Dec b → Dec (These a b)
-theseDec (ba ⟨ a ⟩) (bb ⟨ b ⟩) = (ba || bb) ⟨ theseReflects a b ⟩
-{-# COMPILE AGDA2HS theseDec inline #-}
-
-anyDec : ∀ {a} {@0 p : @0 a → Set}
-  → (∀ x → Dec (p x))
-  → (∀ xs → Dec (Any p xs))
-anyDec f []       = False ⟨ (λ ()) ⟩
-anyDec f (x ∷ xs) =
-  mapDec
-    (either here there)
-    (λ where
-      (here h)  → Left h
-      (there h) → Right h)
-    (eitherDec (f x) (anyDec f xs))
-{-# COMPILE AGDA2HS anyDec #-}
-
-firstDec : ∀ {a} {@0 p : @0 a → Set}
-  → (∀ x → Dec (p x))
-  → (∀ xs → Dec (First p xs))
-firstDec         f []       = False ⟨ (λ ()) ⟩
-firstDec {p = p} f (x ∷ xs) = ifDec (f x)
-  (λ ⦃ h ⦄ → True ⟨ [ h ] ⟩)
-  (λ ⦃ h ⦄ → mapDec (h ◂_) (lem h) (firstDec f xs))
-  where
-    @0 lem : ¬ p x → First p (x ∷ xs) → First p xs
-    lem h [ h' ]   = contradiction h' h
-    lem h (x ◂ h') = h'
-{-# COMPILE AGDA2HS firstDec #-}
-
 --------------------------------------------------------------------------------
 -- Decidable relation that does not erase positive information
 
@@ -340,16 +342,6 @@ data DecP (a : Set) : Set where
   Yes : (p : a) → DecP a
   No  : (@0 p : ¬ a) → DecP a
 {-# COMPILE AGDA2HS DecP deriving Show #-}
-
-decPToDec : ∀ {a} → DecP a → Dec a
-decPToDec (Yes p) = True ⟨ p ⟩
-decPToDec (No p)  = False ⟨ p ⟩
-{-# COMPILE AGDA2HS decPToDec #-}
-
-decToDecP : ∀ {a} → Dec a → DecP (Erase a)
-decToDecP (True ⟨ p ⟩)  = Yes (Erased p)
-decToDecP (False ⟨ p ⟩) = No λ (Erased x) → p x
-{-# COMPILE AGDA2HS decToDecP #-}
 
 mapDecP : ∀ {a b} → (a → b) → @0 (b → a) → DecP a → DecP b
 mapDecP f g (Yes p) = Yes (f p)
@@ -373,13 +365,6 @@ eitherDecP (Yes p) _       = Yes (Left p)
 eitherDecP (No p)  (Yes q) = Yes (Right q)
 eitherDecP (No p)  (No q)  = No (either p q)
 {-# COMPILE AGDA2HS eitherDecP #-}
-
-theseDecP : ∀ {a b} → DecP a → DecP b → DecP (These a b)
-theseDecP (Yes p) (Yes q) = Yes (Both p q)
-theseDecP (Yes p) (No q)  = Yes (This p)
-theseDecP (No p)  (Yes q) = Yes (That q)
-theseDecP (No p)  (No q)  = No (these p q (λ a _ → p a))
-{-# COMPILE AGDA2HS theseDecP #-}
 
 firstDecP : ∀ {a} {p : @0 a → Set}
   → (∀ x → DecP (p x))

@@ -32,6 +32,7 @@ library
                     , CoverageCheck.Exhaustiveness
                     , CoverageCheck
     build-depends:    base >=4.17 && <5
+                    , containers
     hs-source-dirs:   lib
     default-language: GHC2021
 

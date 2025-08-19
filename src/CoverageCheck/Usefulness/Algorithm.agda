@@ -8,6 +8,8 @@ module CoverageCheck.Usefulness.Algorithm
   ⦃ @0 globals : Globals ⦄
   where
 
+{-# FOREIGN AGDA2HS import Prelude hiding (null) #-}
+
 private open module @0 G = Globals globals
 
 private
@@ -28,25 +30,38 @@ module _ ⦃ sig : Signature ⦄ {d : NameData} (c : NameCon d)
 
   -- Specialisation: filters out clauses whose first pattern does not match a value of the form `con c -`.
 
-  specialiseAuxConCase : {c' : NameCon d}
+  specializeAuxConCase : {c' : NameCon d}
     (let @0 αs' : Types
          αs' = argsTy (dataDefs sig d) c')
     (rs : Patterns αs') (ps : Patterns βs0)
     (eq : Dec (c ≡ c'))
     → PatternMatrix (αs ◂◂ βs0)
-  specialiseAuxConCase rs ps eq =
+  specializeAuxConCase rs ps eq =
     ifDec eq (λ where ⦃ refl ⦄ → (rs ◂◂ᵖ ps) ∷ []) []
-  {-# COMPILE AGDA2HS specialiseAuxConCase inline #-}
+  {-# COMPILE AGDA2HS specializeAuxConCase inline #-}
 
-  specialiseAux : Patterns (TyData d ◂ βs0) → PatternMatrix (αs ◂◂ βs0)
-  specialiseAux (—         ◂ ps) = (—* ◂◂ᵖ ps) ∷ []
-  specialiseAux (con c' rs ◂ ps) = specialiseAuxConCase rs ps (c ≟ c')
-  specialiseAux (r₁ ∣ r₂   ◂ ps) = specialiseAux (r₁ ◂ ps) ++ specialiseAux (r₂ ◂ ps)
-  {-# COMPILE AGDA2HS specialiseAux #-}
+  specializeAux : Patterns (TyData d ◂ βs0) → PatternMatrix (αs ◂◂ βs0)
+  specializeAux (—         ◂ ps) = (—* ◂◂ᵖ ps) ∷ []
+  specializeAux (con c' rs ◂ ps) = specializeAuxConCase rs ps (c ≟ c')
+  specializeAux (r₁ ∣ r₂   ◂ ps) = specializeAux (r₁ ◂ ps) ++ specializeAux (r₂ ◂ ps)
+  {-# COMPILE AGDA2HS specializeAux #-}
 
-  specialise : PatternMatrix (TyData d ◂ βs0) → PatternMatrix (αs ◂◂ βs0)
-  specialise = concatMap specialiseAux
-  {-# COMPILE AGDA2HS specialise #-}
+  specialize : PatternMatrix (TyData d ◂ βs0) → PatternMatrix (αs ◂◂ βs0)
+  specialize = concatMap specializeAux
+  {-# COMPILE AGDA2HS specialize #-}
+
+
+module _ ⦃ @0 sig : Signature ⦄ where
+
+  rootConSet' : (p : Pattern (TyData d0)) → Set' (NameCon d0)
+  rootConSet' —         = empty
+  rootConSet' (con c _) = singleton c
+  rootConSet' (p ∣ q)   = union (rootConSet' p) (rootConSet' q)
+  {-# COMPILE AGDA2HS rootConSet' #-}
+
+  rootConSet : (P : PatternMatrix (TyData d0 ◂ αs0)) → Set' (NameCon d0)
+  rootConSet pss = foldr (λ ps → union (rootConSet' (headPattern ps))) empty pss
+  {-# COMPILE AGDA2HS rootConSet #-}
 
 
 module _ ⦃ @0 sig : Signature ⦄ where
@@ -65,24 +80,15 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
 module Raw where
 
-  module _ ⦃ @0 sig : Signature ⦄ where
-
-    infix 4 elemRootCons
-
-    elemRootCons : (c : NameCon d0) (p : Pattern (TyData d0)) → Bool
-    syntax elemRootCons c p = c ∈ᵇ p
-    c ∈ᵇ —         = False
-    c ∈ᵇ con c' ps = value (c ≟ c')
-    c ∈ᵇ (p ∣ q)   = c ∈ᵇ p || c ∈ᵇ q
-    {-# COMPILE AGDA2HS elemRootCons #-}
-
-
   module _ ⦃ sig : Signature ⦄ where
 
     -- Is there a constructor that does not appear in the first column of P?
     existsMissingCon : (P : PatternMatrix (TyData d ◂ αs0)) → Bool
-    existsMissingCon {d = d} pss =
-      not (allNameCon (dataDefs sig d) λ c → any (λ ps → c ∈ᵇ headPattern ps) pss)
+    existsMissingCon {d = d} pss = not (null missConSet)
+      where
+        conSet missConSet : Set' (NameCon d)
+        conSet     = rootConSet pss
+        missConSet = difference (universalNameConSet (dataDefs sig d)) conSet
     {-# COMPILE AGDA2HS existsMissingCon #-}
 
     -- The core usefulness checking algorithm in the paper
@@ -93,32 +99,78 @@ module Raw where
     isUseful {TyData d ◂ αs} pss     (—        ◂ ps) =
       if existsMissingCon pss
         then isUseful (default' pss) ps
-        else anyNameCon (dataDefs sig d) λ c → isUseful (specialise c pss) (—* ◂◂ᵖ ps)
-    isUseful {TyData d ◂ αs} pss     (con c rs ◂ ps) = isUseful (specialise c pss) (rs ◂◂ᵖ ps)
+        else anyNameCon (dataDefs sig d) λ c → isUseful (specialize c pss) (—* ◂◂ᵖ ps)
+    isUseful {TyData d ◂ αs} pss     (con c rs ◂ ps) = isUseful (specialize c pss) (rs ◂◂ᵖ ps)
     isUseful {TyData d ◂ αs} pss     (r₁ ∣ r₂  ◂ ps) = isUseful pss (r₁ ◂ ps) || isUseful pss (r₂ ◂ ps)
     {-# COMPILE AGDA2HS isUseful #-}
 
 --------------------------------------------------------------------------------
 
-module _ ⦃ @0 sig : Signature ⦄ where
+module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} where
 
-  infix 4 _∈_ _∉_ decElemRootCons
+  infix 4 _∈_ _∉_
 
   -- Does c appear in the set of root constructors of p?
-  @0 _∈_ : NameCon d0 → Pattern (TyData d0) → Set
+  _∈_ : NameCon d0 → Pattern (TyData d0) → Set
   c ∈ —         = ⊥
   c ∈ con c' ps = c ≡ c'
   c ∈ (p ∣ q)   = Either (c ∈ p) (c ∈ q)
 
-  @0 _∉_ : NameCon d0 → Pattern (TyData d0) → Set
+  _∉_ : NameCon d0 → Pattern (TyData d0) → Set
   c ∉ p = ¬ c ∈ p
 
-  decElemRootCons : (c : NameCon d0) (p : Pattern (TyData d0)) → Dec (c ∈ p)
-  syntax decElemRootCons c p = c ∈? p
-  c ∈? —         = False ⟨ id ⟩
-  c ∈? con c' ps = c ≟ c'
-  c ∈? (p ∣ q)   = eitherDec (c ∈? p) (c ∈? q)
-  {-# COMPILE AGDA2HS decElemRootCons #-}
+
+module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} (c : NameCon d0) where
+
+  memberRootConSet' : (p : Pattern (TyData d0))
+    → Reflects (c ∈ p) (member c (rootConSet' p))
+  memberRootConSet' — rewrite prop-member-empty c = id
+  memberRootConSet' (con c' _) rewrite prop-member-singleton c c' = isEquality c c'
+  memberRootConSet' (p ∣ q)
+    rewrite prop-member-union c (rootConSet' p) (rootConSet' q)
+    = eitherReflects (memberRootConSet' p) (memberRootConSet' q)
+
+  memberRootConSet : (pss : PatternMatrix (TyData d0 ◂ αs0))
+    → Reflects (Any (λ ps → c ∈ headPattern ps) pss) (member c (rootConSet pss))
+  memberRootConSet ⌈⌉ rewrite prop-member-empty c = λ ()
+  memberRootConSet (ps ◂ pss)
+    rewrite prop-member-union c (rootConSet' (headPattern ps)) (rootConSet pss)
+    = mapReflects
+        (either here there)
+        (λ where (here h) → Left h; (there h) → Right h)
+        (eitherReflects (memberRootConSet' (headPattern ps)) (memberRootConSet pss))
+
+  memberMissConSet : (pss : PatternMatrix (TyData d0 ◂ αs0))
+    (let conSet     = rootConSet pss
+         missConSet = difference (universalNameConSet (dataDefs sig d0)) conSet)
+    → Reflects
+        (All (λ ps → c ∉ headPattern ps) pss)
+        (member c missConSet)
+  memberMissConSet pss
+    rewrite prop-member-difference c (universalNameConSet (dataDefs sig d0)) (rootConSet pss)
+    | universalNameConSetUniversal (dataDefs sig d0) c
+    = mapReflects (¬Any⇒All¬ pss) All¬⇒¬Any (negReflects (memberRootConSet pss))
+
+
+module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} where
+
+  nullMissConSet : (pss : PatternMatrix (TyData d0 ◂ αs0))
+    (let conSet     = rootConSet pss
+         missConSet = difference (universalNameConSet (dataDefs sig d0)) conSet)
+    → Reflects
+        (∀ c → Any (λ ps → c ∈ headPattern ps) pss)
+        (null missConSet)
+  nullMissConSet pss
+    using conSet     ← rootConSet pss
+    using missConSet ← difference (universalNameConSet (dataDefs sig d0)) conSet
+    with null missConSet in eq
+  ... | True = λ c →
+          extractTrue
+            ⦃ universalNameConSetUniversal' (dataDefs sig d0) _ eq _ ⦄
+            (memberRootConSet c pss)
+  ... | False = λ f →
+          let c ⟨ h ⟩ = findMin missConSet ⦃ eq ⦄
+           in All¬⇒¬Any (extractTrue ⦃ h ⦄ (memberMissConSet c pss)) (f c)
 
 
 module _ ⦃ sig : Signature ⦄ {d : NameData} where
@@ -126,15 +178,16 @@ module _ ⦃ sig : Signature ⦄ {d : NameData} where
   -- Are there constructors that does not appear in the first column of P?
   decExistsMissingCon : (P : PatternMatrix (TyData d ◂ αs0))
     → Either
-        (NonEmpty (∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) P))
+        (∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) P)
         (Erase (∀ c → Any (λ ps → c ∈ headPattern ps) P))
   decExistsMissingCon pss =
-    case
-      decAllNameCon (dataDefs sig d) (λ c →
-        anyDec (λ ps → c ∈? headPattern ps) pss)
-    of λ where
-      (Left (Erased h)) → Right (Erased h)
-      (Right hs) → Left (mapNonEmpty (λ where (c ⟨ h ⟩) → (c ⟨ ¬Any⇒All¬ pss h ⟩)) hs)
+    if null missConSet
+      then Right (Erased (extractTrue (nullMissConSet pss)))
+      else Left (mapRefine (λ h → extractTrue ⦃ h ⦄ (memberMissConSet _ pss)) (findMin missConSet))
+    where
+      conSet missConSet : Set' (NameCon d)
+      conSet     = rootConSet pss
+      missConSet = difference (universalNameConSet (dataDefs sig d)) conSet
   {-# COMPILE AGDA2HS decExistsMissingCon #-}
 
 
@@ -144,53 +197,58 @@ record Usefulness
   field
     nilNil : ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       → u [] ⌈⌉
+
     @0 consNil : ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {@0 ps : Patterns ⌈⌉} {@0 pss : PatternMatrix ⌈⌉}
       → ¬ u (ps ∷ pss) ⌈⌉
 
     orHead : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {@0 pss : PatternMatrix (α0 ◂ αs0)} {@0 r₁ r₂ : Pattern α0} {@0 ps : Patterns αs0}
-      → These (u pss (r₁ ◂ ps)) (u pss (r₂ ◂ ps))
+      → Either (u pss (r₁ ◂ ps)) (u pss (r₂ ◂ ps))
       → u pss (r₁ ∣ r₂ ◂ ps)
+
     @0 orHeadInv : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {@0 pss : PatternMatrix (α0 ◂ αs0)} {@0 r₁ r₂ : Pattern α0} {@0 ps : Patterns αs0}
       → u pss (r₁ ∣ r₂ ◂ ps)
-      → These (u pss (r₁ ◂ ps)) (u pss (r₂ ◂ ps))
+      → Either (u pss (r₁ ◂ ps)) (u pss (r₂ ◂ ps))
 
     conHead : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ◂ βs0)} {c : NameCon d}
       (let αs = argsTy (dataDefs sig d) c)
       {@0 rs : Patterns αs} {@0 ps : Patterns βs0}
-      → u (specialise c pss) (rs ◂◂ᵖ ps)
+      → u (specialize c pss) (rs ◂◂ᵖ ps)
       → u pss (con c rs ◂ ps)
+
     @0 conHeadInv : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ◂ βs0)} {c : NameCon d}
       (let αs = argsTy (dataDefs sig d) c)
       {@0 rs : Patterns αs} {@0 ps : Patterns βs0}
       → u pss (con c rs ◂ ps)
-      → u (specialise c pss) (rs ◂◂ᵖ ps)
+      → u (specialize c pss) (rs ◂◂ᵖ ps)
 
     wildHeadMiss : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
-      → NonEmpty (∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) pss)
+      → ∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) pss
       → u (default' pss) ps
       → u pss (— ◂ ps)
+
     @0 wildHeadMissInv : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
-      → NonEmpty (∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) pss)
+      → ∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) pss
       → u pss (— ◂ ps)
       → u (default' pss) ps
 
     wildHeadComp : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
       → @0 (∀ c → Any (λ ps → c ∈ headPattern ps) pss)
-      → NonEmpty (Σ[ c ∈ NameCon d ] u (specialise c pss) (—* ◂◂ᵖ ps))
+      → Σ[ c ∈ NameCon d ] u (specialize c pss) (—* ◂◂ᵖ ps)
       → u pss (— ◂ ps)
+
     @0 wildHeadCompInv : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
       → (∀ c → Any (λ ps → c ∈ headPattern ps) pss)
       → u pss (— ◂ ps)
-      → NonEmpty (Σ[ c ∈ NameCon d ] u (specialise c pss) (—* ◂◂ᵖ ps))
+      → Σ[ c ∈ NameCon d ] u (specialize c pss) (—* ◂◂ᵖ ps)
 
 open Usefulness ⦃ ... ⦄ public
 {-# COMPILE AGDA2HS Usefulness class #-}
@@ -205,14 +263,14 @@ module _ ⦃ @0 sig : Signature ⦄ where
     done : {P : PatternMatrix ⌈⌉} → UsefulAcc P ⌈⌉
 
     step-wild : {P : PatternMatrix (TyData d ◂ αs)} {ps : Patterns αs}
-      → (NonEmpty (∃[ c ∈ _ ] All (λ ps → c ∉ headPattern ps) P) → UsefulAcc (default' P) ps)
-      → (∀ c → Any (λ ps → c ∈ headPattern ps) P → UsefulAcc (specialise c P) (—* ◂◂ᵖ ps))
+      → (∃[ c ∈ _ ] All (λ ps → c ∉ headPattern ps) P → UsefulAcc (default' P) ps)
+      → (∀ c → Any (λ ps → c ∈ headPattern ps) P → UsefulAcc (specialize c P) (—* ◂◂ᵖ ps))
       → UsefulAcc P (— ◂ ps)
 
     step-con : {P : PatternMatrix (TyData d ◂ βs)} {c : NameCon d}
       (let αs = argsTy (dataDefs sig d) c)
       {rs : Patterns αs} {ps : Patterns βs}
-      → UsefulAcc (specialise c P) (rs ◂◂ᵖ ps)
+      → UsefulAcc (specialize c P) (rs ◂◂ᵖ ps)
       → UsefulAcc P (con c rs ◂ ps)
 
     step-∣ : {P : PatternMatrix (α ◂ αs)} {p q : Pattern α} {ps : Patterns αs}
@@ -239,12 +297,12 @@ module _
       (Right (Erased comp)) →
         mapDecP (wildHeadComp comp) (wildHeadCompInv comp)
           (decPAnyNameCon (dataDefs sig d) λ c →
-            decUseful (specialise c pss) (—* ◂◂ᵖ ps) (h' c (comp c)))
+            decUseful (specialize c pss) (—* ◂◂ᵖ ps) (h' c (comp c)))
   decUseful {TyData d ◂ αs} pss     (con c rs ◂ ps) (step-con h)     =
-    mapDecP conHead conHeadInv (decUseful (specialise c pss) (rs ◂◂ᵖ ps) h)
+    mapDecP conHead conHeadInv (decUseful (specialize c pss) (rs ◂◂ᵖ ps) h)
   decUseful {TyData d ◂ αs} pss     (r₁ ∣ r₂  ◂ ps) (step-∣ h h')    =
     mapDecP orHead orHeadInv
-      (theseDecP (decUseful pss (r₁ ◂ ps) h) (decUseful pss (r₂ ◂ ps) h'))
+      (eitherDecP (decUseful pss (r₁ ◂ ps) h) (decUseful pss (r₂ ◂ ps) h'))
   {-# COMPILE AGDA2HS decUseful #-}
 
 --------------------------------------------------------------------------------
@@ -309,85 +367,85 @@ module @0 _ ⦃ sig : Signature ⦄ where
     | sum-++ (map (flip patsSize 0) P) (map (flip patsSize 0) Q)
     = refl
 
-  specialiseAux-≤ : (c : NameCon d0) (ps : Patterns (TyData d0 ◂ αs0))
-    → patMatSize (specialiseAux c ps) ≤ patsSize ps 0
-  specialiseAux-≤ {d0} c (— ◂ ps)
+  specializeAux-≤ : (c : NameCon d0) (ps : Patterns (TyData d0 ◂ αs0))
+    → patMatSize (specializeAux c ps) ≤ patsSize ps 0
+  specializeAux-≤ {d0} c (— ◂ ps)
     rewrite patsSize-◂◂ (—* {αs = argsTy (dataDefs sig d0) c}) ps 0
     | patsSize—* (argsTy (dataDefs sig d0) c) (patsSize ps 0)
     | +-identityʳ (patsSize ps 0)
     = ≤-refl
-  specialiseAux-≤ c (con c' rs ◂ ps) = lem (c ≟ c')
+  specializeAux-≤ c (con c' rs ◂ ps) = lem (c ≟ c')
     where
       lem : (eq : Dec (c ≡ c'))
-        → patMatSize (specialiseAuxConCase c rs ps eq)
+        → patMatSize (specializeAuxConCase c rs ps eq)
         ≤ suc (patsSize rs (patsSize ps 0))
       lem (False ⟨ _ ⟩)   = <⇒≤ 0<1+n
       lem (True ⟨ refl ⟩)
           rewrite patsSize-◂◂ rs ps 0
           | +-identityʳ (patsSize rs (patsSize ps 0))
           = n≤1+n (patsSize rs (patsSize ps 0))
-  specialiseAux-≤ c (r₁ ∣ r₂ ◂ ps) =
+  specializeAux-≤ c (r₁ ∣ r₂ ◂ ps) =
     -- rewrite messed up termination check, so do it manually
     begin
-      patMatSize (specialiseAux c (r₁ ◂ ps) ++ specialiseAux c (r₂ ◂ ps))
-    ≡⟨ patMatSize-◂◂ (specialiseAux c (r₁ ◂ ps)) (specialiseAux c (r₂ ◂ ps)) ⟩
-      patMatSize (specialiseAux c (r₁ ◂ ps)) + patMatSize (specialiseAux c (r₂ ◂ ps))
-    ≤⟨ +-mono-≤ (specialiseAux-≤ c (r₁ ◂ ps)) (specialiseAux-≤ c (r₂ ◂ ps)) ⟩
+      patMatSize (specializeAux c (r₁ ◂ ps) ++ specializeAux c (r₂ ◂ ps))
+    ≡⟨ patMatSize-◂◂ (specializeAux c (r₁ ◂ ps)) (specializeAux c (r₂ ◂ ps)) ⟩
+      patMatSize (specializeAux c (r₁ ◂ ps)) + patMatSize (specializeAux c (r₂ ◂ ps))
+    ≤⟨ +-mono-≤ (specializeAux-≤ c (r₁ ◂ ps)) (specializeAux-≤ c (r₂ ◂ ps)) ⟩
       patsSize (r₁ ◂ ps) 0 + patsSize (r₂ ◂ ps) 0
     <⟨ n<1+n _ ⟩
       suc (patsSize (r₁ ◂ ps) 0 + patsSize (r₂ ◂ ps) 0)
     ∎
     where open ≤-Reasoning
 
-  -- specialise does not increase the pattern matrix size
-  specialise-≤ : (c : NameCon d0) (P : PatternMatrix (TyData d0 ◂ αs0))
-    → patMatSize (specialise c P) ≤ patMatSize P
-  specialise-≤ c []       = ≤-refl
-  specialise-≤ c (ps ∷ P) rewrite patMatSize-◂◂ (specialiseAux c ps) (specialise c P)
-    = +-mono-≤ (specialiseAux-≤ c ps) (specialise-≤ c P)
+  -- specialize does not increase the pattern matrix size
+  specialize-≤ : (c : NameCon d0) (P : PatternMatrix (TyData d0 ◂ αs0))
+    → patMatSize (specialize c P) ≤ patMatSize P
+  specialize-≤ c []       = ≤-refl
+  specialize-≤ c (ps ∷ P) rewrite patMatSize-◂◂ (specializeAux c ps) (specialize c P)
+    = +-mono-≤ (specializeAux-≤ c ps) (specialize-≤ c P)
 
-  ∈⇒specialiseAux-< : (c : NameCon d0) (ps : Patterns (TyData d0 ◂ αs0))
+  ∈⇒specializeAux-< : (c : NameCon d0) (ps : Patterns (TyData d0 ◂ αs0))
     → c ∈ headPattern ps
-    → patMatSize (specialiseAux c ps) < patsSize ps 0
-  ∈⇒specialiseAux-< c (con c' rs ◂ ps) c≡c' = lem (c ≟ c')
+    → patMatSize (specializeAux c ps) < patsSize ps 0
+  ∈⇒specializeAux-< c (con c' rs ◂ ps) c≡c' = lem (c ≟ c')
     where
       lem : (eq : Dec (c ≡ c'))
-        → patMatSize (specialiseAuxConCase c rs ps eq)
+        → patMatSize (specializeAuxConCase c rs ps eq)
         < suc (patsSize rs (patsSize ps 0))
       lem (False ⟨ c≢c' ⟩) = contradiction c≡c' c≢c'
       lem (True ⟨ refl ⟩)
           rewrite patsSize-◂◂ rs ps 0
           | +-identityʳ (patsSize rs (patsSize ps 0))
           = ≤-refl
-  ∈⇒specialiseAux-< c (r₁ ∣ r₂ ◂ ps) (Left c∈r₁) =
+  ∈⇒specializeAux-< c (r₁ ∣ r₂ ◂ ps) (Left c∈r₁) =
     begin
-      suc (patMatSize (specialiseAux c (r₁ ◂ ps) ++ specialiseAux c (r₂ ◂ ps)))
-    ≡⟨ cong suc (patMatSize-◂◂ (specialiseAux c (r₁ ◂ ps)) (specialiseAux c (r₂ ◂ ps))) ⟩
-      suc (patMatSize (specialiseAux c (r₁ ◂ ps)) + patMatSize (specialiseAux c (r₂ ◂ ps)))
-    <⟨ s<s (+-mono-<-≤ (∈⇒specialiseAux-< c (r₁ ◂ ps) c∈r₁) (specialiseAux-≤ c (r₂ ◂ ps))) ⟩
+      suc (patMatSize (specializeAux c (r₁ ◂ ps) ++ specializeAux c (r₂ ◂ ps)))
+    ≡⟨ cong suc (patMatSize-◂◂ (specializeAux c (r₁ ◂ ps)) (specializeAux c (r₂ ◂ ps))) ⟩
+      suc (patMatSize (specializeAux c (r₁ ◂ ps)) + patMatSize (specializeAux c (r₂ ◂ ps)))
+    <⟨ s<s (+-mono-<-≤ (∈⇒specializeAux-< c (r₁ ◂ ps) c∈r₁) (specializeAux-≤ c (r₂ ◂ ps))) ⟩
       suc (patsSize (r₁ ◂ ps) 0 + patsSize (r₂ ◂ ps) 0)
     ∎
     where open ≤-Reasoning
-  ∈⇒specialiseAux-< c (r₁ ∣ r₂ ◂ ps) (Right c∈r₂) =
+  ∈⇒specializeAux-< c (r₁ ∣ r₂ ◂ ps) (Right c∈r₂) =
     begin
-      suc (patMatSize (specialiseAux c (r₁ ◂ ps) ++ specialiseAux c (r₂ ◂ ps)))
-    ≡⟨ cong suc (patMatSize-◂◂ (specialiseAux c (r₁ ◂ ps)) (specialiseAux c (r₂ ◂ ps))) ⟩
-      suc (patMatSize (specialiseAux c (r₁ ◂ ps)) + patMatSize (specialiseAux c (r₂ ◂ ps)))
-    <⟨ s<s (+-mono-≤-< (specialiseAux-≤ c (r₁ ◂ ps)) (∈⇒specialiseAux-< c (r₂ ◂ ps) c∈r₂)) ⟩
+      suc (patMatSize (specializeAux c (r₁ ◂ ps) ++ specializeAux c (r₂ ◂ ps)))
+    ≡⟨ cong suc (patMatSize-◂◂ (specializeAux c (r₁ ◂ ps)) (specializeAux c (r₂ ◂ ps))) ⟩
+      suc (patMatSize (specializeAux c (r₁ ◂ ps)) + patMatSize (specializeAux c (r₂ ◂ ps)))
+    <⟨ s<s (+-mono-≤-< (specializeAux-≤ c (r₁ ◂ ps)) (∈⇒specializeAux-< c (r₂ ◂ ps) c∈r₂)) ⟩
       suc (patsSize (r₁ ◂ ps) 0 + patsSize (r₂ ◂ ps) 0)
     ∎
     where open ≤-Reasoning
 
-  -- specialise strictly reduces the pattern matrix size if the constructor is in the first column of the matrix
-  ∈⇒specialise-< : (c : NameCon d0) (P : PatternMatrix (TyData d0 ◂ αs0))
+  -- specialize strictly reduces the pattern matrix size if the constructor is in the first column of the matrix
+  ∈⇒specialize-< : (c : NameCon d0) (P : PatternMatrix (TyData d0 ◂ αs0))
     → Any (λ ps → c ∈ headPattern ps) P
-    → patMatSize (specialise c P) < patMatSize P
-  ∈⇒specialise-< c (ps ∷ P) (here c∈ps)
-    rewrite patMatSize-◂◂ (specialiseAux c ps) (specialise c P)
-    = +-mono-<-≤ (∈⇒specialiseAux-< c ps c∈ps) (specialise-≤ c P)
-  ∈⇒specialise-< c (ps ∷ P) (there c∈P)
-    rewrite patMatSize-◂◂ (specialiseAux c ps) (specialise c P)
-    = +-mono-≤-< (specialiseAux-≤ c ps) (∈⇒specialise-< c P c∈P)
+    → patMatSize (specialize c P) < patMatSize P
+  ∈⇒specialize-< c (ps ∷ P) (here c∈ps)
+    rewrite patMatSize-◂◂ (specializeAux c ps) (specialize c P)
+    = +-mono-<-≤ (∈⇒specializeAux-< c ps c∈ps) (specialize-≤ c P)
+  ∈⇒specialize-< c (ps ∷ P) (there c∈P)
+    rewrite patMatSize-◂◂ (specializeAux c ps) (specialize c P)
+    = +-mono-≤-< (specializeAux-≤ c ps) (∈⇒specialize-< c P c∈P)
 
   defaultAux-≤ : (ps : Patterns (TyData d0 ◂ αs0)) → patMatSize (defaultAux ps) ≤ patsSize ps 0
   defaultAux-≤ (—       ◂ ps) rewrite +-identityʳ (patsSize ps 0) = ≤-refl
@@ -424,12 +482,12 @@ module @0 _ ⦃ sig : Signature ⦄ where
   ⊏-wellFounded : WellFounded _⊏_
   ⊏-wellFounded = on-wellFounded problemSize (×-wellFounded <-wellFounded <-wellFounded)
 
-  -- specialise strictly reduces the problem size
-  specialise-⊏ : (P : PatternMatrix (TyData d0 ◂ αs0)) (c : NameCon d0) (rs : Patterns (argsTy (dataDefs sig d0) c)) (ps : Patterns αs0)
-    → (_ , (specialise c P , rs ◂◂ᵖ ps)) ⊏ (_ , (P , con c rs ◂ ps))
-  specialise-⊏ P c rs ps
+  -- specialize strictly reduces the problem size
+  specialize-⊏ : (P : PatternMatrix (TyData d0 ◂ αs0)) (c : NameCon d0) (rs : Patterns (argsTy (dataDefs sig d0) c)) (ps : Patterns αs0)
+    → (_ , (specialize c P , rs ◂◂ᵖ ps)) ⊏ (_ , (P , con c rs ◂ ps))
+  specialize-⊏ P c rs ps
     rewrite patsSize-◂◂ rs ps 0
-    = inj₁ (+-mono-≤-< (specialise-≤ c P) (n<1+n _))
+    = inj₁ (+-mono-≤-< (specialize-≤ c P) (n<1+n _))
 
   -- default strictly reduces the problem size
   default-⊏ : (P : PatternMatrix (TyData d0 ◂ αs0)) (qs : Patterns αs0)
@@ -438,14 +496,14 @@ module @0 _ ⦃ sig : Signature ⦄ where
   ... | inj₁ defaultP<P = inj₁ (+-monoˡ-< (patsSize qs 0) defaultP<P)
   ... | inj₂ defaultP≡P = inj₂ (cong (_+ patsSize qs 0) defaultP≡P ,ₚ n<1+n _)
 
-  -- specialise strictly reduces the problem size if the constructor is in the first column of the matrix
-  ∈⇒specialise-⊏ : (c : NameCon d0) (P : PatternMatrix (TyData d0 ◂ αs0)) (qs : Patterns αs0)
+  -- specialize strictly reduces the problem size if the constructor is in the first column of the matrix
+  ∈⇒specialize-⊏ : (c : NameCon d0) (P : PatternMatrix (TyData d0 ◂ αs0)) (qs : Patterns αs0)
     → Any (λ ps → c ∈ headPattern ps) P
-    → (_ , (specialise c P , —* ◂◂ᵖ qs)) ⊏ (_ , (P , — ◂ qs))
-  ∈⇒specialise-⊏ {d0} c P qs c∈P
+    → (_ , (specialize c P , —* ◂◂ᵖ qs)) ⊏ (_ , (P , — ◂ qs))
+  ∈⇒specialize-⊏ {d0} c P qs c∈P
     rewrite patsSize-◂◂ (—* {αs = argsTy (dataDefs sig d0) c}) qs 0
     | patsSize—* (argsTy (dataDefs sig d0) c) (patsSize qs 0)
-    = inj₁ (+-monoˡ-< (patsSize qs 0) (∈⇒specialise-< c P c∈P))
+    = inj₁ (+-monoˡ-< (patsSize qs 0) (∈⇒specialize-< c P c∈P))
 
   -- Choosing the left pattern strictly reduces the problem size
   ∣-⊏ₗ : (P : PatternMatrix (α0 ◂ αs0)) (r₁ r₂ : Pattern α0) (ps : Patterns αs0)
@@ -466,9 +524,9 @@ module @0 _ ⦃ sig : Signature ⦄ where
   ∀UsefulAccAux {αs0 = TyData d ◂ αs0} P (— ◂ ps) (acc h) =
     step-wild
       (λ _ → ∀UsefulAccAux (default' P) ps (h (default-⊏ P ps)))
-      (λ c c∈P → ∀UsefulAccAux (specialise c P) (—* ◂◂ᵖ ps) (h (∈⇒specialise-⊏ c P ps c∈P)))
+      (λ c c∈P → ∀UsefulAccAux (specialize c P) (—* ◂◂ᵖ ps) (h (∈⇒specialize-⊏ c P ps c∈P)))
   ∀UsefulAccAux P (con c rs ◂ ps) (acc h) =
-    step-con (∀UsefulAccAux (specialise c P) (rs ◂◂ᵖ ps) (h (specialise-⊏ P c rs ps)))
+    step-con (∀UsefulAccAux (specialize c P) (rs ◂◂ᵖ ps) (h (specialize-⊏ P c rs ps)))
   ∀UsefulAccAux P (r₁ ∣ r₂ ◂ ps) (acc h) =
     step-∣
       (∀UsefulAccAux P (r₁ ◂ ps) (h (∣-⊏ₗ P r₁ r₂ ps)))

@@ -18,7 +18,7 @@ infixr 5 _◂_ appendTypes
 --------------------------------------------------------------------------------
 -- Types and Signatures
 
-data Type  : Set
+data Type : Set
 Types : Set
 
 data Type where
@@ -50,29 +50,29 @@ record Datatype (@0 d : NameData) : Set where
     @0 fullDataCons : dataCons ≡ conScope d
     argsTy          : (c : NameCon d) → Types
 
-  allNameCon : (NameCon d → Bool) → Bool
-  allNameCon f = allNameIn dataCons λ x → f (subst0 NameIn fullDataCons x)
-  {-# COMPILE AGDA2HS allNameCon inline #-}
+  universalNameConSet : Set' (NameCon d)
+  universalNameConSet =
+    subst0 (λ xs → Set' (NameIn xs)) fullDataCons (universalNameInSet dataCons)
+  {-# COMPILE AGDA2HS universalNameConSet inline #-}
 
-  decAllNameCon : {@0 p : NameCon d → Set}
-    → (∀ x → Dec (p x))
-    → Either (Erase (∀ x → p x)) (NonEmpty (∃[ x ∈ NameCon d ] ¬ p x))
-  decAllNameCon f = decAllNameIn dataCons fullDataCons f
-  {-# COMPILE AGDA2HS decAllNameCon inline #-}
+  @0 universalNameConSetUniversal : (c : NameCon d)
+    → member c universalNameConSet ≡ True
+  universalNameConSetUniversal c rewrite fullDataCons =
+    universalNameInSetUniversal (conScope d) c
+
+  @0 universalNameConSetUniversal' : (s : Set' (NameCon d))
+    → null (difference universalNameConSet s) ≡ True
+    → ∀ c → member c s ≡ True
+  universalNameConSetUniversal' rewrite fullDataCons =
+    universalNameInSetUniversal'
 
   anyNameCon : (NameCon d → Bool) → Bool
   anyNameCon f = anyNameIn dataCons λ x → f (subst0 NameIn fullDataCons x)
   {-# COMPILE AGDA2HS anyNameCon inline #-}
 
-  decAnyNameCon : {@0 p : NameCon d → Set}
-    → (∀ x → Dec (p x))
-    → Dec (NonEmpty (∃[ x ∈ NameCon d ] p x))
-  decAnyNameCon f = decAnyNameIn dataCons fullDataCons f
-  {-# COMPILE AGDA2HS decAnyNameCon inline #-}
-
   decPAnyNameCon : {p : @0 NameCon d → Set}
     → (∀ x → DecP (p x))
-    → DecP (NonEmpty (Σ[ x ∈ NameCon d ] p x))
+    → DecP (Σ[ x ∈ NameCon d ] p x)
   decPAnyNameCon f = decPAnyNameIn dataCons fullDataCons f
   {-# COMPILE AGDA2HS decPAnyNameCon inline #-}
 

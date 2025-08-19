@@ -42,54 +42,54 @@ open UsefulV public
 {-# COMPILE AGDA2HS UsefulV newtype #-}
 
 --------------------------------------------------------------------------------
--- Properties of ≼ and specialise/default
+-- Properties of ≼ and specialize/default
 
 module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}
   (let αs = argsTy (dataDefs sig d) c)
   {us : Values αs} {vs : Values βs}
   where
 
-  specialiseAux-preserves-≼ : {ps : Patterns (TyData d ◂ βs)}
+  specializeAux-preserves-≼ : {ps : Patterns (TyData d ◂ βs)}
     → ps ≼* con c us ◂ vs
-    → specialiseAux c ps ≼** (us ◂◂ᵛ vs)
-  specialiseAux-preserves-≼ {—         ◂ ps} is = here (wildHeadLemmaInv is)
-  specialiseAux-preserves-≼ {con c' rs ◂ ps} is = lem (c ≟ c')
+    → specializeAux c ps ≼** (us ◂◂ᵛ vs)
+  specializeAux-preserves-≼ {—         ◂ ps} is = here (wildHeadLemmaInv is)
+  specializeAux-preserves-≼ {con c' rs ◂ ps} is = lem (c ≟ c')
     where
-      lem : (eq : Dec (c ≡ c')) → specialiseAuxConCase c rs ps eq ≼** (us ◂◂ᵛ vs)
+      lem : (eq : Dec (c ≡ c')) → specializeAuxConCase c rs ps eq ≼** (us ◂◂ᵛ vs)
       lem (False ⟨ c≢c' ⟩) = contradiction (sym (c≼c'⇒c≡c' (iUncons is .fst))) c≢c'
       lem (True ⟨ refl ⟩)  = here (conHeadLemmaInv is)
-  specialiseAux-preserves-≼ {r₁ ∣ r₂   ◂ ps} =
+  specializeAux-preserves-≼ {r₁ ∣ r₂   ◂ ps} =
     either
-      (++Any⁺ˡ ∘ specialiseAux-preserves-≼)
-      (++Any⁺ʳ ∘ specialiseAux-preserves-≼)
+      (++Any⁺ˡ ∘ specializeAux-preserves-≼)
+      (++Any⁺ʳ ∘ specializeAux-preserves-≼)
     ∘ orHeadLemmaInv
 
-  -- specialise preserves ≼
-  specialise-preserves-≼ : {P : PatternMatrix (TyData d ◂ βs)}
+  -- specialize preserves ≼
+  specialize-preserves-≼ : {P : PatternMatrix (TyData d ◂ βs)}
     → P ≼** con c us ◂ vs
-    → specialise c P ≼** (us ◂◂ᵛ vs)
-  specialise-preserves-≼ = concatAny⁺ ∘ gmapAny⁺ specialiseAux-preserves-≼
+    → specialize c P ≼** (us ◂◂ᵛ vs)
+  specialize-preserves-≼ = concatAny⁺ ∘ gmapAny⁺ specializeAux-preserves-≼
 
-  specialiseAux-preserves-≼⁻ : {ps : Patterns (TyData d ◂ βs)}
-    → specialiseAux c ps ≼** (us ◂◂ᵛ vs)
+  specializeAux-preserves-≼⁻ : {ps : Patterns (TyData d ◂ βs)}
+    → specializeAux c ps ≼** (us ◂◂ᵛ vs)
     → ps ≼* con c us ◂ vs
-  specialiseAux-preserves-≼⁻ {—         ◂ ps} (here is) = wildHeadLemma is
-  specialiseAux-preserves-≼⁻ {con c' rs ◂ ps} = lem (c ≟ c')
+  specializeAux-preserves-≼⁻ {—         ◂ ps} (here is) = wildHeadLemma is
+  specializeAux-preserves-≼⁻ {con c' rs ◂ ps} = lem (c ≟ c')
     where
       lem : (eq : Dec (c ≡ c'))
-        → specialiseAuxConCase c rs ps eq ≼** (us ◂◂ᵛ vs)
+        → specializeAuxConCase c rs ps eq ≼** (us ◂◂ᵛ vs)
         → con c' rs ◂ ps ≼* con c us ◂ vs
       lem (True ⟨ refl ⟩) (here h) = conHeadLemma h
-  specialiseAux-preserves-≼⁻ {r₁ ∣ r₂   ◂ ps} =
+  specializeAux-preserves-≼⁻ {r₁ ∣ r₂   ◂ ps} =
     orHeadLemma
-    ∘ mapEither specialiseAux-preserves-≼⁻ specialiseAux-preserves-≼⁻
+    ∘ mapEither specializeAux-preserves-≼⁻ specializeAux-preserves-≼⁻
     ∘ ++Any⁻ _
 
   -- Unspecialisation preserves ≼
-  specialise-preserves-≼⁻ : {P : PatternMatrix (TyData d ◂ βs)}
-    → specialise c P ≼** (us ◂◂ᵛ vs)
+  specialize-preserves-≼⁻ : {P : PatternMatrix (TyData d ◂ βs)}
+    → specialize c P ≼** (us ◂◂ᵛ vs)
     → P ≼** con c us ◂ vs
-  specialise-preserves-≼⁻ = gmapAny⁻ specialiseAux-preserves-≼⁻ ∘ concatAny⁻ _
+  specialize-preserves-≼⁻ = gmapAny⁻ specializeAux-preserves-≼⁻ ∘ concatAny⁻ _
 
 
 module @0 _ ⦃ @0 sig : Signature ⦄ {c : NameCon d} {us : Values (argsTy (dataDefs sig d) c)} {vs : Values βs} where
@@ -156,55 +156,53 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
 module _ ⦃ @0 sig : Signature ⦄ {@0 P : PatternMatrix (α0 ◂ αs0)} {@0 r₁ r₂ : Pattern α0} {@0 ps : Patterns αs0} where
 
-  usefulVOrHead : These (UsefulV P (r₁ ◂ ps)) (UsefulV P (r₂ ◂ ps)) → UsefulV P (r₁ ∣ r₂ ◂ ps)
-  usefulVOrHead (This (MkUsefulV (v ◂ vs) nis (i ◂ is))) =
+  usefulVOrHead : Either (UsefulV P (r₁ ◂ ps)) (UsefulV P (r₂ ◂ ps)) → UsefulV P (r₁ ∣ r₂ ◂ ps)
+  usefulVOrHead (Left (MkUsefulV (v ◂ vs) nis (i ◂ is))) =
     MkUsefulV (v ◂ vs) nis (∣≼ˡ i ◂ is)
-  usefulVOrHead (That (MkUsefulV (v ◂ vs) nis (i ◂ is))) =
+  usefulVOrHead (Right (MkUsefulV (v ◂ vs) nis (i ◂ is))) =
     MkUsefulV (v ◂ vs) nis (∣≼ʳ i ◂ is)
-  usefulVOrHead (Both (MkUsefulV (v ◂ vs) nis (i ◂ is)) _) =
-    MkUsefulV (v ◂ vs) nis (∣≼ˡ i ◂ is)
   {-# COMPILE AGDA2HS usefulVOrHead #-}
 
-  @0 usefulVOrHeadInv : UsefulV P (r₁ ∣ r₂ ◂ ps) → These (UsefulV P (r₁ ◂ ps)) (UsefulV P (r₂ ◂ ps))
-  usefulVOrHeadInv (MkUsefulV vs nis (∣≼ˡ i ◂ is)) = This (MkUsefulV vs nis (i ◂ is))
-  usefulVOrHeadInv (MkUsefulV vs nis (∣≼ʳ i ◂ is)) = That (MkUsefulV vs nis (i ◂ is))
+  @0 usefulVOrHeadInv : UsefulV P (r₁ ∣ r₂ ◂ ps) → Either (UsefulV P (r₁ ◂ ps)) (UsefulV P (r₂ ◂ ps))
+  usefulVOrHeadInv (MkUsefulV vs nis (∣≼ˡ i ◂ is)) = Left (MkUsefulV vs nis (i ◂ is))
+  usefulVOrHeadInv (MkUsefulV vs nis (∣≼ʳ i ◂ is)) = Right (MkUsefulV vs nis (i ◂ is))
 
 
 module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ◂ αs0)} {c : NameCon d} {@0 rs : Patterns (argsTy (dataDefs sig d) c)} {@0 ps : Patterns αs0} where
 
-  usefulVConHead : UsefulV (specialise c P) (rs ◂◂ᵖ ps) → UsefulV P (con c rs ◂ ps)
+  usefulVConHead : UsefulV (specialize c P) (rs ◂◂ᵖ ps) → UsefulV P (con c rs ◂ ps)
   usefulVConHead (MkUsefulV usvs nis is) = case splitInstances rs is of λ where
     ((us , vs) ⟨ refl , (is1 , is2) ⟩) →
-      MkUsefulV (con c us ◂ vs) (contraposition specialise-preserves-≼ nis) (con≼ is1 ◂ is2)
+      MkUsefulV (con c us ◂ vs) (contraposition specialize-preserves-≼ nis) (con≼ is1 ◂ is2)
   {-# COMPILE AGDA2HS usefulVConHead #-}
 
 
 module _ ⦃ @0 sig : Signature ⦄ {@0 P : PatternMatrix (TyData d0 ◂ αs0)} {@0 c : NameCon d0} {@0 rs : Patterns (argsTy (dataDefs sig d0) c)} {@0 ps : Patterns αs0} where
 
-  usefulVConHeadInv : UsefulV P (con c rs ◂ ps) → UsefulV (specialise c P) (rs ◂◂ᵖ ps)
+  usefulVConHeadInv : UsefulV P (con c rs ◂ ps) → UsefulV (specialize c P) (rs ◂◂ᵖ ps)
   usefulVConHeadInv (MkUsefulV (con c vs ◂ us) nis (con≼ is ◂ is')) =
-    MkUsefulV (vs ◂◂ᵛ us) (contraposition specialise-preserves-≼⁻ nis) (is ◂◂ⁱ is')
+    MkUsefulV (vs ◂◂ᵛ us) (contraposition specialize-preserves-≼⁻ nis) (is ◂◂ⁱ is')
 
 
 module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
   where
 
-  -- If there exists a constructor c such that `∙* ++ ps` is useful wrt `specialise c P`, `∙ ∷ ps` is also useful wrt P
+  -- If there exists a constructor c such that `∙* ++ ps` is useful wrt `specialize c P`, `∙ ∷ ps` is also useful wrt P
   usefulVWildHeadComp :
-      NonEmpty (Σ[ c ∈ NameCon d ] UsefulV (specialise c P) (—* ◂◂ᵖ ps))
+      Σ[ c ∈ NameCon d ] UsefulV (specialize c P) (—* ◂◂ᵖ ps)
     → UsefulV P (— ◂ ps)
-  usefulVWildHeadComp ((c , MkUsefulV usvs nis is) ◂ _) =
+  usefulVWildHeadComp (c , MkUsefulV usvs nis is) =
     case splitInstances {αs = argsTy (dataDefs sig d) c} —* is of λ where
       ((us , vs) ⟨ refl , (_ , is') ⟩) →
-        MkUsefulV (con c us ◂ vs) (contraposition specialise-preserves-≼ nis) (—≼ ◂ is')
+        MkUsefulV (con c us ◂ vs) (contraposition specialize-preserves-≼ nis) (—≼ ◂ is')
   {-# COMPILE AGDA2HS usefulVWildHeadComp #-}
 
-  -- If `∙ ∷ ps` is useful wrt P, there exists a constructor c such that `∙* ++ ps` is useful wrt `specialise c P`
+  -- If `∙ ∷ ps` is useful wrt P, there exists a constructor c such that `∙* ++ ps` is useful wrt `specialize c P`
   usefulVWildHeadCompInv :
       UsefulV P (— ◂ ps)
-    → NonEmpty (Σ[ c ∈ NameCon d ] UsefulV (specialise c P) (—* ◂◂ᵖ ps))
+    → Σ[ c ∈ NameCon d ] UsefulV (specialize c P) (—* ◂◂ᵖ ps)
   usefulVWildHeadCompInv (MkUsefulV (con c us ◂ vs) nis (_ ◂ is)) =
-    (c , MkUsefulV (us ◂◂ᵛ vs) (contraposition specialise-preserves-≼⁻ nis) (—≼* ◂◂ⁱ is)) ◂ []
+    c , MkUsefulV (us ◂◂ᵛ vs) (contraposition specialize-preserves-≼⁻ nis) (—≼* ◂◂ⁱ is)
 
 
 module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
@@ -213,9 +211,9 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ◂ αs0)} 
 
   -- If there is a constructor c that does not appear in the first column of P, and ps is useful wrt default P, ∙ ∷ ps is also useful wrt P.
   usefulVWildHeadMiss :
-      NonEmpty (∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) P)
+      ∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) P
     → UsefulV (default' P) ps → UsefulV P (— ◂ ps)
-  usefulVWildHeadMiss (c ⟨ h ⟩ ◂ _) (MkUsefulV vs nis is) =
+  usefulVWildHeadMiss (c ⟨ h ⟩) (MkUsefulV vs nis is) =
     MkUsefulV (inhabAt c ◂ vs) (contraposition (default-preserves-≼ h) nis) (—≼ ◂ is)
   {-# COMPILE AGDA2HS usefulVWildHeadMiss #-}
 
