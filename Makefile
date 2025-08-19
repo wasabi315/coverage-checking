@@ -26,7 +26,8 @@ lib/%.hs: src/%.agda
 clean: clean-lib clean-agdai
 
 clean-lib:
-	rm -rf lib
+	rm -rf lib/CoverageCheck
+	rm -f lib/CoverageCheck.hs
 
 clean-agdai:
 	find src -iname *.agdai -delete

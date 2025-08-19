@@ -113,8 +113,8 @@ module _ ⦃ @0 sig : Signature ⦄ where
   pattern ⌈⌉         = VNil
   pattern _◂_ v vs   = VCons v vs
 
-  {-# COMPILE AGDA2HS Value  deriving Show #-}
-  {-# COMPILE AGDA2HS Values deriving Show #-}
+  {-# COMPILE AGDA2HS Value  deriving (Show, Eq) #-}
+  {-# COMPILE AGDA2HS Values deriving (Show, Eq) #-}
 
   appendValues : Values αs0 → Values βs0 → Values (αs0 ◂◂ βs0)
   appendValues ⌈⌉       vs = vs
@@ -151,8 +151,8 @@ module _ ⦃ @0 sig : Signature ⦄ where
   PatternMatrix : (@0 αs : Types) → Set
   PatternMatrix αs = List (Patterns αs)
 
-  {-# COMPILE AGDA2HS Pattern       deriving Show #-}
-  {-# COMPILE AGDA2HS Patterns      deriving Show #-}
+  {-# COMPILE AGDA2HS Pattern       deriving (Show, Eq) #-}
+  {-# COMPILE AGDA2HS Patterns      deriving (Show, Eq) #-}
   {-# COMPILE AGDA2HS PatternMatrix inline #-}
 
   pWilds : Patterns αs -- αs is not erasable
