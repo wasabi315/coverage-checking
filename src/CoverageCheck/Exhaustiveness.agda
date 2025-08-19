@@ -37,7 +37,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
   -- non-exhaustiveness defined in terms of usefulness:
   -- P is non-exhaustive if —* is useful with respect to P
   NonExhaustive' : PatternMatrix αs0 → Set
-  NonExhaustive' P = UsefulV P —*
+  NonExhaustive' P = Useful P —*
   {-# COMPILE AGDA2HS NonExhaustive' inline #-}
 
   -- P is exhaustive if —* is not useful with respect to P
@@ -48,15 +48,15 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
     nonExhaustive'ToNonExhaustive : NonExhaustive' P → NonExhaustive P
     nonExhaustive'ToNonExhaustive = λ where
-      (MkUsefulV vs nis _) → vs ⟨ contraposition firstToAny nis ⟩
+      (MkUseful vs nis _) → vs ⟨ contraposition firstToAny nis ⟩
     {-# COMPILE AGDA2HS nonExhaustive'ToNonExhaustive inline #-}
 
     nonExhaustiveToNonExhaustive' : NonExhaustive P → NonExhaustive' P
     nonExhaustiveToNonExhaustive' (vs ⟨ h ⟩) =
-      MkUsefulV vs (notFirstToNotAny h) —≼*
+      MkUseful vs (notFirstToNotAny h) —≼*
 
     exhaustiveToExhaustive' : Exhaustive P → Exhaustive' P
-    exhaustiveToExhaustive' h (MkUsefulV vs nis _) =
+    exhaustiveToExhaustive' h (MkUseful vs nis _) =
       contradiction (firstToAny (h vs)) nis
 
 
@@ -66,7 +66,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
     exhaustive'ToExhaustive h vs =
       case decMatch P vs of λ where
         (Yes h') → h'
-        (No h')  → contradiction (MkUsefulV vs (notFirstToNotAny h') —≼*) h
+        (No h')  → contradiction (MkUseful vs (notFirstToNotAny h') —≼*) h
 
 --------------------------------------------------------------------------------
 -- Entrypoint
@@ -74,7 +74,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
 module _ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄ where
 
   decNonExhaustive : (pss : PatternMatrix αs) → Either (Erase (Exhaustive pss)) (NonExhaustive pss)
-  decNonExhaustive pss = ifDecP (decUsefulVTerm pss pWilds)
+  decNonExhaustive pss = ifDecP (decUsefulTerm (λ ⦃ sig' ⦄ → Useful ⦃ sig = sig' ⦄) pss pWilds)
     (λ ⦃ h ⦄ → Right (nonExhaustive'ToNonExhaustive h))
     (λ ⦃ h ⦄ → Left (Erased (exhaustive'ToExhaustive h)))
   {-# COMPILE AGDA2HS decNonExhaustive #-}
