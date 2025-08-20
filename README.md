@@ -6,6 +6,35 @@ This repository contains an Agda formalization of one of the coverage checking a
 
 Specifically, we formalize the usefulness checking algorithm $\mathcal{U}_\text{rec}$ presented in Section 3.1 and the exhaustiveness checking algorithm built on top of it.
 We prove that a pattern matrix is indeed exhaustive if the algorithm returns `true`, and that there exists a sequence of values that are not covered if the algorithm returns `false`.
+
+```agda
+-- type list = Nil | One unit | Cons unit list
+
+P : PatternMatrix (TyData ⟨list⟩ ∷ TyData ⟨list⟩ ∷ [])
+P =
+  (nil ◂ —   ◂ ⌈⌉) ∷
+  (—   ◂ nil ◂ ⌈⌉) ∷
+  []
+
+-- P is non-exhaustive, witnessed by one unit ∷ one unit ∷ []
+_ : decNonExhaustive P ≡ Right ((one unit ◂ one unit ◂ ⌈⌉) ⟨ _ ⟩)
+_ = refl
+
+Q : PatternMatrix (TyData ⟨list⟩ ∷ TyData ⟨list⟩ ∷ [])
+Q =
+  (nil      ◂ —        ◂ ⌈⌉) ∷
+  (—        ◂ nil      ◂ ⌈⌉) ∷
+  (one —    ◂ —        ◂ ⌈⌉) ∷
+  (—        ◂ one —    ◂ ⌈⌉) ∷
+  (cons — — ◂ —        ◂ ⌈⌉) ∷
+  (—        ◂ cons — — ◂ ⌈⌉) ∷
+  []
+
+-- Q is exhaustive, so we get a total matching function of type `∀ vs → Match Q vs`
+_ : decNonExhaustive Q ≡ Left (Erased (the (∀ vs → Match Q vs) _))
+_ = refl
+```
+
 This formalization is compatible with agda2hs, allowing us to extract readable Haskell code from it!
 
 Tested with Agda v2.7.0, agda-stdlib v2.0, and agda2hs 39e9b0c.

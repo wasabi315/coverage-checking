@@ -31,7 +31,6 @@ library
                     , CoverageCheck.Usefulness.Useful
                     , CoverageCheck.Exhaustiveness
                     , CoverageCheck
-                    , Example
     build-depends:    base >=4.17 && <5
                     , containers
     hs-source-dirs:   lib

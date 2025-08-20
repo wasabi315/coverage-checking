@@ -131,17 +131,17 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} (c : NameCon d0) where
 
   memberRootConSet' : (p : Pattern (TyData d0))
     → Reflects (c ∈ p) (Set.member c (rootConSet' p))
-  memberRootConSet' — rewrite Set.prop-member-empty c = id
+  memberRootConSet' — rewrite prop-member-empty c = id
   memberRootConSet' (con c' _) rewrite prop-member-singleton c c' = isEquality c c'
   memberRootConSet' (p ∣ q)
-    rewrite Set.prop-member-union c (rootConSet' p) (rootConSet' q)
+    rewrite prop-member-union c (rootConSet' p) (rootConSet' q)
     = eitherReflects (memberRootConSet' p) (memberRootConSet' q)
 
   memberRootConSet : (pss : PatternMatrix (TyData d0 ◂ αs0))
     → Reflects (c ∈** pss) (Set.member c (rootConSet pss))
-  memberRootConSet ⌈⌉ rewrite Set.prop-member-empty c = λ ()
+  memberRootConSet ⌈⌉ rewrite prop-member-empty c = λ ()
   memberRootConSet (ps ◂ pss)
-    rewrite Set.prop-member-union c (rootConSet' (headPattern ps)) (rootConSet pss)
+    rewrite prop-member-union c (rootConSet' (headPattern ps)) (rootConSet pss)
     = mapReflects
         (either here there)
         (λ where (here h) → Left h; (there h) → Right h)
@@ -152,7 +152,7 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} (c : NameCon d0) where
          missConSet = Set.difference (universalNameConSet (dataDefs sig d0)) conSet)
     → Reflects (c ∉** pss) (Set.member c missConSet)
   memberMissConSet pss
-    rewrite Set.prop-member-difference c (universalNameConSet (dataDefs sig d0)) (rootConSet pss)
+    rewrite prop-member-difference c (universalNameConSet (dataDefs sig d0)) (rootConSet pss)
     | universalNameConSetUniversal (dataDefs sig d0) c
     = mapReflects (¬Any⇒All¬ pss) All¬⇒¬Any (negReflects (memberRootConSet pss))
 

@@ -1,6 +1,5 @@
 *.agdai
 MAlonzo/**
 _build
-lib/**/*.hs
-!lib/Example.hs
+lib
 dist-newstyle

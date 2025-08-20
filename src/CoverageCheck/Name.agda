@@ -94,14 +94,14 @@ universalNameInSet xs = Set.fromList (universalNameInList xs)
 
 @0 universalNameInSetUniversal : (xs : List Name)
   → ∀ x → Set.member x (universalNameInSet xs) ≡ True
-universalNameInSetUniversal xs x rewrite Set.prop-member-fromList x (universalNameInList xs)
+universalNameInSetUniversal xs x rewrite prop-member-fromList x (universalNameInList xs)
   = universalNameInListUniversal xs x
 
 @0 universalNameInSetUniversal' : {xs : List Name} (s : Set (NameIn xs))
   → Set.null (Set.difference (universalNameInSet xs) s) ≡ True
   → ∀ x → Set.member x s ≡ True
 universalNameInSetUniversal' {xs} s eq x =
-  prop-difference-empty (Set.prop-null→empty _ eq) (universalNameInSetUniversal xs x)
+  prop-difference-empty (prop-null→empty _ eq) (universalNameInSetUniversal xs x)
 
 --------------------------------------------------------------------------------
 

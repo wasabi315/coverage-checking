@@ -8,14 +8,14 @@ open import Haskell.Prelude public
          ⊤; tt;
          Bool; True; False; not; _&&_; _||_; if_then_else_;
          Nat; zero; suc; _+_;
-         List; []; _∷_; _++_; map; foldr; elem; sum; concat; concatMap; lengthNat;
+         List; []; _∷_; _++_; map; foldr; elem; sum; concat; concatMap; lengthNat; null;
          String;
          _×_; _,_; fst; snd; uncurry;
          Either; Left; Right; either;
          _≡_; refl)
 
 open import Haskell.Prim public
-  using (⊥)
+  using (⊥; the)
 
 open import Haskell.Prim.Eq public
   using (Eq; _==_)
@@ -114,12 +114,48 @@ ifTrueFalse False = refl
 ifTrueFalse True  = refl
 
 module _ {a : Type} ⦃ _ : Ord a ⦄ where
+  open import Agda.Builtin.Equality.Erase
+
+  -- Wrap the postulated properties of Set with primEraseEquality.
+  -- These wrapped properties reduce to refl when the sides are definitionally equal.
+  -- This wrapping does not affect the validity of the proofs; we are merely
+  -- encapsulating the reliable properties from agda2hs.
+
+  prop-null→empty : (s : Set a) → Set.null s ≡ True → s ≡ Set.empty
+  prop-null→empty s h = primEraseEquality (Set.prop-null→empty s h)
+
+  prop-member-fromList : (x : a) (xs : List a)
+    → Set.member x (Set.fromList xs) ≡ elem x xs
+  prop-member-fromList x xs = primEraseEquality (Set.prop-member-fromList x xs)
+
+  prop-member-toAscList : (x : a) (s : Set a)
+    → elem x (Set.toAscList s) ≡ Set.member x s
+  prop-member-toAscList x s = primEraseEquality (Set.prop-member-toAscList x s)
+
+  prop-member-empty : (x : a) → Set.member x Set.empty ≡ False
+  prop-member-empty x = primEraseEquality (Set.prop-member-empty x)
+
+  prop-member-insert : ∀ (x y : a) (s : Set a)
+    → Set.member x (Set.insert y s) ≡ (if (x == y) then True else Set.member x s)
+  prop-member-insert x y s = primEraseEquality (Set.prop-member-insert x y s)
+
+  prop-member-union : ∀ (x : a) (s1 s2 : Set a)
+    → Set.member x (Set.union s1 s2) ≡ (Set.member x s1 || Set.member x s2)
+  prop-member-union x s1 s2 = primEraseEquality (Set.prop-member-union x s1 s2)
+
+  prop-member-difference : ∀ (x : a) (s1 s2 : Set a)
+    → Set.member x (Set.difference s1 s2) ≡ (Set.member x s1 && not (Set.member x s2))
+  prop-member-difference x s1 s2 = primEraseEquality (Set.prop-member-difference x s1 s2)
+
+  prop-member-null : (s : Set a)
+    → (∀ x → Set.member x s ≡ False) → Set.null s ≡ True
+  prop-member-null s h = primEraseEquality (Set.prop-member-null s h)
 
   prop-member-singleton : (x y : a)
     → Set.member x (Set.singleton y) ≡ (x == y)
   prop-member-singleton x y
-    rewrite Set.prop-member-insert x y Set.empty
-    | Set.prop-member-empty x
+    rewrite prop-member-insert x y Set.empty
+    | prop-member-empty x
     | ifTrueFalse (x == y)
     = refl
 
@@ -129,15 +165,15 @@ module _ {a : Type} ⦃ _ : Ord a ⦄ where
     → Set.member x sa ≡ True
     → Set.member x sb ≡ True
   prop-difference-empty {sa} {sb} h {x} h'
-    with eq ← Set.prop-member-difference x sa sb
-    rewrite h | h' | Set.prop-member-empty x
+    with eq ← prop-member-difference x sa sb
+    rewrite h | h' | prop-member-empty x
     = sym (not-involution False (Set.member x sb) eq)
 
   prop-null-toAscList : {s : Set a}
     → Set.toAscList s ≡ []
     → Set.null s ≡ True
-  prop-null-toAscList {s} h = Set.prop-member-null s λ x →
-    trans (sym (Set.prop-member-toAscList x s)) (cong (elem x) h)
+  prop-null-toAscList {s} h = prop-member-null s λ x →
+    trans (sym (prop-member-toAscList x s)) (cong (elem x) h)
 
   findMin : ⦃ @0 _ : IsLawfulEq a ⦄
     → (s : Set a) ⦃ @0 _ : Set.null s ≡ False ⦄
@@ -145,7 +181,7 @@ module _ {a : Type} ⦃ _ : Ord a ⦄ where
   findMin s ⦃ h ⦄ = case Set.toAscList s of λ where
     []       ⦃ h' ⦄ → exFalso (prop-null-toAscList h') h
     (x ∷ xs) ⦃ h' ⦄ →
-      x ⟨ trans (sym (Set.prop-member-toAscList x s))
+      x ⟨ trans (sym (prop-member-toAscList x s))
           (trans (cong (elem x) h')
           (cong (_|| elem x xs) (eqReflexivity x))) ⟩
   {-# COMPILE AGDA2HS findMin #-}

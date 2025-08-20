@@ -9,7 +9,7 @@ record Globals : Type where
   field
     dataScope : List Name
     conScope : NameIn dataScope → List Name
-    ⦃ freshDataScope  ⦄ : Fresh dataScope
+    ⦃ freshDataScope ⦄ : Fresh dataScope
     ⦃ freshConScope  ⦄ : ∀ {d} → Fresh (conScope d)
 
   NameData : Type
