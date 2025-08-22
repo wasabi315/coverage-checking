@@ -35,7 +35,7 @@ open import Haskell.Prim.Tuple public
   using (first; second)
 
 open import Haskell.Law.Bool public
-  using (prop-x-||-True; not-involution)
+  using (prop-x-||-True; not-involution; not-not)
 
 open import Haskell.Law.Equality public
   using (cong; cong₂; subst; subst0; sym; trans)
@@ -176,14 +176,15 @@ module _ {a : Type} ⦃ _ : Ord a ⦄ where
     trans (sym (prop-member-toAscList x s)) (cong (elem x) h)
 
   findMin : ⦃ @0 _ : IsLawfulEq a ⦄
-    → (s : Set a) ⦃ @0 _ : Set.null s ≡ False ⦄
-    → ∃[ x ∈ a ] Set.member x s ≡ True
-  findMin s ⦃ h ⦄ = case Set.toAscList s of λ where
-    []       ⦃ h' ⦄ → exFalso (prop-null-toAscList h') h
-    (x ∷ xs) ⦃ h' ⦄ →
-      x ⟨ trans (sym (prop-member-toAscList x s))
-          (trans (cong (elem x) h')
-          (cong (_|| elem x xs) (eqReflexivity x))) ⟩
+    → (s : Set a)
+    → Either (Erase (∀ x → Set.member x s ≡ False)) (∃[ x ∈ a ] Set.member x s ≡ True)
+  findMin s = case Set.toAscList s of λ where
+    [] ⦃ h ⦄ →
+      Left (Erased λ x → trans (sym (prop-member-toAscList x s)) (cong (elem x) h))
+    (x ∷ xs) ⦃ h ⦄ →
+      Right (x ⟨ trans (sym (prop-member-toAscList x s))
+                (trans (cong (elem x) h)
+                (cong (_|| elem x xs) (eqReflexivity x))) ⟩)
   {-# COMPILE AGDA2HS findMin #-}
 
 --------------------------------------------------------------------------------

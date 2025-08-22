@@ -211,7 +211,7 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ◂ αs0)} 
 
   -- If there is a constructor c that does not appear in the first column of P, and ps is useful wrt default P, ∙ ∷ ps is also useful wrt P.
   usefulWildMissCase :
-      ∃[ c ∈ NameCon d ] All (λ ps → c ∉ headPattern ps) P
+      ∃[ c ∈ NameCon d ] c ∉** P
     → Useful (default_ P) ps → Useful P (— ◂ ps)
   usefulWildMissCase (c ⟨ h ⟩) (MkUseful vs nis is) =
     MkUseful (inhabAt c ◂ vs) (contraposition (default-preserves-≼ h) nis) (—≼ ◂ is)

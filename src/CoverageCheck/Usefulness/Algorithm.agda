@@ -127,7 +127,7 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} where
   c ∉** pss = All (c ∉*_) pss
 
 
-module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} (c : NameCon d0) where
+module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} (@0 c : NameCon d0) where
 
   memberRootConSet' : (p : Pattern (TyData d0))
     → Reflects (c ∈ p) (Set.member c (rootConSet' p))
@@ -147,33 +147,23 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} (c : NameCon d0) where
         (λ where (here h) → Left h; (there h) → Right h)
         (eitherReflects (memberRootConSet' (headPattern ps)) (memberRootConSet pss))
 
-  memberMissConSet : (pss : PatternMatrix (TyData d0 ◂ αs0))
-    (let conSet     = rootConSet pss
-         missConSet = Set.difference (universalNameConSet (dataDefs sig d0)) conSet)
-    → Reflects (c ∉** pss) (Set.member c missConSet)
-  memberMissConSet pss
-    rewrite prop-member-difference c (universalNameConSet (dataDefs sig d0)) (rootConSet pss)
+
+module @0 _ ⦃ @0 sig : Signature ⦄
+  {@0 d0} (@0 c : NameCon d0) (@0 pss : PatternMatrix (TyData d0 ◂ αs0))
+  (let conSet     = rootConSet pss
+       missConSet = Set.difference (universalNameConSet (dataDefs sig d0)) conSet)
+  where
+
+  notMemberMissConSet : Reflects (c ∈** pss) (not (Set.member c missConSet))
+  notMemberMissConSet
+    rewrite prop-member-difference c (universalNameConSet (dataDefs sig d0)) conSet
     | universalNameConSetUniversal (dataDefs sig d0) c
-    = mapReflects (¬Any⇒All¬ pss) All¬⇒¬Any (negReflects (memberRootConSet pss))
+    | not-not (Set.member c conSet)
+    = memberRootConSet c pss
 
-
-module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} where
-
-  nullMissConSet : (pss : PatternMatrix (TyData d0 ◂ αs0))
-    (let conSet     = rootConSet pss
-         missConSet = Set.difference (universalNameConSet (dataDefs sig d0)) conSet)
-    → Reflects (∀ c → c ∈** pss) (Set.null missConSet)
-  nullMissConSet pss
-    using conSet     ← rootConSet pss
-    using missConSet ← Set.difference (universalNameConSet (dataDefs sig d0)) conSet
-    with Set.null missConSet in eq
-  ... | True = λ c →
-          extractTrue
-            ⦃ universalNameConSetUniversal' (dataDefs sig d0) _ eq _ ⦄
-            (memberRootConSet c pss)
-  ... | False = λ f →
-          let c ⟨ h ⟩ = findMin missConSet ⦃ eq ⦄
-           in All¬⇒¬Any (extractTrue ⦃ h ⦄ (memberMissConSet c pss)) (f c)
+  memberMissConSet : Reflects (c ∉** pss) (Set.member c missConSet)
+  memberMissConSet rewrite sym (not-not (Set.member c missConSet)) =
+    mapReflects (¬Any⇒All¬ _) All¬⇒¬Any (negReflects notMemberMissConSet)
 
 
 module _ ⦃ sig : Signature ⦄ {d : NameData} where
@@ -182,9 +172,11 @@ module _ ⦃ sig : Signature ⦄ {d : NameData} where
   decExistMissCon : (P : PatternMatrix (TyData d ◂ αs0))
     → Either (∃[ c ∈ NameCon d ] c ∉** P) (Erase (∀ c → c ∈** P))
   decExistMissCon pss =
-    if Set.null missConSet
-      then Right (Erased (extractTrue (nullMissConSet pss)))
-      else Left (mapRefine (λ h → extractTrue ⦃ h ⦄ (memberMissConSet _ pss)) (findMin missConSet))
+    case findMin missConSet of λ where
+      (Left (Erased empty)) →
+        Right (Erased λ c → extractTrue ⦃ cong not (empty c) ⦄ (notMemberMissConSet c pss))
+      (Right (c ⟨ miss ⟩)) →
+        Left (c ⟨ extractTrue ⦃ miss ⦄ (memberMissConSet c pss) ⟩)
     where
       conSet missConSet : Set (NameCon d)
       conSet     = rootConSet pss
