@@ -203,12 +203,14 @@ module _ ⦃ sig : Signature ⦄ {d : NameData} where
 
   -- Are there constructors that does not appear in the first column of P?
   decExistMissCon : (P : PatternMatrix (TyData d ◂ αs0))
-    → Either (Erase (∀ c → c ∈** P)) (NonEmpty (∃[ c ∈ NameCon d ] c ∉** P))
+    → Either (Erase (∀ c → c ∈** P))
+        (Either (Erase (∀ c → c ∉** P)) (NonEmpty (∃[ c ∈ NameCon d ] c ∉** P)))
   decExistMissCon pss = case toAscNonEmptyW missConSet of λ where
       (Left (Erased empty)) →
         Left (Erased λ c → extractTrue ⦃ cong not (empty c) ⦄ (notMemberMissConSet c pss))
-      (Right misses) →
-        Right (mapNonEmptyRefine (λ miss → extractTrue ⦃ miss ⦄ (memberMissConSet _ pss)) misses)
+      (Right misses) → Right (if Set.null conSet
+        then Left (Erased (extractTrue (nullRootConSet pss)))
+        else Right (mapNonEmptyRefine (λ miss → extractTrue ⦃ miss ⦄ (memberMissConSet _ pss)) misses))
     where
       conSet missConSet : Set (NameCon d)
       conSet     = rootConSet pss
@@ -253,13 +255,13 @@ record Usefulness
 
     wildMissCase : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
-      → NonEmpty (∃[ c ∈ NameCon d ] c ∉** pss)
+      → Either (Erase (∀ c → c ∉** pss)) (NonEmpty (∃[ c ∈ NameCon d ] c ∉** pss))
       → u (default_ pss) ps
       → u pss (— ◂ ps)
 
     @0 wildMissCaseInv : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
-      → NonEmpty (∃[ c ∈ NameCon d ] c ∉** pss)
+      → Either (Erase (∀ c → c ∉** pss)) (NonEmpty (∃[ c ∈ NameCon d ] c ∉** pss))
       → u pss (— ◂ ps)
       → u (default_ pss) ps
 
@@ -288,7 +290,8 @@ module _ ⦃ @0 sig : Signature ⦄ where
     done : {P : PatternMatrix ⌈⌉} → UsefulAcc P ⌈⌉
 
     step-wild : {P : PatternMatrix (TyData d ◂ αs)} {ps : Patterns αs}
-      → (NonEmpty (∃[ c ∈ _ ] c ∉** P) → UsefulAcc (default_ P) ps)
+      → (Either (Erase (∀ c → c ∉** P)) (NonEmpty (∃[ c ∈ NameCon d ] c ∉** P))
+          → UsefulAcc (default_ P) ps)
       → (∀ c → c ∈** P → UsefulAcc (specialize c P) (—* ◂◂ᵖ ps))
       → UsefulAcc P (— ◂ ps)
 

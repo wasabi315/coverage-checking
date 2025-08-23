@@ -138,6 +138,15 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {v : Value (TyData d)} {vs : Values αs} 
 
 module _ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄ where
 
+  inhab' : ∀ {d} → Σ[ c ∈ NameCon d ] Values (argsTy (dataDefs sig d) c)
+  inhab' {d} = case nonEmptyAxiom {TyData d} of λ where
+    (con c vs) → c , vs
+  {-# COMPILE AGDA2HS inhab' #-}
+
+  inhab : ∀ {d} → Value (TyData d)
+  inhab = con (fst inhab') (snd inhab')
+  {-# COMPILE AGDA2HS inhab #-}
+
   inhabAt : (c : NameCon d) → Value (TyData d)
   inhabAt c = con c (tabulateValues λ α → nonEmptyAxiom)
   {-# COMPILE AGDA2HS inhabAt #-}
@@ -222,10 +231,13 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ◂ αs0)} 
 
   -- If there is a constructor c that does not appear in the first column of P, and ps is useful wrt default P, ∙ ∷ ps is also useful wrt P.
   usefulWildMissCase :
-      NonEmpty (∃[ c ∈ NameCon d ] c ∉** P)
+      Either (Erase (∀ c → c ∉** P)) (NonEmpty (∃[ c ∈ NameCon d ] c ∉** P))
     → Useful (default_ P) ps → Useful P (— ◂ ps)
+  -- only consider inhab
+  usefulWildMissCase (Left (Erased h)) (MkUseful vs nis is) =
+    MkUseful (inhab ◂ vs) (contraposition (default-preserves-≼ (h _)) nis) (—≼ ◂ is)
   -- only consider the first constructor
-  usefulWildMissCase (c ⟨ h ⟩ ◂ _) (MkUseful vs nis is) =
+  usefulWildMissCase (Right (c ⟨ h ⟩ ◂ _)) (MkUseful vs nis is) =
     MkUseful (inhabAt c ◂ vs) (contraposition (default-preserves-≼ h) nis) (—≼ ◂ is)
   {-# COMPILE AGDA2HS usefulWildMissCase #-}
 
