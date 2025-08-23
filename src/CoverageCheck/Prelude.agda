@@ -35,7 +35,7 @@ open import Haskell.Prim.Tuple public
   using (first; second)
 
 open import Haskell.Law.Bool public
-  using (prop-x-||-True; not-involution; not-not)
+  using (prop-x-||-True; prop-x-||-False; not-involution; not-not)
 
 open import Haskell.Law.Equality public
   using (cong; cong₂; subst; subst0; sym; trans)
@@ -109,9 +109,8 @@ mapEither f g (Right y) = Right (g y)
 
 open import Data.Set as Set using (Set)
 
-ifTrueFalse : (b : Bool) → (if b then True else False) ≡ b
-ifTrueFalse False = refl
-ifTrueFalse True  = refl
+||-leftFalse : (x y : Bool) → (x || y) ≡ False → x ≡ False
+||-leftFalse False y h = refl
 
 module _ {a : Type} ⦃ _ : Ord a ⦄ where
   open import Agda.Builtin.Equality.Erase
@@ -136,8 +135,12 @@ module _ {a : Type} ⦃ _ : Ord a ⦄ where
   prop-member-empty x = primEraseEquality (Set.prop-member-empty x)
 
   prop-member-insert : ∀ (x y : a) (s : Set a)
-    → Set.member x (Set.insert y s) ≡ (if (x == y) then True else Set.member x s)
-  prop-member-insert x y s = primEraseEquality (Set.prop-member-insert x y s)
+    → Set.member x (Set.insert y s) ≡ (x == y || Set.member x s)
+  prop-member-insert x y s
+    rewrite primEraseEquality (Set.prop-member-insert x y s)
+    with x == y
+  ... | True  = refl
+  ... | False = refl
 
   prop-member-union : ∀ (x : a) (s1 s2 : Set a)
     → Set.member x (Set.union s1 s2) ≡ (Set.member x s1 || Set.member x s2)
@@ -156,8 +159,76 @@ module _ {a : Type} ⦃ _ : Ord a ⦄ where
   prop-member-singleton x y
     rewrite prop-member-insert x y Set.empty
     | prop-member-empty x
-    | ifTrueFalse (x == y)
-    = refl
+    = prop-x-||-False _
+
+  prop-equality : {s1 s2 : Set a}
+    → (∀ x → Set.member x s1 ≡ Set.member x s2)
+    → s1 ≡ s2
+  prop-equality h = primEraseEquality (Set.prop-equality h)
+
+  prop-union-identity : {s : Set a}
+    → Set.union s Set.empty ≡ s
+  prop-union-identity = primEraseEquality Set.prop-union-identity
+
+  prop-union-sym : {sa sb : Set a}
+    → Set.union sa sb ≡ Set.union sb sa
+  prop-union-sym = primEraseEquality Set.prop-union-sym
+
+  prop-null-empty : Set.null {a} Set.empty ≡ True
+  prop-null-empty = primEraseEquality Set.prop-null-empty
+
+  prop-null-insert : ⦃ _ : IsLawfulEq a ⦄
+    → (x : a) (s : Set a)
+    → Set.null (Set.insert x s) ≡ False
+  prop-null-insert x s with Set.null (Set.insert x s) in eq
+  ... | False = refl
+  ... | True  =
+          trans (sym (cong (_|| Set.member x s) (eqReflexivity x)))
+          (trans (sym (prop-member-insert x x s))
+          (trans (cong (Set.member x) (prop-null→empty _ eq))
+          (Set.prop-member-empty x)))
+
+  prop-null-toAscList : {s : Set a}
+    → Set.toAscList s ≡ []
+    → Set.null s ≡ True
+  prop-null-toAscList {s} h = prop-member-null s λ x →
+    trans (sym (prop-member-toAscList x s)) (cong (elem x) h)
+
+  prop-null-union-left : {s1 s2 : Set a}
+    → Set.null (Set.union s1 s2) ≡ True
+    → Set.null s1 ≡ True
+  prop-null-union-left h = prop-member-null _ λ x →
+    ||-leftFalse (Set.member x _) (Set.member x _)
+      (trans (sym (prop-member-union x _ _))
+      (trans (cong (Set.member x) (prop-null→empty _ h))
+      (prop-member-empty x)))
+
+  prop-null-union-right : {s1 s2 : Set a}
+    → Set.null (Set.union s1 s2) ≡ True
+    → Set.null s2 ≡ True
+  prop-null-union-right {s1 = s1} {s2} h
+    rewrite prop-union-sym {sa = s1} {sb = s2}
+    = prop-null-union-left h
+
+  prop-null-union' : {s1 s2 : Set a}
+    → Set.null s1 ≡ True
+    → Set.null s2 ≡ True
+    → Set.null (Set.union s1 s2) ≡ True
+  prop-null-union' {s1 = s1} {s2} h1 h2
+    rewrite prop-null→empty s2 h2
+    | prop-union-identity {s = s1}
+    = h1
+
+  prop-null-union : (s1 s2 : Set a)
+    → Set.null (Set.union s1 s2) ≡ (Set.null s1 && Set.null s2)
+  prop-null-union s1 s2
+    with Set.null (Set.union s1 s2) in h1 | Set.null s1 in h2 | Set.null s2 in h3
+  ... | False | False | _     = refl
+  ... | False | True  | False = refl
+  ... | True  | True  | True  = refl
+  ... | True  | False | _     = exFalso (prop-null-union-left h1) h2
+  ... | True  | True  | False = exFalso (prop-null-union-right h1) h3
+  ... | False | True  | True  = exFalso (prop-null-union' h2 h3) h1
 
   prop-difference-empty : {sa sb : Set a}
     → Set.difference sa sb ≡ Set.empty
@@ -168,12 +239,6 @@ module _ {a : Type} ⦃ _ : Ord a ⦄ where
     with eq ← prop-member-difference x sa sb
     rewrite h | h' | prop-member-empty x
     = sym (not-involution False (Set.member x sb) eq)
-
-  prop-null-toAscList : {s : Set a}
-    → Set.toAscList s ≡ []
-    → Set.null s ≡ True
-  prop-null-toAscList {s} h = prop-member-null s λ x →
-    trans (sym (prop-member-toAscList x s)) (cong (elem x) h)
 
   findMin : ⦃ @0 _ : IsLawfulEq a ⦄
     → (s : Set a)

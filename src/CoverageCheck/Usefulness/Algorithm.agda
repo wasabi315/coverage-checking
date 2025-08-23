@@ -166,6 +166,40 @@ module @0 _ ⦃ @0 sig : Signature ⦄
     mapReflects (¬Any⇒All¬ _) All¬⇒¬Any (negReflects notMemberMissConSet)
 
 
+module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} where
+
+  nullRootConSet' : (p : Pattern (TyData d0))
+    → Reflects (∀ c → c ∉ p) (Set.null (rootConSet' p))
+  nullRootConSet' —
+    rewrite prop-null-empty {NameCon d0} ⦃ iOrdNameIn ⦄
+    = λ _ → id
+  nullRootConSet' (con c _)
+    rewrite prop-null-insert c Set.empty
+    = λ h → h c refl
+  nullRootConSet' (p ∣ q)
+    rewrite prop-null-union (rootConSet' p) (rootConSet' q)
+    = mapReflects
+        {a = (∀ c → c ∉ p) × (∀ c → c ∉ q)}
+        {b = (∀ c → c ∉ (p ∣ q))}
+        (λ (h , h') c → either (h c) (h' c))
+        (λ h → (λ c → h c ∘ Left) , (λ c → h c ∘ Right))
+        (tupleReflects (nullRootConSet' p) (nullRootConSet' q))
+
+  nullRootConSet : (pss : PatternMatrix (TyData d0 ◂ αs0))
+    → Reflects (∀ c → c ∉** pss) (Set.null (rootConSet pss))
+  nullRootConSet ⌈⌉
+    rewrite prop-null-empty {NameCon d0} ⦃ iOrdNameIn ⦄
+    = λ c → ⌈⌉
+  nullRootConSet (ps ◂ pss)
+    rewrite prop-null-union (rootConSet' (headPattern ps)) (rootConSet pss)
+    = mapReflects
+        {a = (∀ c → c ∉* ps) × (∀ c → c ∉** pss)}
+        {b = (∀ c → c ∉** (ps ◂ pss))}
+        (λ (h , h') c → h c ◂ h' c)
+        (λ h → (λ c → headAll (h c)) , (λ c → tailAll (h c)))
+        (tupleReflects (nullRootConSet' (headPattern ps)) (nullRootConSet pss))
+
+
 module _ ⦃ sig : Signature ⦄ {d : NameData} where
 
   -- Are there constructors that does not appear in the first column of P?
