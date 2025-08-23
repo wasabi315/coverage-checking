@@ -97,12 +97,295 @@ contraposition : {a b : Type} → (a → b) → (¬ b → ¬ a)
 contraposition f g = g ∘ f
 
 --------------------------------------------------------------------------------
--- Either
+-- Utils
 
 mapEither : {a b c d : Type} → (a → c) → (b → d) → Either a b → Either c d
 mapEither f g (Left x)  = Left (f x)
 mapEither f g (Right y) = Right (g y)
 {-# COMPILE AGDA2HS mapEither #-}
+
+mapListRefine : {a : Type} {@0 p q : a → Type}
+  → (@0 f : ∀ {x} → p x → q x)
+  → List (∃[ x ∈ a ] p x)
+  → List (∃[ x ∈ a ] q x)
+mapListRefine f []       = []
+mapListRefine f (x ∷ xs) = mapRefine f x ∷ mapListRefine f xs
+{-# COMPILE AGDA2HS mapListRefine transparent #-}
+
+--------------------------------------------------------------------------------
+-- Relations on lists
+
+infixr 5 _◂_
+
+data All {@0 a : Type} (p : @0 a → Type) : (@0 xs : List a) → Type where
+  AllNil  : All p []
+  AllCons : ∀ {@0 x xs} → p x → All p xs → All p (x ∷ xs)
+
+{-# COMPILE AGDA2HS All deriving Show #-}
+
+pattern ⌈⌉       = AllNil
+pattern _◂_ h hs = AllCons h hs
+
+headAll : ∀ {@0 a : Type} {p : @0 a → Type} {@0 x xs} → All p (x ∷ xs) → p x
+headAll (h ◂ _) = h
+{-# COMPILE AGDA2HS headAll #-}
+
+tailAll : ∀ {@0 a : Type} {p : @0 a → Type} {@0 x xs} → All p (x ∷ xs) → All p xs
+tailAll (_ ◂ hs) = hs
+{-# COMPILE AGDA2HS tailAll #-}
+
+data Any {@0 a : Type} (p : @0 a → Type) : (@0 xs : List a) → Type where
+  AnyHere  : ∀ {@0 x xs} → p x → Any p (x ∷ xs)
+  AnyThere : ∀ {@0 x xs} → Any p xs → Any p (x ∷ xs)
+
+{-# COMPILE AGDA2HS Any deriving Show #-}
+
+pattern here  h = AnyHere h
+pattern there h = AnyThere h
+
+module @0 _ {a : Type} {p : @0 a → Type} where
+
+  All¬⇒¬Any : ∀ {xs} → All (λ x → ¬ p x) xs → ¬ Any p xs
+  All¬⇒¬Any (¬p ◂ _)  (here  p) = ¬p p
+  All¬⇒¬Any (_  ◂ ¬p) (there p) = All¬⇒¬Any ¬p p
+
+  ¬Any⇒All¬ : ∀ xs → ¬ Any p xs → All (λ x → ¬ p x) xs
+  ¬Any⇒All¬ []       ¬p = ⌈⌉
+  ¬Any⇒All¬ (x ∷ xs) ¬p = ¬p ∘ here ◂ ¬Any⇒All¬ xs (¬p ∘ there)
+
+  ++Any⁺ˡ : ∀ {xs ys} → Any p xs → Any p (xs ++ ys)
+  ++Any⁺ˡ (here x)  = here x
+  ++Any⁺ˡ (there h) = there (++Any⁺ˡ h)
+
+  ++Any⁺ʳ : ∀ {xs ys} → Any p ys → Any p (xs ++ ys)
+  ++Any⁺ʳ {[]}     h = h
+  ++Any⁺ʳ {x ∷ xs} h = there (++Any⁺ʳ h)
+
+  ++Any⁻ : ∀ xs {ys} → Any p (xs ++ ys) → Either (Any p xs) (Any p ys)
+  ++Any⁻ []       h         = Right h
+  ++Any⁻ (x ∷ xs) (here h)  = Left (here h)
+  ++Any⁻ (x ∷ xs) (there h) = mapEither there id (++Any⁻ xs h)
+
+
+module @0 _ {a b : Type} {p : @0 a → Type} {q : @0 b → Type} {@0 f : a → List b} where
+
+  gconcatMapAny⁺ :
+      (∀ {x} → p x → Any q (f x))
+    → (∀ {xs} → Any p xs → Any q (concatMap f xs))
+  gconcatMapAny⁺ g {x ∷ xs} (here h)  = ++Any⁺ˡ (g h)
+  gconcatMapAny⁺ g {x ∷ xs} (there h) = ++Any⁺ʳ (gconcatMapAny⁺ g h)
+
+  gconcatMapAny⁻ :
+      (∀ {x} → Any q (f x) → p x)
+    → (∀ {xs : List _} → Any q (concatMap f xs) → Any p xs)
+  gconcatMapAny⁻ g {x ∷ xs} h with ++Any⁻ (f x) h
+  ... | Left h'  = here (g h')
+  ... | Right h' = there (gconcatMapAny⁻ g h')
+
+
+data First {@0 a : Type} (p : @0 a → Type) : (@0 xs : List a) → Type where
+  FirstHere  : ∀ {@0 x xs} → p x → First p (x ∷ xs)
+  FirstThere : ∀ {@0 x xs} → @0 ¬ p x → First p xs → First p (x ∷ xs)
+
+{-# COMPILE AGDA2HS First deriving Show #-}
+
+pattern [_] h    = FirstHere h
+pattern _◂_ h hs = FirstThere h hs
+
+firstToAny : ∀ {@0 a : Type} {p : @0 a → Type} {@0 xs} → First p xs → Any p xs
+firstToAny [ h ]   = here h
+firstToAny (_ ◂ h) = there (firstToAny h)
+{-# COMPILE AGDA2HS firstToAny #-}
+
+notFirstToNotAny : ∀ {@0 a : Type} {p : @0 a → Type} {@0 xs} → ¬ First p xs → ¬ Any p xs
+notFirstToNotAny h (here h')  = h [ h' ]
+notFirstToNotAny h (there h') = notFirstToNotAny (h ∘ (h ∘ [_] ◂_)) h'
+
+@0 Fresh : {a : Type} → List a → Type
+Fresh []       = ⊤
+Fresh (x ∷ xs) = All (λ y → ¬ x ≡ y) xs × Fresh xs
+
+--------------------------------------------------------------------------------
+-- These
+
+data These (a b : Type) : Type where
+  This  : a → These a b
+  That  : b → These a b
+  Both  : a → b → These a b
+
+{-# COMPILE AGDA2HS These deriving (Eq, Show) #-}
+
+these : {a b c : Type} → (a → c) → (b → c) → (a → b → c) → These a b → c
+these f g h (This x)   = f x
+these f g h (That x)   = g x
+these f g h (Both x y) = h x y
+{-# COMPILE AGDA2HS these #-}
+
+mapThese : {a b c d : Type} → (a → b) → (c → d) → These a c → These b d
+mapThese f g (This x)   = This (f x)
+mapThese f g (That x)   = That (g x)
+mapThese f g (Both x y) = Both (f x) (g y)
+{-# COMPILE AGDA2HS mapThese #-}
+
+--------------------------------------------------------------------------------
+-- Non-empty lists
+
+infixr 5 consNonEmpty appendNonEmpty
+
+record NonEmpty (a : Type) : Type where
+  constructor MkNonEmpty
+  field
+    head : a
+    tail : List a
+
+open NonEmpty public
+{-# COMPILE AGDA2HS NonEmpty deriving Show #-}
+
+pattern _◂_ x xs = MkNonEmpty x xs
+
+consNonEmpty : {a : Type} → a → NonEmpty a → NonEmpty a
+consNonEmpty x (y ◂ ys) = x ◂ (y ∷ ys)
+{-# COMPILE AGDA2HS consNonEmpty #-}
+syntax consNonEmpty x xs = x ◂′ xs
+
+mapNonEmpty : {a b : Type} → (a → b) → NonEmpty a → NonEmpty b
+mapNonEmpty f (x ◂ xs) = f x ◂ map f xs
+{-# COMPILE AGDA2HS mapNonEmpty #-}
+
+mapNonEmptyRefine : {a : Type} {@0 p q : a → Type}
+  → (@0 f : ∀ {x} → p x → q x)
+  → NonEmpty (∃[ x ∈ a ] p x)
+  → NonEmpty (∃[ x ∈ a ] q x)
+mapNonEmptyRefine f (x ◂ xs) = mapRefine f x ◂ mapListRefine f xs
+{-# COMPILE AGDA2HS mapNonEmptyRefine transparent #-}
+
+appendNonEmpty : {a : Type} → NonEmpty a → NonEmpty a → NonEmpty a
+appendNonEmpty (x ◂ xs) (y ◂ ys) = x ◂ (xs ++ y ∷ ys)
+{-# COMPILE AGDA2HS appendNonEmpty #-}
+syntax appendNonEmpty xs ys = xs ◂◂ⁿᵉ ys
+
+concatNonEmpty : {a : Type} → NonEmpty (NonEmpty a) → NonEmpty a
+concatNonEmpty (xs ◂ xss) = go xs xss
+  where
+    go : {a : Type} → NonEmpty a → List (NonEmpty a) → NonEmpty a
+    go xs []         = xs
+    go xs (ys ∷ xss) = xs ◂◂ⁿᵉ go ys xss
+{-# COMPILE AGDA2HS concatNonEmpty #-}
+
+concatMapNonEmpty : {a b : Type} → (a → NonEmpty b) → NonEmpty a → NonEmpty b
+concatMapNonEmpty f xs = concatNonEmpty (mapNonEmpty f xs)
+{-# COMPILE AGDA2HS concatMapNonEmpty inline #-}
+
+partitionEithersNonEmpty : {a b : Type}
+  → NonEmpty (Either a b)
+  → These (NonEmpty a) (NonEmpty b)
+partitionEithersNonEmpty {a} {b} (x ◂ xs) = go x xs
+  where
+    cons : Either a b → These (NonEmpty a) (NonEmpty b) → These (NonEmpty a) (NonEmpty b)
+    cons (Left x)  (This xs)    = This (x ◂′ xs)
+    cons (Left x)  (That ys)    = Both (x ◂ []) ys
+    cons (Left x)  (Both xs ys) = Both (x ◂′ xs) ys
+    cons (Right y) (This xs)    = Both xs (y ◂ [])
+    cons (Right y) (That ys)    = That (y ◂′ ys)
+    cons (Right y) (Both xs ys) = Both xs (y ◂′ ys)
+
+    go : Either a b → List (Either a b) → These (NonEmpty a) (NonEmpty b)
+    go x         (y ∷ xs) = cons x (go y xs)
+    go (Left x)  []       = This (x ◂ [])
+    go (Right y) []       = That (y ◂ [])
+
+--------------------------------------------------------------------------------
+-- Decidable relations
+
+_≟_ : {a : Type} ⦃ _ : Eq a ⦄ ⦃ @0 _ : IsLawfulEq a ⦄ → (x y : a) → Dec (x ≡ y)
+x ≟ y = (x == y) ⟨ isEquality x y ⟩
+{-# COMPILE AGDA2HS _≟_ inline #-}
+
+ifDec : {@0 a : Type} {b : Type} → Dec a → (@0 ⦃ a ⦄ → b) → (@0 ⦃ ¬ a ⦄ → b) → b
+ifDec (b ⟨ p ⟩) x y = if b then (λ where ⦃ refl ⦄ → x ⦃ p ⦄) else (λ where ⦃ refl ⦄ → y ⦃ p ⦄)
+{-# COMPILE AGDA2HS ifDec inline #-}
+
+@0 negReflects : ∀ {ba a} → Reflects a ba → Reflects (¬ a) (not ba)
+negReflects {False} ¬a = ¬a
+negReflects {True}  a  = λ ¬a → ¬a a
+
+negDec : ∀ {@0 a} → Dec a → Dec (¬ a)
+negDec (ba ⟨ a ⟩) = not ba ⟨ negReflects a ⟩
+{-# COMPILE AGDA2HS negDec inline #-}
+
+infix 3 tupleDec
+
+@0 tupleReflects : ∀ {ba bb a b} → Reflects a ba → Reflects b bb → Reflects (a × b) (ba && bb)
+tupleReflects {False} {_}     ¬a _  = ¬a ∘ fst
+tupleReflects {True}  {False} _  ¬b = ¬b ∘ snd
+tupleReflects {True}  {True}  a  b  = a , b
+
+tupleDec : ∀ {@0 a b} → Dec a → Dec b → Dec (a × b)
+tupleDec (ba ⟨ a ⟩) (bb ⟨ b ⟩) = (ba && bb) ⟨ tupleReflects a b ⟩
+{-# COMPILE AGDA2HS tupleDec inline #-}
+syntax tupleDec a b = a ×-dec b
+
+@0 eitherReflects : ∀ {ba bb a b} → Reflects a ba → Reflects b bb → Reflects (Either a b) (ba || bb)
+eitherReflects {True}  {_}     a  _  = Left a
+eitherReflects {False} {True}  _  b  = Right b
+eitherReflects {False} {False} ¬a ¬b = either ¬a ¬b
+
+eitherDec : ∀ {@0 a b} → Dec a → Dec b → Dec (Either a b)
+eitherDec (ba ⟨ a ⟩) (bb ⟨ b ⟩) = (ba || bb) ⟨ eitherReflects a b ⟩
+{-# COMPILE AGDA2HS eitherDec inline #-}
+
+--------------------------------------------------------------------------------
+-- Decidable relation that does not erase positive information
+
+infix 3 tupleDecP
+
+data DecP (a : Type) : Type where
+  Yes : (p : a) → DecP a
+  No  : (@0 p : ¬ a) → DecP a
+{-# COMPILE AGDA2HS DecP deriving Show #-}
+
+mapDecP : ∀ {a b} → (a → b) → @0 (b → a) → DecP a → DecP b
+mapDecP f g (Yes p) = Yes (f p)
+mapDecP f g (No p)  = No (contraposition g p)
+{-# COMPILE AGDA2HS mapDecP #-}
+
+ifDecP : {a b : Type} → DecP a → (⦃ a ⦄ → b) → (@0 ⦃ ¬ a ⦄ → b) → b
+ifDecP (Yes p) t e = t ⦃ p ⦄
+ifDecP (No p)  t e = e ⦃ p ⦄
+{-# COMPILE AGDA2HS ifDecP #-}
+
+tupleDecP : ∀ {a b} → DecP a → DecP b → DecP (a × b)
+syntax tupleDecP a b = a ×-decP b
+No p  ×-decP _     = No (contraposition fst p)
+Yes _ ×-decP No q  = No (contraposition snd q)
+Yes p ×-decP Yes q = Yes (p , q)
+{-# COMPILE AGDA2HS tupleDecP #-}
+
+eitherDecP : ∀ {a b} → DecP a → DecP b → DecP (Either a b)
+eitherDecP (Yes p) _       = Yes (Left p)
+eitherDecP (No p)  (Yes q) = Yes (Right q)
+eitherDecP (No p)  (No q)  = No (either p q)
+{-# COMPILE AGDA2HS eitherDecP #-}
+
+theseDecP : ∀ {a b} → DecP a → DecP b → DecP (These a b)
+theseDecP (Yes p) (Yes q) = Yes (Both p q)
+theseDecP (Yes p) (No q)  = Yes (This p)
+theseDecP (No p)  (Yes q) = Yes (That q)
+theseDecP (No p)  (No q)  = No (these p q (λ _ → q))
+{-# COMPILE AGDA2HS theseDecP #-}
+
+firstDecP : ∀ {a} {p : @0 a → Type}
+  → (∀ x → DecP (p x))
+  → (∀ xs → DecP (First p xs))
+firstDecP         f []       = No λ ()
+firstDecP {p = p} f (x ∷ xs) = ifDecP (f x)
+  (λ ⦃ h ⦄ → Yes [ h ])
+  (λ ⦃ h ⦄ → mapDecP (h ◂_) (lem h) (firstDecP f xs))
+  where
+    @0 lem : ¬ p x → First p (x ∷ xs) → First p xs
+    lem h [ h' ]   = contradiction h' h
+    lem h (x ◂ h') = h'
+{-# COMPILE AGDA2HS firstDecP #-}
 
 --------------------------------------------------------------------------------
 -- Sets
@@ -240,258 +523,27 @@ module _ {a : Type} ⦃ _ : Ord a ⦄ where
     rewrite h | h' | prop-member-empty x
     = sym (not-involution False (Set.member x sb) eq)
 
-  findMin : ⦃ @0 _ : IsLawfulEq a ⦄
+  toAscListW' : ⦃ @0 _ : IsLawfulEq a ⦄
+    → {@0 s : Set a} (xs : List a)
+    → (@0 f : ∀ {x} → elem x xs ≡ True → Set.member x s ≡ True)
+    → List (∃[ x ∈ a ] Set.member x s ≡ True)
+  toAscListW' []       f = []
+  toAscListW' (x ∷ xs) f =
+    x ⟨ f (cong (_|| elem x xs) (eqReflexivity x)) ⟩ ∷
+    toAscListW' xs λ h → f (trans (cong (_ ||_) h) (prop-x-||-True _))
+  {-# COMPILE AGDA2HS toAscListW' transparent #-}
+
+  toAscNonEmptyW : ⦃ @0 _ : IsLawfulEq a ⦄
     → (s : Set a)
-    → Either (Erase (∀ x → Set.member x s ≡ False)) (∃[ x ∈ a ] Set.member x s ≡ True)
-  findMin s = case Set.toAscList s of λ where
+    → Either
+        (Erase (∀ x → Set.member x s ≡ False))
+        (NonEmpty (∃[ x ∈ a ] Set.member x s ≡ True))
+  toAscNonEmptyW s = case Set.toAscList s of λ where
     [] ⦃ h ⦄ →
       Left (Erased λ x → trans (sym (prop-member-toAscList x s)) (cong (elem x) h))
     (x ∷ xs) ⦃ h ⦄ →
-      Right (x ⟨ trans (sym (prop-member-toAscList x s))
-                (trans (cong (elem x) h)
-                (cong (_|| elem x xs) (eqReflexivity x))) ⟩)
-  {-# COMPILE AGDA2HS findMin #-}
-
---------------------------------------------------------------------------------
--- Relations on lists
-
-infixr 5 _◂_
-
-data All {@0 a : Type} (p : @0 a → Type) : (@0 xs : List a) → Type where
-  AllNil  : All p []
-  AllCons : ∀ {@0 x xs} → p x → All p xs → All p (x ∷ xs)
-
-{-# COMPILE AGDA2HS All deriving Show #-}
-
-pattern ⌈⌉       = AllNil
-pattern _◂_ h hs = AllCons h hs
-
-headAll : ∀ {@0 a : Type} {p : @0 a → Type} {@0 x xs} → All p (x ∷ xs) → p x
-headAll (h ◂ _) = h
-{-# COMPILE AGDA2HS headAll #-}
-
-tailAll : ∀ {@0 a : Type} {p : @0 a → Type} {@0 x xs} → All p (x ∷ xs) → All p xs
-tailAll (_ ◂ hs) = hs
-{-# COMPILE AGDA2HS tailAll #-}
-
-data Any {@0 a : Type} (p : @0 a → Type) : (@0 xs : List a) → Type where
-  AnyHere  : ∀ {@0 x xs} → p x → Any p (x ∷ xs)
-  AnyThere : ∀ {@0 x xs} → Any p xs → Any p (x ∷ xs)
-
-{-# COMPILE AGDA2HS Any deriving Show #-}
-
-pattern here  h = AnyHere h
-pattern there h = AnyThere h
-
-module @0 _ {a : Type} {p : @0 a → Type} where
-
-  All¬⇒¬Any : ∀ {xs} → All (λ x → ¬ p x) xs → ¬ Any p xs
-  All¬⇒¬Any (¬p ◂ _)  (here  p) = ¬p p
-  All¬⇒¬Any (_  ◂ ¬p) (there p) = All¬⇒¬Any ¬p p
-
-  ¬Any⇒All¬ : ∀ xs → ¬ Any p xs → All (λ x → ¬ p x) xs
-  ¬Any⇒All¬ []       ¬p = ⌈⌉
-  ¬Any⇒All¬ (x ∷ xs) ¬p = ¬p ∘ here ◂ ¬Any⇒All¬ xs (¬p ∘ there)
-
-  ++Any⁺ˡ : ∀ {xs ys} → Any p xs → Any p (xs ++ ys)
-  ++Any⁺ˡ (here x)  = here x
-  ++Any⁺ˡ (there h) = there (++Any⁺ˡ h)
-
-  ++Any⁺ʳ : ∀ {xs ys} → Any p ys → Any p (xs ++ ys)
-  ++Any⁺ʳ {[]}     h = h
-  ++Any⁺ʳ {x ∷ xs} h = there (++Any⁺ʳ h)
-
-  ++Any⁻ : ∀ xs {ys} → Any p (xs ++ ys) → Either (Any p xs) (Any p ys)
-  ++Any⁻ []       h         = Right h
-  ++Any⁻ (x ∷ xs) (here h)  = Left (here h)
-  ++Any⁻ (x ∷ xs) (there h) = mapEither there id (++Any⁻ xs h)
-
-
-module @0 _ {a b : Type} {p : @0 a → Type} {q : @0 b → Type} {@0 f : a → List b} where
-
-  gconcatMapAny⁺ :
-      (∀ {x} → p x → Any q (f x))
-    → (∀ {xs} → Any p xs → Any q (concatMap f xs))
-  gconcatMapAny⁺ g {x ∷ xs} (here h)  = ++Any⁺ˡ (g h)
-  gconcatMapAny⁺ g {x ∷ xs} (there h) = ++Any⁺ʳ (gconcatMapAny⁺ g h)
-
-  gconcatMapAny⁻ :
-      (∀ {x} → Any q (f x) → p x)
-    → (∀ {xs : List _} → Any q (concatMap f xs) → Any p xs)
-  gconcatMapAny⁻ g {x ∷ xs} h with ++Any⁻ (f x) h
-  ... | Left h'  = here (g h')
-  ... | Right h' = there (gconcatMapAny⁻ g h')
-
-
-data First {@0 a : Type} (p : @0 a → Type) : (@0 xs : List a) → Type where
-  FirstHere  : ∀ {@0 x xs} → p x → First p (x ∷ xs)
-  FirstThere : ∀ {@0 x xs} → @0 ¬ p x → First p xs → First p (x ∷ xs)
-
-{-# COMPILE AGDA2HS First deriving Show #-}
-
-pattern [_] h    = FirstHere h
-pattern _◂_ h hs = FirstThere h hs
-
-firstToAny : ∀ {@0 a : Type} {p : @0 a → Type} {@0 xs} → First p xs → Any p xs
-firstToAny [ h ]   = here h
-firstToAny (_ ◂ h) = there (firstToAny h)
-{-# COMPILE AGDA2HS firstToAny #-}
-
-notFirstToNotAny : ∀ {@0 a : Type} {p : @0 a → Type} {@0 xs} → ¬ First p xs → ¬ Any p xs
-notFirstToNotAny h (here h')  = h [ h' ]
-notFirstToNotAny h (there h') = notFirstToNotAny (h ∘ (h ∘ [_] ◂_)) h'
-
-@0 Fresh : {a : Type} → List a → Type
-Fresh []       = ⊤
-Fresh (x ∷ xs) = All (λ y → ¬ x ≡ y) xs × Fresh xs
-
---------------------------------------------------------------------------------
--- These
-
-data These (a b : Type) : Type where
-  This  : a → These a b
-  That  : b → These a b
-  Both  : a → b → These a b
-
-{-# COMPILE AGDA2HS These deriving (Eq, Show) #-}
-
-these : {a b c : Type} → (a → c) → (b → c) → (a → b → c) → These a b → c
-these f g h (This x)   = f x
-these f g h (That x)   = g x
-these f g h (Both x y) = h x y
-{-# COMPILE AGDA2HS these #-}
-
---------------------------------------------------------------------------------
--- Non-empty lists
-
-infixr 5 consNonEmpty appendNonEmpty
-
-record NonEmpty (a : Type) : Type where
-  constructor MkNonEmpty
-  field
-    head : a
-    tail : List a
-
-open NonEmpty public
-{-# COMPILE AGDA2HS NonEmpty deriving Show #-}
-
-pattern _◂_ x xs = MkNonEmpty x xs
-
-consNonEmpty : {a : Type} → a → NonEmpty a → NonEmpty a
-consNonEmpty x (y ◂ ys) = x ◂ (y ∷ ys)
-{-# COMPILE AGDA2HS consNonEmpty #-}
-syntax consNonEmpty x xs = x ◂′ xs
-
-mapNonEmpty : {a b : Type} → (a → b) → NonEmpty a → NonEmpty b
-mapNonEmpty f (x ◂ xs) = f x ◂ map f xs
-{-# COMPILE AGDA2HS mapNonEmpty #-}
-
-appendNonEmpty : {a : Type} → NonEmpty a → NonEmpty a → NonEmpty a
-appendNonEmpty (x ◂ xs) (y ◂ ys) = x ◂ (xs ++ y ∷ ys)
-{-# COMPILE AGDA2HS appendNonEmpty #-}
-syntax appendNonEmpty xs ys = xs ◂◂ⁿᵉ ys
-
-concatNonEmpty : {a : Type} → NonEmpty (NonEmpty a) → NonEmpty a
-concatNonEmpty (xs ◂ xss) = go xs xss
-  where
-    go : {a : Type} → NonEmpty a → List (NonEmpty a) → NonEmpty a
-    go xs []         = xs
-    go xs (ys ∷ xss) = xs ◂◂ⁿᵉ go ys xss
-{-# COMPILE AGDA2HS concatNonEmpty #-}
-
-concatMapNonEmpty : {a b : Type} → (a → NonEmpty b) → NonEmpty a → NonEmpty b
-concatMapNonEmpty f xs = concatNonEmpty (mapNonEmpty f xs)
-{-# COMPILE AGDA2HS concatMapNonEmpty inline #-}
-
---------------------------------------------------------------------------------
--- Decidable relations
-
-_≟_ : {a : Type} ⦃ _ : Eq a ⦄ ⦃ @0 _ : IsLawfulEq a ⦄ → (x y : a) → Dec (x ≡ y)
-x ≟ y = (x == y) ⟨ isEquality x y ⟩
-{-# COMPILE AGDA2HS _≟_ inline #-}
-
-ifDec : {@0 a : Type} {b : Type} → Dec a → (@0 ⦃ a ⦄ → b) → (@0 ⦃ ¬ a ⦄ → b) → b
-ifDec (b ⟨ p ⟩) x y = if b then (λ where ⦃ refl ⦄ → x ⦃ p ⦄) else (λ where ⦃ refl ⦄ → y ⦃ p ⦄)
-{-# COMPILE AGDA2HS ifDec inline #-}
-
-@0 negReflects : ∀ {ba a} → Reflects a ba → Reflects (¬ a) (not ba)
-negReflects {False} ¬a = ¬a
-negReflects {True}  a  = λ ¬a → ¬a a
-
-negDec : ∀ {@0 a} → Dec a → Dec (¬ a)
-negDec (ba ⟨ a ⟩) = not ba ⟨ negReflects a ⟩
-{-# COMPILE AGDA2HS negDec inline #-}
-
-infix 3 tupleDec
-
-@0 tupleReflects : ∀ {ba bb a b} → Reflects a ba → Reflects b bb → Reflects (a × b) (ba && bb)
-tupleReflects {False} {_}     ¬a _  = ¬a ∘ fst
-tupleReflects {True}  {False} _  ¬b = ¬b ∘ snd
-tupleReflects {True}  {True}  a  b  = a , b
-
-tupleDec : ∀ {@0 a b} → Dec a → Dec b → Dec (a × b)
-tupleDec (ba ⟨ a ⟩) (bb ⟨ b ⟩) = (ba && bb) ⟨ tupleReflects a b ⟩
-{-# COMPILE AGDA2HS tupleDec inline #-}
-syntax tupleDec a b = a ×-dec b
-
-@0 eitherReflects : ∀ {ba bb a b} → Reflects a ba → Reflects b bb → Reflects (Either a b) (ba || bb)
-eitherReflects {True}  {_}     a  _  = Left a
-eitherReflects {False} {True}  _  b  = Right b
-eitherReflects {False} {False} ¬a ¬b = either ¬a ¬b
-
-eitherDec : ∀ {@0 a b} → Dec a → Dec b → Dec (Either a b)
-eitherDec (ba ⟨ a ⟩) (bb ⟨ b ⟩) = (ba || bb) ⟨ eitherReflects a b ⟩
-{-# COMPILE AGDA2HS eitherDec inline #-}
-
---------------------------------------------------------------------------------
--- Decidable relation that does not erase positive information
-
-infix 3 tupleDecP
-
-data DecP (a : Type) : Type where
-  Yes : (p : a) → DecP a
-  No  : (@0 p : ¬ a) → DecP a
-{-# COMPILE AGDA2HS DecP deriving Show #-}
-
-mapDecP : ∀ {a b} → (a → b) → @0 (b → a) → DecP a → DecP b
-mapDecP f g (Yes p) = Yes (f p)
-mapDecP f g (No p)  = No (contraposition g p)
-{-# COMPILE AGDA2HS mapDecP #-}
-
-ifDecP : {a b : Type} → DecP a → (⦃ a ⦄ → b) → (@0 ⦃ ¬ a ⦄ → b) → b
-ifDecP (Yes p) t e = t ⦃ p ⦄
-ifDecP (No p)  t e = e ⦃ p ⦄
-{-# COMPILE AGDA2HS ifDecP #-}
-
-tupleDecP : ∀ {a b} → DecP a → DecP b → DecP (a × b)
-syntax tupleDecP a b = a ×-decP b
-No p  ×-decP _     = No (contraposition fst p)
-Yes _ ×-decP No q  = No (contraposition snd q)
-Yes p ×-decP Yes q = Yes (p , q)
-{-# COMPILE AGDA2HS tupleDecP #-}
-
-eitherDecP : ∀ {a b} → DecP a → DecP b → DecP (Either a b)
-eitherDecP (Yes p) _       = Yes (Left p)
-eitherDecP (No p)  (Yes q) = Yes (Right q)
-eitherDecP (No p)  (No q)  = No (either p q)
-{-# COMPILE AGDA2HS eitherDecP #-}
-
-theseDecP : ∀ {a b} → DecP a → DecP b → DecP (These a b)
-theseDecP (Yes p) (Yes q) = Yes (Both p q)
-theseDecP (Yes p) (No q)  = Yes (This p)
-theseDecP (No p)  (Yes q) = Yes (That q)
-theseDecP (No p)  (No q)  = No (these p q (λ _ → q))
-{-# COMPILE AGDA2HS theseDecP #-}
-
-firstDecP : ∀ {a} {p : @0 a → Type}
-  → (∀ x → DecP (p x))
-  → (∀ xs → DecP (First p xs))
-firstDecP         f []       = No λ ()
-firstDecP {p = p} f (x ∷ xs) = ifDecP (f x)
-  (λ ⦃ h ⦄ → Yes [ h ])
-  (λ ⦃ h ⦄ → mapDecP (h ◂_) (lem h) (firstDecP f xs))
-  where
-    @0 lem : ¬ p x → First p (x ∷ xs) → First p xs
-    lem h [ h' ]   = contradiction h' h
-    lem h (x ◂ h') = h'
-{-# COMPILE AGDA2HS firstDecP #-}
+      let @0 f : ∀ {y} → elem y (x ∷ xs) ≡ True → Set.member y s ≡ True
+          f eq = trans (sym (prop-member-toAscList _ s)) (trans (cong (elem _) h) eq)
+       in Right (x ⟨ f (cong (_|| elem x xs) (eqReflexivity x)) ⟩ ◂
+                 toAscListW' xs λ h → f (trans (cong (_ ||_) h) (prop-x-||-True _)))
+  {-# COMPILE AGDA2HS toAscNonEmptyW inline #-}

@@ -199,18 +199,16 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} where
         (λ h → (λ c → headAll (h c)) , (λ c → tailAll (h c)))
         (tupleReflects (nullRootConSet' (headPattern ps)) (nullRootConSet pss))
 
-
 module _ ⦃ sig : Signature ⦄ {d : NameData} where
 
   -- Are there constructors that does not appear in the first column of P?
   decExistMissCon : (P : PatternMatrix (TyData d ◂ αs0))
-    → Either (∃[ c ∈ NameCon d ] c ∉** P) (Erase (∀ c → c ∈** P))
-  decExistMissCon pss =
-    case findMin missConSet of λ where
+    → Either (Erase (∀ c → c ∈** P)) (NonEmpty (∃[ c ∈ NameCon d ] c ∉** P))
+  decExistMissCon pss = case toAscNonEmptyW missConSet of λ where
       (Left (Erased empty)) →
-        Right (Erased λ c → extractTrue ⦃ cong not (empty c) ⦄ (notMemberMissConSet c pss))
-      (Right (c ⟨ miss ⟩)) →
-        Left (c ⟨ extractTrue ⦃ miss ⦄ (memberMissConSet c pss) ⟩)
+        Left (Erased λ c → extractTrue ⦃ cong not (empty c) ⦄ (notMemberMissConSet c pss))
+      (Right misses) →
+        Right (mapNonEmptyRefine (λ miss → extractTrue ⦃ miss ⦄ (memberMissConSet _ pss)) misses)
     where
       conSet missConSet : Set (NameCon d)
       conSet     = rootConSet pss
@@ -255,27 +253,27 @@ record Usefulness
 
     wildMissCase : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
-      → ∃[ c ∈ NameCon d ] c ∉** pss
+      → NonEmpty (∃[ c ∈ NameCon d ] c ∉** pss)
       → u (default_ pss) ps
       → u pss (— ◂ ps)
 
     @0 wildMissCaseInv : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
-      → ∃[ c ∈ NameCon d ] c ∉** pss
+      → NonEmpty (∃[ c ∈ NameCon d ] c ∉** pss)
       → u pss (— ◂ ps)
       → u (default_ pss) ps
 
     wildCompCase : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
       → @0 (∀ c → c ∈** pss)
-      → Σ[ c ∈ NameCon d ] u (specialize c pss) (—* ◂◂ᵖ ps)
+      → NonEmpty (Σ[ c ∈ NameCon d ] u (specialize c pss) (—* ◂◂ᵖ ps))
       → u pss (— ◂ ps)
 
     @0 wildCompCaseInv : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
       → @0 (∀ c → c ∈** pss)
       → u pss (— ◂ ps)
-      → Σ[ c ∈ NameCon d ] u (specialize c pss) (—* ◂◂ᵖ ps)
+      → NonEmpty (Σ[ c ∈ NameCon d ] u (specialize c pss) (—* ◂◂ᵖ ps))
 
 open Usefulness ⦃ ... ⦄ public
 {-# COMPILE AGDA2HS Usefulness class #-}
@@ -290,7 +288,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
     done : {P : PatternMatrix ⌈⌉} → UsefulAcc P ⌈⌉
 
     step-wild : {P : PatternMatrix (TyData d ◂ αs)} {ps : Patterns αs}
-      → (∃[ c ∈ _ ] c ∉** P → UsefulAcc (default_ P) ps)
+      → (NonEmpty (∃[ c ∈ _ ] c ∉** P) → UsefulAcc (default_ P) ps)
       → (∀ c → c ∈** P → UsefulAcc (specialize c P) (—* ◂◂ᵖ ps))
       → UsefulAcc P (— ◂ ps)
 
@@ -318,10 +316,10 @@ module _
   decUseful {⌈⌉}            (_ ∷ _) ⌈⌉              done             = No nilBadCase
   decUseful {TyData d ◂ αs} pss     (— ◂ ps)        (step-wild h h') =
     case decExistMissCon pss of λ where
-      (Left miss)  →
+      (Right miss)  →
         mapDecP (wildMissCase miss) (wildMissCaseInv miss)
           (decUseful (default_ pss) ps (h miss))
-      (Right (Erased comp)) →
+      (Left (Erased comp)) →
         mapDecP (wildCompCase comp) (wildCompCaseInv comp)
           (decPAnyNameCon (dataDefs sig d) λ c →
             decUseful (specialize c pss) (—* ◂◂ᵖ ps) (h' c (comp c)))

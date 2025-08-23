@@ -131,19 +131,19 @@ decPAnyNameIn : (xs : List Name)
   → {@0 ys : List Name} (@0 eq : xs ≡ ys)
   → {p : @0 NameIn ys → Type}
   → (∀ x → DecP (p x))
-  → DecP (Σ[ x ∈ _ ] p x)
+  → DecP (NonEmpty (Σ[ x ∈ _ ] p x))
 decPAnyNameIn []       refl     f = No λ _ → undefined
 decPAnyNameIn (x ∷ xs) refl {p} f =
   mapDecP
-    (either (λ h → lem1 h) lem2)
-    lem3
-    (eitherDecP (f (x ⟨ InHere ⟩)) (decPAnyNameIn xs refl (strengthenNameInFun f)))
+    (these (λ h → lem1 h ◂ []) lem2 (λ h hs → lem1 h ◂′ lem2 hs))
+    (mapThese head id ∘ partitionEithersNonEmpty ∘ mapNonEmpty lem3)
+    (theseDecP (f (x ⟨ InHere ⟩)) (decPAnyNameIn xs refl (strengthenNameInFun f)))
   where
     lem1 : p (x ⟨ InHere ⟩) → Σ[ y ∈ NameIn (x ∷ xs) ] p y
     lem1 h = (x ⟨ InHere ⟩ , h)
 
     lem2 : _
-    lem2 = λ where ((y ⟨ h ⟩) , h') → (y ⟨ InThere h ⟩) , h'
+    lem2 = mapNonEmpty λ where ((y ⟨ h ⟩) , h') → (y ⟨ InThere h ⟩) , h'
 
     @0 lem3 : Σ[ y ∈ NameIn (x ∷ xs) ] p y
       → Either (p (x ⟨ InHere ⟩)) (Σ[ (y ⟨ h ⟩) ∈ NameIn xs ] p (y ⟨ InThere h ⟩))
