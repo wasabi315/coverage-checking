@@ -156,16 +156,19 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
 module _ ⦃ @0 sig : Signature ⦄ {@0 P : PatternMatrix (α0 ◂ αs0)} {@0 r₁ r₂ : Pattern α0} {@0 ps : Patterns αs0} where
 
-  usefulOrCase : Either (Useful P (r₁ ◂ ps)) (Useful P (r₂ ◂ ps)) → Useful P (r₁ ∣ r₂ ◂ ps)
-  usefulOrCase (Left (MkUseful (v ◂ vs) nis (i ◂ is))) =
+  usefulOrCase : These (Useful P (r₁ ◂ ps)) (Useful P (r₂ ◂ ps)) → Useful P (r₁ ∣ r₂ ◂ ps)
+  usefulOrCase (This (MkUseful (v ◂ vs) nis (i ◂ is))) =
     MkUseful (v ◂ vs) nis (∣≼ˡ i ◂ is)
-  usefulOrCase (Right (MkUseful (v ◂ vs) nis (i ◂ is))) =
+  usefulOrCase (That (MkUseful (v ◂ vs) nis (i ◂ is))) =
     MkUseful (v ◂ vs) nis (∣≼ʳ i ◂ is)
+  -- ignore the second argument
+  usefulOrCase (Both (MkUseful (v ◂ vs) nis (i ◂ is)) _) =
+    MkUseful (v ◂ vs) nis (∣≼ˡ i ◂ is)
   {-# COMPILE AGDA2HS usefulOrCase #-}
 
-  @0 usefulOrCaseInv : Useful P (r₁ ∣ r₂ ◂ ps) → Either (Useful P (r₁ ◂ ps)) (Useful P (r₂ ◂ ps))
-  usefulOrCaseInv (MkUseful vs nis (∣≼ˡ i ◂ is)) = Left (MkUseful vs nis (i ◂ is))
-  usefulOrCaseInv (MkUseful vs nis (∣≼ʳ i ◂ is)) = Right (MkUseful vs nis (i ◂ is))
+  @0 usefulOrCaseInv : Useful P (r₁ ∣ r₂ ◂ ps) → These (Useful P (r₁ ◂ ps)) (Useful P (r₂ ◂ ps))
+  usefulOrCaseInv (MkUseful vs nis (∣≼ˡ i ◂ is)) = This (MkUseful vs nis (i ◂ is))
+  usefulOrCaseInv (MkUseful vs nis (∣≼ʳ i ◂ is)) = That (MkUseful vs nis (i ◂ is))
 
 
 module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ◂ αs0)} {c : NameCon d} {@0 rs : Patterns (argsTy (dataDefs sig d) c)} {@0 ps : Patterns αs0} where

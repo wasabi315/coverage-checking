@@ -231,13 +231,13 @@ record Usefulness
 
     orCase : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {@0 pss : PatternMatrix (α0 ◂ αs0)} {@0 r₁ r₂ : Pattern α0} {@0 ps : Patterns αs0}
-      → Either (u pss (r₁ ◂ ps)) (u pss (r₂ ◂ ps))
+      → These (u pss (r₁ ◂ ps)) (u pss (r₂ ◂ ps))
       → u pss (r₁ ∣ r₂ ◂ ps)
 
     @0 orCaseInv : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {@0 pss : PatternMatrix (α0 ◂ αs0)} {@0 r₁ r₂ : Pattern α0} {@0 ps : Patterns αs0}
       → u pss (r₁ ∣ r₂ ◂ ps)
-      → Either (u pss (r₁ ◂ ps)) (u pss (r₂ ◂ ps))
+      → These (u pss (r₁ ◂ ps)) (u pss (r₂ ◂ ps))
 
     conCase : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ◂ βs0)} {c : NameCon d}
@@ -329,7 +329,7 @@ module _
     mapDecP conCase conCaseInv (decUseful (specialize c pss) (rs ◂◂ᵖ ps) h)
   decUseful {TyData d ◂ αs} pss     (r₁ ∣ r₂  ◂ ps) (step-∣ h h')    =
     mapDecP orCase orCaseInv
-      (eitherDecP (decUseful pss (r₁ ◂ ps) h) (decUseful pss (r₂ ◂ ps) h'))
+      (theseDecP (decUseful pss (r₁ ◂ ps) h) (decUseful pss (r₂ ◂ ps) h'))
   {-# COMPILE AGDA2HS decUseful #-}
 
 --------------------------------------------------------------------------------

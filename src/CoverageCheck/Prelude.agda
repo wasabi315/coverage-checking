@@ -346,6 +346,22 @@ Fresh []       = ⊤
 Fresh (x ∷ xs) = All (λ y → ¬ x ≡ y) xs × Fresh xs
 
 --------------------------------------------------------------------------------
+-- These
+
+data These (a b : Type) : Type where
+  This  : a → These a b
+  That  : b → These a b
+  Both  : a → b → These a b
+
+{-# COMPILE AGDA2HS These deriving (Eq, Show) #-}
+
+these : {a b c : Type} → (a → c) → (b → c) → (a → b → c) → These a b → c
+these f g h (This x)   = f x
+these f g h (That x)   = g x
+these f g h (Both x y) = h x y
+{-# COMPILE AGDA2HS these #-}
+
+--------------------------------------------------------------------------------
 -- Non-empty lists
 
 infixr 5 consNonEmpty appendNonEmpty
@@ -459,6 +475,13 @@ eitherDecP (Yes p) _       = Yes (Left p)
 eitherDecP (No p)  (Yes q) = Yes (Right q)
 eitherDecP (No p)  (No q)  = No (either p q)
 {-# COMPILE AGDA2HS eitherDecP #-}
+
+theseDecP : ∀ {a b} → DecP a → DecP b → DecP (These a b)
+theseDecP (Yes p) (Yes q) = Yes (Both p q)
+theseDecP (Yes p) (No q)  = Yes (This p)
+theseDecP (No p)  (Yes q) = Yes (That q)
+theseDecP (No p)  (No q)  = No (these p q (λ _ → q))
+{-# COMPILE AGDA2HS theseDecP #-}
 
 firstDecP : ∀ {a} {p : @0 a → Type}
   → (∀ x → DecP (p x))
