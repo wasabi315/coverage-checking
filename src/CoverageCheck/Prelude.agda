@@ -15,7 +15,7 @@ open import Haskell.Prelude public
          _≡_; refl)
 
 open import Haskell.Prim public
-  using (⊥; the)
+  using (⊥; the; Level)
 
 open import Haskell.Prim.Eq public
   using (Eq; _==_)

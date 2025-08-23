@@ -163,6 +163,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
   usefulNilBadCase : {ps : Patterns ⌈⌉} {P : PatternMatrix ⌈⌉} → ¬ Useful (ps ∷ P) ⌈⌉
   usefulNilBadCase {⌈⌉} (MkUseful ⌈⌉ h _) = contradiction (here ⌈⌉) h
 
+
 module _ ⦃ @0 sig : Signature ⦄ {@0 P : PatternMatrix (α0 ◂ αs0)} {@0 r₁ r₂ : Pattern α0} {@0 ps : Patterns αs0} where
 
   usefulOrCaseL : Useful P (r₁ ◂ ps) → Useful P (r₁ ∣ r₂ ◂ ps)
@@ -176,8 +177,8 @@ module _ ⦃ @0 sig : Signature ⦄ {@0 P : PatternMatrix (α0 ◂ αs0)} {@0 r�
   {-# COMPILE AGDA2HS usefulOrCaseR transparent #-}
 
   usefulOrCase : These (Useful P (r₁ ◂ ps)) (Useful P (r₂ ◂ ps)) → Useful P (r₁ ∣ r₂ ◂ ps)
-  usefulOrCase (This h) = usefulOrCaseL h
-  usefulOrCase (That h) = usefulOrCaseR h
+  usefulOrCase (This h)   = usefulOrCaseL h
+  usefulOrCase (That h)   = usefulOrCaseR h
   -- ignore the second argument
   usefulOrCase (Both h _) = usefulOrCaseL h
   {-# COMPILE AGDA2HS usefulOrCase #-}

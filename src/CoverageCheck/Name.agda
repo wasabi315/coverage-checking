@@ -126,27 +126,51 @@ anyNameIn : (xs : List Name) → (NameIn xs → Bool) → Bool
 anyNameIn xs f = anyNameIn' f xs id
 {-# COMPILE AGDA2HS anyNameIn inline #-}
 
+module _ where
+  private
+    lem1 : ∀ {x xs} {p : @0 NameIn (x ∷ xs) → Type}
+      → p (x ⟨ InHere ⟩)
+      → Σ[ y ∈ NameIn (x ∷ xs) ] p y
+    lem1 h = _ , h
+    {-# COMPILE AGDA2HS lem1 inline #-}
 
-decPAnyNameIn : (xs : List Name)
-  → {@0 ys : List Name} (@0 eq : xs ≡ ys)
-  → {p : @0 NameIn ys → Type}
-  → (∀ x → DecP (p x))
-  → DecP (NonEmpty (Σ[ x ∈ _ ] p x))
-decPAnyNameIn []       refl     f = No λ _ → undefined
-decPAnyNameIn (x ∷ xs) refl {p} f =
-  mapDecP
-    (these (λ h → lem1 h ◂ []) lem2 (λ h hs → lem1 h ◂′ lem2 hs))
-    (mapThese head id ∘ partitionEithersNonEmpty ∘ mapNonEmpty lem3)
-    (theseDecP (f (x ⟨ InHere ⟩)) (decPAnyNameIn xs refl (strengthenNameInFun f)))
-  where
-    lem1 : p (x ⟨ InHere ⟩) → Σ[ y ∈ NameIn (x ∷ xs) ] p y
-    lem1 h = (x ⟨ InHere ⟩ , h)
+    lem2' : ∀ {@0 x xs} {p : @0 NameIn (x ∷ xs) → Type}
+      → List (Σ[ (y ⟨ h ⟩) ∈ NameIn xs ] p (y ⟨ InThere h ⟩))
+      → List (Σ[ y ∈ NameIn (x ∷ xs) ] p y)
+    lem2' []                    = []
+    lem2' ((y ⟨ h ⟩ , h') ∷ ys) = (y ⟨ InThere h ⟩ , h') ∷ lem2' ys
+    {-# COMPILE AGDA2HS lem2' transparent #-}
 
-    lem2 : _
-    lem2 = mapNonEmpty λ where ((y ⟨ h ⟩) , h') → (y ⟨ InThere h ⟩) , h'
+    lem2 : ∀ {@0 x xs} {p : @0 NameIn (x ∷ xs) → Type}
+      → NonEmpty (Σ[ (y ⟨ h ⟩) ∈ NameIn xs ] p (y ⟨ InThere h ⟩))
+      → NonEmpty (Σ[ y ∈ NameIn (x ∷ xs) ] p y)
+    lem2 ((y ⟨ h ⟩ , h') ◂ ys) = (y ⟨ InThere h ⟩ , h') ◂ lem2' ys
+    {-# COMPILE AGDA2HS lem2 transparent #-}
 
-    @0 lem3 : Σ[ y ∈ NameIn (x ∷ xs) ] p y
-      → Either (p (x ⟨ InHere ⟩)) (Σ[ (y ⟨ h ⟩) ∈ NameIn xs ] p (y ⟨ InThere h ⟩))
-    lem3 ((y ⟨ InHere ⟩) , h') = Left h'
+    @0 lem3 : ∀ {@0 x xs} {p : @0 NameIn (x ∷ xs) → Type}
+      → Σ[ y ∈ NameIn (x ∷ xs) ] p y
+      → Either
+          (p (x ⟨ InHere ⟩))
+          (Σ[ (y ⟨ h ⟩) ∈ NameIn xs ] p (y ⟨ InThere h ⟩))
+    lem3 ((y ⟨ InHere ⟩)    , h') = Left h'
     lem3 ((y ⟨ InThere h ⟩) , h') = Right ((y ⟨ h ⟩) , h')
-{-# COMPILE AGDA2HS decPAnyNameIn #-}
+
+    @0 lem4 : ∀ {@0 x xs} {p : @0 NameIn (x ∷ xs) → Type}
+      → NonEmpty (Σ[ y ∈ NameIn (x ∷ xs) ] p y)
+      → These
+          (p (x ⟨ InHere ⟩))
+          (NonEmpty (Σ[ (y ⟨ h ⟩) ∈ NameIn xs ] p (y ⟨ InThere h ⟩)))
+    lem4 = mapThese head id ∘ partitionEithersNonEmpty ∘ mapNonEmpty lem3
+
+  decPAnyNameIn : (xs : List Name)
+    → {@0 ys : List Name} (@0 eq : xs ≡ ys)
+    → {p : @0 NameIn ys → Type}
+    → (∀ x → DecP (p x))
+    → DecP (NonEmpty (Σ[ x ∈ _ ] p x))
+  decPAnyNameIn []       refl     f = No λ _ → undefined
+  decPAnyNameIn (x ∷ xs) refl {p} f =
+    mapDecP
+      (these (λ h → lem1 h ◂ []) lem2 (λ h hs → lem1 h ◂′ lem2 hs))
+      lem4
+      (theseDecP (f (x ⟨ InHere ⟩)) (decPAnyNameIn xs refl (strengthenNameInFun f)))
+  {-# COMPILE AGDA2HS decPAnyNameIn #-}
