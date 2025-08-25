@@ -212,7 +212,7 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ◂ αs0)} 
       NonEmpty (Σ[ c ∈ NameCon d ] Useful (specialize c P) (—* ◂◂ᵖ ps))
     → Useful P (— ◂ ps)
   -- only consider the first constructor
-  usefulWildCompCase ((c , MkUseful usvs nis is) ◂ _)=
+  usefulWildCompCase ((c , MkUseful usvs nis is) ◂ _) =
     case splitInstances {αs = argsTy (dataDefs sig d) c} —* is of λ where
       ((us , vs) ⟨ refl , (_ , is') ⟩) →
         MkUseful (con c us ◂ vs) (contraposition specialize-preserves-≼ nis) (—≼ ◂ is')

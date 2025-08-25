@@ -11,6 +11,7 @@ open import Haskell.Prelude public
          List; []; _∷_; _++_; map; foldr; elem; sum; concat; concatMap; lengthNat; null;
          String;
          _×_; _,_; fst; snd; uncurry;
+         Maybe; Just; Nothing; maybe;
          Either; Left; Right; either;
          _≡_; refl)
 
@@ -65,7 +66,7 @@ syntax ∃-syntax A (λ x → B) = ∃[ x ∈ A ] B
 infix 2 ∃-syntax
 
 open import Haskell.Extra.Sigma public
-  using (Σ-syntax; _,_; fst; snd)
+  using (Σ; Σ-syntax; _,_; fst; snd)
 
 -- open import Data.Set public
 --   using (Set; empty; singleton; union; fromList; null; member; difference; toAscList;

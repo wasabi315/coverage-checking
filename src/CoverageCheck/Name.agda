@@ -64,11 +64,11 @@ instance
 --------------------------------------------------------------------------------
 
 universalNameInList' : (xs : List Name) {@0 ys : List Name}
-  → (@0 weaken : ∀ {@0 x} → In x xs → In x ys)
+  → (@0 inj : ∀ {@0 x} → In x xs → In x ys)
   → List (NameIn ys)
-universalNameInList' []       weaken = []
-universalNameInList' (x ∷ xs) weaken =
-  (x ⟨ weaken InHere ⟩) ∷ universalNameInList' xs (weaken ∘ InThere)
+universalNameInList' []       inj = []
+universalNameInList' (x ∷ xs) inj =
+  (x ⟨ inj InHere ⟩) ∷ universalNameInList' xs (inj ∘ InThere)
 {-# COMPILE AGDA2HS universalNameInList' transparent #-}
 
 universalNameInList : (xs : List Name) → List (NameIn xs)
@@ -76,12 +76,12 @@ universalNameInList xs = universalNameInList' xs id
 {-# COMPILE AGDA2HS universalNameInList inline #-}
 
 @0 universalNameInListUniversal' : (xs : List Name) {@0 ys : List Name}
-  → (@0 weaken : ∀ {@0 x} → In x xs → In x ys)
+  → (@0 inj : ∀ {@0 x} → In x xs → In x ys)
   → ∀ ((y ⟨ h ⟩) : NameIn xs)
-  → elem (y ⟨ weaken h ⟩) (universalNameInList' xs weaken) ≡ True
-universalNameInListUniversal' (x ∷ xs) weaken (y ⟨ InHere ⟩) rewrite eqReflexivity x = refl
-universalNameInListUniversal' (x ∷ xs) weaken (y ⟨ InThere h ⟩) =
-  let ih = universalNameInListUniversal' xs (weaken ∘ InThere) (y ⟨ h ⟩) in
+  → elem (y ⟨ inj h ⟩) (universalNameInList' xs inj) ≡ True
+universalNameInListUniversal' (x ∷ xs) inj (y ⟨ InHere ⟩) rewrite eqReflexivity x = refl
+universalNameInListUniversal' (x ∷ xs) inj (y ⟨ InThere h ⟩) =
+  let ih = universalNameInListUniversal' xs (inj ∘ InThere) (y ⟨ h ⟩) in
   subst (λ b → (y == x || b) ≡ True) (sym ih) (prop-x-||-True (y == x))
 
 @0 universalNameInListUniversal : (xs : List Name)
@@ -105,20 +105,14 @@ universalNameInSetUniversal' {xs} s eq x =
 
 --------------------------------------------------------------------------------
 
-strengthenNameInFun : ∀ {@0 x : Name} {@0 xs : List Name} {@0 ℓ} {p : @0 NameIn (x ∷ xs) → Type ℓ}
-  → ((y : NameIn (x ∷ xs)) → p y)
-  → ((y ⟨ h ⟩) : NameIn xs) → p (y ⟨ InThere h ⟩)
-strengthenNameInFun f = λ where (x ⟨ h ⟩) → f (x ⟨ InThere h ⟩)
-{-# COMPILE AGDA2HS strengthenNameInFun inline #-}
-
 module _ {@0 xs} (f : NameIn xs → Bool) where
 
   anyNameIn' : (ys : List Name)
-    → (@0 weaken : ∀ {@0 x} → In x ys → In x xs)
+    → (@0 inj : ∀ {@0 x} → In x ys → In x xs)
     → Bool
-  anyNameIn' []       weaken = False
-  anyNameIn' (x ∷ ys) weaken =
-    f (x ⟨ weaken InHere ⟩) || anyNameIn' ys (weaken ∘ InThere)
+  anyNameIn' []       inj = False
+  anyNameIn' (x ∷ ys) inj =
+    f (x ⟨ inj InHere ⟩) || anyNameIn' ys (inj ∘ InThere)
   {-# COMPILE AGDA2HS anyNameIn' #-}
 
 
@@ -128,30 +122,30 @@ anyNameIn xs f = anyNameIn' f xs id
 
 module _ where
   private
-    lem1 : ∀ {x xs} {p : @0 NameIn (x ∷ xs) → Type}
+    lem1 : ∀ {x} {@0 xs} {p : @0 NameIn (x ∷ xs) → Type}
       → p (x ⟨ InHere ⟩)
       → Σ[ y ∈ NameIn (x ∷ xs) ] p y
     lem1 h = _ , h
     {-# COMPILE AGDA2HS lem1 inline #-}
 
     lem2' : ∀ {@0 x xs} {p : @0 NameIn (x ∷ xs) → Type}
-      → List (Σ[ (y ⟨ h ⟩) ∈ NameIn xs ] p (y ⟨ InThere h ⟩))
+      → List (Σ[ y ∈ NameIn xs ] p (mapRefine InThere y))
       → List (Σ[ y ∈ NameIn (x ∷ xs) ] p y)
-    lem2' []                    = []
-    lem2' ((y ⟨ h ⟩ , h') ∷ ys) = (y ⟨ InThere h ⟩ , h') ∷ lem2' ys
+    lem2' []             = []
+    lem2' ((y , h) ∷ ys) = (mapRefine InThere y , h) ∷ lem2' ys
     {-# COMPILE AGDA2HS lem2' transparent #-}
 
     lem2 : ∀ {@0 x xs} {p : @0 NameIn (x ∷ xs) → Type}
-      → NonEmpty (Σ[ (y ⟨ h ⟩) ∈ NameIn xs ] p (y ⟨ InThere h ⟩))
+      → NonEmpty (Σ[ y ∈ NameIn xs ] p (mapRefine InThere y))
       → NonEmpty (Σ[ y ∈ NameIn (x ∷ xs) ] p y)
-    lem2 ((y ⟨ h ⟩ , h') ◂ ys) = (y ⟨ InThere h ⟩ , h') ◂ lem2' ys
+    lem2 ((y , h) ◂ ys) = (mapRefine InThere y , h) ◂ lem2' ys
     {-# COMPILE AGDA2HS lem2 transparent #-}
 
     @0 lem3 : ∀ {@0 x xs} {p : @0 NameIn (x ∷ xs) → Type}
       → Σ[ y ∈ NameIn (x ∷ xs) ] p y
       → Either
           (p (x ⟨ InHere ⟩))
-          (Σ[ (y ⟨ h ⟩) ∈ NameIn xs ] p (y ⟨ InThere h ⟩))
+          (Σ[ y ∈ NameIn xs ] p (mapRefine InThere y))
     lem3 ((y ⟨ InHere ⟩)    , h') = Left h'
     lem3 ((y ⟨ InThere h ⟩) , h') = Right ((y ⟨ h ⟩) , h')
 
@@ -159,7 +153,7 @@ module _ where
       → NonEmpty (Σ[ y ∈ NameIn (x ∷ xs) ] p y)
       → These
           (p (x ⟨ InHere ⟩))
-          (NonEmpty (Σ[ (y ⟨ h ⟩) ∈ NameIn xs ] p (y ⟨ InThere h ⟩)))
+          (NonEmpty (Σ[ y ∈ NameIn xs ] p (mapRefine InThere y)))
     lem4 = mapThese head id ∘ partitionEithersNonEmpty ∘ mapNonEmpty lem3
 
   decPAnyNameIn : (xs : List Name)
@@ -167,10 +161,10 @@ module _ where
     → {p : @0 NameIn ys → Type}
     → (∀ x → DecP (p x))
     → DecP (NonEmpty (Σ[ x ∈ _ ] p x))
-  decPAnyNameIn []       refl     f = No λ _ → undefined
-  decPAnyNameIn (x ∷ xs) refl {p} f =
+  decPAnyNameIn []       refl f = No λ _ → undefined
+  decPAnyNameIn (x ∷ xs) refl f =
     mapDecP
       (these (λ h → lem1 h ◂ []) lem2 (λ h hs → lem1 h ◂′ lem2 hs))
       lem4
-      (theseDecP (f (x ⟨ InHere ⟩)) (decPAnyNameIn xs refl (strengthenNameInFun f)))
+      (theseDecP (f (x ⟨ InHere ⟩)) (decPAnyNameIn xs refl λ y → f (mapRefine InThere y)))
   {-# COMPILE AGDA2HS decPAnyNameIn #-}
