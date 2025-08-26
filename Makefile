@@ -11,7 +11,7 @@ alllib: lib \
 	lib/CoverageCheck/GlobalScope.hs \
 	lib/CoverageCheck/Syntax.hs \
 	lib/CoverageCheck/Instance.hs \
-	lib/CoverageCheck/BranchSelection.hs \
+	lib/CoverageCheck/Subsumption.hs \
 	lib/CoverageCheck/Usefulness.hs \
 	lib/CoverageCheck/Usefulness/Algorithm.hs \
 	lib/CoverageCheck/Usefulness/Useful.hs \

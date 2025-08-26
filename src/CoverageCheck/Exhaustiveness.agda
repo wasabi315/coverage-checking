@@ -1,7 +1,7 @@
 open import CoverageCheck.Prelude
 open import CoverageCheck.GlobalScope using (Globals)
 open import CoverageCheck.Instance
-open import CoverageCheck.BranchSelection
+open import CoverageCheck.Subsumption
 open import CoverageCheck.Syntax
 open import CoverageCheck.Name
 open import CoverageCheck.Usefulness
@@ -30,7 +30,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
   Exhaustive : PatternMatrix αs0 → Type
   Exhaustive P = ∀ vs → Match P vs
 
-  -- There is a list of values that does not match any row in P
+  -- There is a list of patterns whose instances do not match any row in P
   NonExhaustive : PatternMatrix αs0 → Type
   NonExhaustive P = NonEmpty (∃[ ps ∈ _ ] (∀ {vs} → ps ≼* vs → ¬ Match P vs))
   {-# COMPILE AGDA2HS NonExhaustive inline #-}

@@ -24,7 +24,7 @@ library
     exposed-modules:  CoverageCheck.Prelude
                     , CoverageCheck.Syntax
                     , CoverageCheck.Instance
-                    , CoverageCheck.BranchSelection
+                    , CoverageCheck.Subsumption
                     , CoverageCheck.Name
                     , CoverageCheck.GlobalScope
                     , CoverageCheck.Usefulness

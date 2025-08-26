@@ -111,3 +111,85 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {v : Value (TyData d)} {vs : Values αs} 
     → default_ P ≼** vs
     → P ≼** v ◂ vs
   default-preserves-≼⁻ = gconcatMapAny⁻ default'-preserves-≼⁻
+
+
+--------------------------------------------------------------------------------
+-- Properties of disjointness
+
+module _ ⦃ @0 sig : Signature ⦄ where
+
+  _#**_ : (@0 P : PatternMatrix αs0) (@0 qs : Patterns αs0) → Type
+  P #** qs = ∀ {vs} → P ≼** vs → qs ≼* vs → ⊥
+
+
+module @0 _ ⦃ @0 sig : Signature ⦄
+  {P : PatternMatrix (α0 ◂ αs0)} {p q : Pattern α0} {ps : Patterns αs0}
+  where
+
+  #-∣ˡ : P #** (p ∣ q ◂ ps) → P #** (p ◂ ps)
+  #-∣ˡ disj iss (i ◂ is) = disj iss (∣≼ˡ i ◂ is)
+
+  #-∣ʳ : P #** (p ∣ q ◂ ps) → P #** (q ◂ ps)
+  #-∣ʳ disj iss (i ◂ is) = disj iss (∣≼ʳ i ◂ is)
+
+
+module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}
+  (let αs = argsTy (dataDefs sig d) c)
+  {P : PatternMatrix (TyData d ◂ βs)}
+  {rs₁ : Patterns αs} {rs₂ : Patterns βs}
+  where
+
+  specialize-preserves-#** :
+    P #** (con c rs₁ ◂ rs₂) → specialize c P #** (rs₁ ◂◂ᵖ rs₂)
+  specialize-preserves-#** disj iss is = case splitInstances rs₁ is of λ where
+    ((vs₁ , vs₂) ⟨ refl , (is₁ , is₂) ⟩) →
+      disj (specialize-preserves-≼⁻ iss) (con≼ is₁ ◂ is₂)
+
+  specialize-preserves-#**⁻ :
+    specialize c P #** (rs₁ ◂◂ᵖ rs₂) → P #** (con c rs₁ ◂ rs₂)
+  specialize-preserves-#**⁻ disj {con c us ◂ vs} iss (con≼ is₁ ◂ is₂) =
+    disj (specialize-preserves-≼ iss) (is₁ ◂◂ⁱ is₂)
+
+
+module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}
+  (let αs = argsTy (dataDefs sig d) c)
+  {P : PatternMatrix (TyData d ◂ βs)}
+  {rs : Patterns βs}
+  where
+
+  specialize-preserves-#**-wild :
+    P #** (— ◂ rs) → specialize c P #** (—* ◂◂ᵖ rs)
+  specialize-preserves-#**-wild disj iss is =
+    case splitInstances {αs = argsTy (dataDefs sig d) c} —* is of λ where
+      ((vs₁ , vs₂) ⟨ refl , (_ , is') ⟩) →
+        disj (specialize-preserves-≼⁻ iss) (—≼ ◂ is')
+
+
+module @0 _ ⦃ @0 sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+  {P : PatternMatrix (TyData d ◂ αs)}
+  {p : Pattern (TyData d)} {ps : Patterns αs}
+  where
+
+  default-preserves-#** : P #** (p ◂ ps) → default_ P #** ps
+  default-preserves-#** disj iss is =
+    disj (default-preserves-≼⁻ iss) (inst≼ _ ◂ is)
+
+
+module @0 _ ⦃ @0 sig : Signature ⦄ {c : NameCon d} {qs : Patterns (argsTy (dataDefs sig d) c)} {rs : Patterns βs} where
+
+  default-preserves-#**⁻ : {P : PatternMatrix (TyData d ◂ βs)}
+    → c ∉** P
+    → default_ P #** rs
+    → P #** (con c qs ◂ rs)
+  default-preserves-#**⁻ h disj {con c us ◂ vs} iss is@(con≼ is₁ ◂ is₂) =
+    disj (default-preserves-≼ h iss) is₂
+
+
+module @0 _ ⦃ @0 sig : Signature ⦄ {qs : Patterns βs} where
+
+  default-preserves-#**⁻-wild : {P : PatternMatrix (TyData d ◂ βs)}
+    → (∀ c → c ∉** P)
+    → default_ P #** qs
+    → P #** (— ◂ qs)
+  default-preserves-#**⁻-wild h disj {con c us ◂ vs} iss is@(—≼ ◂ is₂) =
+    disj (default-preserves-≼ (h c) iss) is₂
