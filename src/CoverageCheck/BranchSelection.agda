@@ -36,6 +36,11 @@ syntax BranchSelections ps qs = ps ⊆* qs
 data BranchSelection where
   BWild : BranchSelection {α0} — —
 
+  -- wildcard pattern can be considered as or-patterns of all constructors
+  BWildCon : {@0 c : NameCon d0} {@0 ps : Patterns (argsTy (dataDefs sig d0) c)}
+    → (bs : —* ⊆* ps)
+    → — ⊆ con c ps
+
   BCon : {c : NameCon d0}
     (let @0 αs : Tys
          αs = argsTy (dataDefs sig d0) c)
@@ -53,10 +58,11 @@ data BranchSelection where
 
 {-# COMPILE AGDA2HS BranchSelection deriving Show #-}
 
-pattern —⊆      = BWild
-pattern con⊆ bs = BCon bs
-pattern ∣⊆ˡ b   = BOrL b
-pattern ∣⊆ʳ b   = BOrR b
+pattern —⊆       = BWild
+pattern —⊆con bs = BWildCon bs
+pattern con⊆ bs  = BCon bs
+pattern ∣⊆ˡ b    = BOrL b
+pattern ∣⊆ʳ b    = BOrR b
 
 data BranchSelections where
   BNil : ⌈⌉ ⊆* ⌈⌉
@@ -219,10 +225,11 @@ subsumes : {@0 ps qs : Patterns αs0} {@0 vs : Values αs0}
   → qs ≼* vs
   → ps ≼* vs
 
-subsume —⊆        i = —≼
-subsume (con⊆ bs) i = subsumeConCase bs i
-subsume (∣⊆ˡ b)   i = ∣≼ˡ (subsume b i)
-subsume (∣⊆ʳ b)   i = ∣≼ʳ (subsume b i)
+subsume —⊆         i = —≼
+subsume (—⊆con bs) i = —≼
+subsume (con⊆ bs)  i = subsumeConCase bs i
+subsume (∣⊆ˡ b)    i = ∣≼ˡ (subsume b i)
+subsume (∣⊆ʳ b)    i = ∣≼ʳ (subsume b i)
 
 subsumeConCase bs (con≼ is) = con≼ (subsumes bs is)
 

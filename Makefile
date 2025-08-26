@@ -15,6 +15,7 @@ alllib: lib \
 	lib/CoverageCheck/Usefulness.hs \
 	lib/CoverageCheck/Usefulness/Algorithm.hs \
 	lib/CoverageCheck/Usefulness/Useful.hs \
+	lib/CoverageCheck/Usefulness/UsefulP.hs \
 	lib/CoverageCheck/Exhaustiveness.hs \
 	lib/CoverageCheck.hs
 

@@ -175,3 +175,42 @@ module _ ⦃ @0 sig : Signature ⦄ where
   appendPatterns (p ◂ ps) qs = p ◂ appendPatterns ps qs
   syntax appendPatterns ps qs = ps ◂◂ᵖ qs
   {-# COMPILE AGDA2HS appendPatterns #-}
+
+--------------------------------------------------------------------------------
+
+postulate sorry : {a : Type} → a
+{-# COMPILE AGDA2HS sorry #-}
+
+module _ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄ where
+
+  inst  : Pattern α → Value α
+  insts : Patterns αs → Values αs
+
+  inst —          = nonEmptyAxiom
+  inst (con c ps) = con c (insts ps)
+  inst (p ∣ _)    = inst p
+
+  insts ⌈⌉       = ⌈⌉
+  insts (p ◂ ps) = inst p ◂ insts ps
+
+--------------------------------------------------------------------------------
+-- Non-empty axiom
+
+module _ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄ where
+
+  inhab' : ∀ {d} → Σ[ c ∈ NameCon d ] Values (argsTy (dataDefs sig d) c)
+  inhab' {d} = case nonEmptyAxiom {TyData d} of λ where
+    (con c vs) → c , vs
+  {-# COMPILE AGDA2HS inhab' #-}
+
+  inhabCon : ∀ {d} → NameCon d
+  inhabCon = fst inhab'
+  {-# COMPILE AGDA2HS inhabCon inline #-}
+
+  inhab : ∀ {d} → Value (TyData d)
+  inhab = con inhabCon (snd inhab')
+  {-# COMPILE AGDA2HS inhab #-}
+
+  inhabAt : (c : NameCon d) → Value (TyData d)
+  inhabAt c = con c (tabulateValues λ α → nonEmptyAxiom)
+  {-# COMPILE AGDA2HS inhabAt #-}

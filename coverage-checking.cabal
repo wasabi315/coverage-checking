@@ -30,6 +30,7 @@ library
                     , CoverageCheck.Usefulness
                     , CoverageCheck.Usefulness.Algorithm
                     , CoverageCheck.Usefulness.Useful
+                    , CoverageCheck.Usefulness.UsefulP
                     , CoverageCheck.Exhaustiveness
                     , CoverageCheck
     build-depends:    base >=4.17 && <5

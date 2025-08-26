@@ -8,11 +8,14 @@ open import Haskell.Prelude public
          ⊤; tt;
          Bool; True; False; not; _&&_; _||_; if_then_else_;
          Nat; zero; suc; _+_;
-         List; []; _∷_; _++_; map; foldr; elem; sum; concat; concatMap; lengthNat; null;
+         List; []; _∷_; _++_; map; foldr; elem; sum; concat; concatMap; lengthNat; null; iMonadList;
          String;
          _×_; _,_; fst; snd; uncurry;
          Maybe; Just; Nothing; maybe;
          Either; Left; Right; either;
+         Functor; DefaultFunctor; fmap;
+         Applicative; DefaultApplicative; pure; _<*>_;
+         Monad; DefaultMonad; _>>=_;
          _≡_; refl)
 
 open import Haskell.Prim public
@@ -144,7 +147,7 @@ data Any {@0 a : Type} (p : @0 a → Type) : (@0 xs : List a) → Type where
 pattern here  h = AnyHere h
 pattern there h = AnyThere h
 
-module @0 _ {a : Type} {p : @0 a → Type} where
+module _ {a : Type} {p : @0 a → Type} where
 
   All¬⇒¬Any : ∀ {xs} → All (λ x → ¬ p x) xs → ¬ Any p xs
   All¬⇒¬Any (¬p ◂ _)  (here  p) = ¬p p
@@ -244,6 +247,10 @@ open NonEmpty public
 
 pattern _◂_ x xs = MkNonEmpty x xs
 
+toListNonEmpty : {a : Type} → NonEmpty a → List a
+toListNonEmpty = λ where (x ◂ xs) → x ∷ xs
+{-# COMPILE AGDA2HS toListNonEmpty inline #-}
+
 consNonEmpty : {a : Type} → a → NonEmpty a → NonEmpty a
 consNonEmpty x (y ◂ ys) = x ◂ (y ∷ ys)
 {-# COMPILE AGDA2HS consNonEmpty #-}
@@ -294,6 +301,30 @@ partitionEithersNonEmpty {a} {b} (x ◂ xs) = go x xs
     go x         (y ∷ xs) = cons x (go y xs)
     go (Left x)  []       = This (x ◂ [])
     go (Right y) []       = That (y ◂ [])
+
+instance
+  iDefaultFunctorNonEmpty : DefaultFunctor NonEmpty
+  iDefaultFunctorNonEmpty .DefaultFunctor.fmap f (x ◂ xs) = f x ◂ map f xs
+
+  iFunctorNonEmpty : Functor NonEmpty
+  iFunctorNonEmpty = record {DefaultFunctor iDefaultFunctorNonEmpty}
+  {-# COMPILE AGDA2HS iFunctorNonEmpty #-}
+
+  iDefaultApplicativeNonEmpty : DefaultApplicative NonEmpty
+  iDefaultApplicativeNonEmpty .DefaultApplicative.pure x = x ◂ []
+  iDefaultApplicativeNonEmpty .DefaultApplicative._<*>_ (f ◂ fs) (x ◂ xs) = f x ◂ map f xs ++ (fs <*> xs)
+
+  iApplicativeNonEmpty : Applicative NonEmpty
+  iApplicativeNonEmpty = record {DefaultApplicative iDefaultApplicativeNonEmpty}
+  {-# COMPILE AGDA2HS iApplicativeNonEmpty #-}
+
+  iDefaultMonadNonEmpty : DefaultMonad NonEmpty
+  iDefaultMonadNonEmpty .DefaultMonad._>>=_ (x ◂ xs) f =
+    case f x of λ where (y ◂ ys) → y ◂ ys ++ (xs >>= (toListNonEmpty ∘ f))
+
+  iMonadNonEmpty : Monad NonEmpty
+  iMonadNonEmpty = record {DefaultMonad iDefaultMonadNonEmpty}
+  {-# COMPILE AGDA2HS iMonadNonEmpty #-}
 
 --------------------------------------------------------------------------------
 -- Decidable relations

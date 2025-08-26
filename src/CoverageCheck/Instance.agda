@@ -217,6 +217,19 @@ module _ {c c' : NameCon d0}
   c≼c'⇒c≡c' : con c ps ≼ con c' vs → c ≡ c'
   c≼c'⇒c≡c' (con≼ h) = refl
 
+
+module _ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄ where
+
+  inst≼  : (p : Pattern α0) → p ≼ inst p
+  inst≼* : (ps : Patterns αs0) → ps ≼* insts ps
+
+  inst≼ —          = —≼
+  inst≼ (con c ps) = con≼ (inst≼* ps)
+  inst≼ (p ∣ _)    = ∣≼ˡ (inst≼ p)
+
+  inst≼* ⌈⌉       = ⌈⌉
+  inst≼* (p ◂ ps) = inst≼ p ◂ inst≼* ps
+
 --------------------------------------------------------------------------------
 -- Pattern matching
 
