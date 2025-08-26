@@ -172,7 +172,7 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ◂ αs0)} 
 
 
 module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ◂ αs0)} {@0 ps : Patterns αs0}
-  ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+  ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α ⦄
   where
 
   usefulPWildMissCase' :
