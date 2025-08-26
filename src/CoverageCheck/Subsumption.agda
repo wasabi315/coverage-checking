@@ -32,7 +32,7 @@ data Subsumptions : (@0 ps qs : Patterns αs0) → Type
 syntax Subsumption  p  q  = p ⊆ q
 syntax Subsumptions ps qs = ps ⊆* qs
 
--- p ⊆ q : q can be obtained from p by selecting branches of or-patterns
+-- p ⊆ q : p is a subsumption of q
 data Subsumption where
   SWild : {@0 q : Pattern α0} → — ⊆ q
 
