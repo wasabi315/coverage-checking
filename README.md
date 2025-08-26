@@ -16,8 +16,13 @@ P =
   (—   ◂ nil ◂ ⌈⌉) ∷
   []
 
--- P is non-exhaustive, witnessed by one unit ∷ one unit ∷ []
-_ : decNonExhaustive P ≡ Right ((one unit ◂ one unit ◂ ⌈⌉) ⟨ _ ⟩)
+-- P is non-exhaustive, witnessed by the following list of patterns
+_ : decNonExhaustive P
+  ≡ Right (
+      ((cons — —  ◂ cons — — ◂ ⌈⌉) ⟨ _ ⟩) ◂
+      ((one —     ◂ cons — — ◂ ⌈⌉) ⟨ _ ⟩) ∷
+      ((cons — —  ◂ one —    ◂ ⌈⌉) ⟨ _ ⟩) ∷
+      ((one —     ◂ one —    ◂ ⌈⌉) ⟨ _ ⟩) ∷ [])
 _ = refl
 
 Q : PatternMatrix (TyData ⟨list⟩ ∷ TyData ⟨list⟩ ∷ [])
