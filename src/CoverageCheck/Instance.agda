@@ -230,6 +230,15 @@ module _ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄ where
   inst≼* ⌈⌉       = ⌈⌉
   inst≼* (p ◂ ps) = inst≼ p ◂ inst≼* ps
 
+
+only≼ : {v v' : Value α0} → only v ≼ v' → v ≡ v'
+only≼* : {vs vs' : Values αs0} → onlys vs ≼* vs' → vs ≡ vs'
+
+only≼ {v = con c vs} {con .c vs₁} (con≼ is) = cong (con c) (only≼* is)
+
+only≼* {vs = ⌈⌉}     {⌈⌉}       ⌈⌉       = refl
+only≼* {vs = v ◂ vs} {v' ◂ vs'} (i ◂ is) = cong₂ _◂_ (only≼ i) (only≼* is)
+
 --------------------------------------------------------------------------------
 -- Pattern matching
 

@@ -154,7 +154,7 @@ module _ where
       → These
           (p (x ⟨ InHere ⟩))
           (NonEmpty (Σ[ y ∈ NameIn xs ] p (mapRefine InThere y)))
-    lem4 = mapThese head id ∘ partitionEithersNonEmpty ∘ mapNonEmpty lem3
+    lem4 = mapThese head id ∘ partitionEithersNonEmpty ∘ fmap lem3
 
   decPAnyNameIn : (xs : List Name)
     → {@0 ys : List Name} (@0 eq : xs ≡ ys)

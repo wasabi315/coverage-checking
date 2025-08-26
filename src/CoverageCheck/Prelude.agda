@@ -13,6 +13,7 @@ open import Haskell.Prelude public
          _×_; _,_; fst; snd; uncurry;
          Maybe; Just; Nothing; maybe;
          Either; Left; Right; either;
+         Semigroup; _<>_;
          Functor; DefaultFunctor; fmap;
          Applicative; DefaultApplicative; pure; _<*>_;
          Monad; DefaultMonad; _>>=_;
@@ -70,12 +71,6 @@ infix 2 ∃-syntax
 
 open import Haskell.Extra.Sigma public
   using (Σ; Σ-syntax; _,_; fst; snd)
-
--- open import Data.Set public
---   using (Set; empty; singleton; union; fromList; null; member; difference; toAscList;
---          prop-member-insert; prop-member-empty; prop-member-union; prop-member-null;
---          prop-member-difference; prop-member-fromList; prop-member-toAscList;
---          prop-null→empty)
 
 --------------------------------------------------------------------------------
 -- Bottom and negation
@@ -234,7 +229,7 @@ mapThese f g (Both x y) = Both (f x) (g y)
 --------------------------------------------------------------------------------
 -- Non-empty lists
 
-infixr 5 consNonEmpty appendNonEmpty
+infixr 5 consNonEmpty
 
 record NonEmpty (a : Type) : Type where
   constructor MkNonEmpty
@@ -255,52 +250,6 @@ consNonEmpty : {a : Type} → a → NonEmpty a → NonEmpty a
 consNonEmpty x (y ◂ ys) = x ◂ (y ∷ ys)
 {-# COMPILE AGDA2HS consNonEmpty #-}
 syntax consNonEmpty x xs = x ◂′ xs
-
-mapNonEmpty : {a b : Type} → (a → b) → NonEmpty a → NonEmpty b
-mapNonEmpty f (x ◂ xs) = f x ◂ map f xs
-{-# COMPILE AGDA2HS mapNonEmpty #-}
-
-mapNonEmptyRefine : {a : Type} {@0 p q : a → Type}
-  → (@0 f : ∀ {x} → p x → q x)
-  → NonEmpty (∃[ x ∈ a ] p x)
-  → NonEmpty (∃[ x ∈ a ] q x)
-mapNonEmptyRefine f (x ◂ xs) = mapRefine f x ◂ mapListRefine f xs
-{-# COMPILE AGDA2HS mapNonEmptyRefine transparent #-}
-
-appendNonEmpty : {a : Type} → NonEmpty a → NonEmpty a → NonEmpty a
-appendNonEmpty (x ◂ xs) (y ◂ ys) = x ◂ (xs ++ y ∷ ys)
-{-# COMPILE AGDA2HS appendNonEmpty #-}
-syntax appendNonEmpty xs ys = xs ◂◂ⁿᵉ ys
-
-concatNonEmpty : {a : Type} → NonEmpty (NonEmpty a) → NonEmpty a
-concatNonEmpty (xs ◂ xss) = go xs xss
-  where
-    go : {a : Type} → NonEmpty a → List (NonEmpty a) → NonEmpty a
-    go xs []         = xs
-    go xs (ys ∷ xss) = xs ◂◂ⁿᵉ go ys xss
-{-# COMPILE AGDA2HS concatNonEmpty #-}
-
-concatMapNonEmpty : {a b : Type} → (a → NonEmpty b) → NonEmpty a → NonEmpty b
-concatMapNonEmpty f xs = concatNonEmpty (mapNonEmpty f xs)
-{-# COMPILE AGDA2HS concatMapNonEmpty inline #-}
-
-partitionEithersNonEmpty : {a b : Type}
-  → NonEmpty (Either a b)
-  → These (NonEmpty a) (NonEmpty b)
-partitionEithersNonEmpty {a} {b} (x ◂ xs) = go x xs
-  where
-    cons : Either a b → These (NonEmpty a) (NonEmpty b) → These (NonEmpty a) (NonEmpty b)
-    cons (Left x)  (This xs)    = This (x ◂′ xs)
-    cons (Left x)  (That ys)    = Both (x ◂ []) ys
-    cons (Left x)  (Both xs ys) = Both (x ◂′ xs) ys
-    cons (Right y) (This xs)    = Both xs (y ◂ [])
-    cons (Right y) (That ys)    = That (y ◂′ ys)
-    cons (Right y) (Both xs ys) = Both xs (y ◂′ ys)
-
-    go : Either a b → List (Either a b) → These (NonEmpty a) (NonEmpty b)
-    go x         (y ∷ xs) = cons x (go y xs)
-    go (Left x)  []       = This (x ◂ [])
-    go (Right y) []       = That (y ◂ [])
 
 instance
   iDefaultFunctorNonEmpty : DefaultFunctor NonEmpty
@@ -325,6 +274,44 @@ instance
   iMonadNonEmpty : Monad NonEmpty
   iMonadNonEmpty = record {DefaultMonad iDefaultMonadNonEmpty}
   {-# COMPILE AGDA2HS iMonadNonEmpty #-}
+
+  iSemigroupNonEmpty : {a : Type} → Semigroup (NonEmpty a)
+  iSemigroupNonEmpty ._<>_ (x ◂ xs) (y ◂ ys) = x ◂ (xs ++ y ∷ ys)
+  {-# COMPILE AGDA2HS iSemigroupNonEmpty #-}
+
+
+mapNonEmptyRefine : {a : Type} {@0 p q : a → Type}
+  → (@0 f : ∀ {x} → p x → q x)
+  → NonEmpty (∃[ x ∈ a ] p x)
+  → NonEmpty (∃[ x ∈ a ] q x)
+mapNonEmptyRefine f (x ◂ xs) = mapRefine f x ◂ mapListRefine f xs
+{-# COMPILE AGDA2HS mapNonEmptyRefine transparent #-}
+
+concatNonEmpty : {a : Type} → NonEmpty (NonEmpty a) → NonEmpty a
+concatNonEmpty (xs ◂ xss) = go xs xss
+  where
+    go : {a : Type} → NonEmpty a → List (NonEmpty a) → NonEmpty a
+    go xs []         = xs
+    go xs (ys ∷ xss) = xs <> go ys xss
+{-# COMPILE AGDA2HS concatNonEmpty #-}
+
+partitionEithersNonEmpty : {a b : Type}
+  → NonEmpty (Either a b)
+  → These (NonEmpty a) (NonEmpty b)
+partitionEithersNonEmpty {a} {b} (x ◂ xs) = go x xs
+  where
+    cons : Either a b → These (NonEmpty a) (NonEmpty b) → These (NonEmpty a) (NonEmpty b)
+    cons (Left x)  (This xs)    = This (x ◂′ xs)
+    cons (Left x)  (That ys)    = Both (x ◂ []) ys
+    cons (Left x)  (Both xs ys) = Both (x ◂′ xs) ys
+    cons (Right y) (This xs)    = Both xs (y ◂ [])
+    cons (Right y) (That ys)    = That (y ◂′ ys)
+    cons (Right y) (Both xs ys) = Both xs (y ◂′ ys)
+
+    go : Either a b → List (Either a b) → These (NonEmpty a) (NonEmpty b)
+    go x         (y ∷ xs) = cons x (go y xs)
+    go (Left x)  []       = This (x ◂ [])
+    go (Right y) []       = That (y ◂ [])
 
 --------------------------------------------------------------------------------
 -- Decidable relations

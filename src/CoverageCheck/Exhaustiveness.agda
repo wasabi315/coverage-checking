@@ -1,6 +1,7 @@
 open import CoverageCheck.Prelude
 open import CoverageCheck.GlobalScope using (Globals)
 open import CoverageCheck.Instance
+open import CoverageCheck.BranchSelection
 open import CoverageCheck.Syntax
 open import CoverageCheck.Name
 open import CoverageCheck.Usefulness
@@ -31,13 +32,13 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
   -- There is a list of values that does not match any row in P
   NonExhaustive : PatternMatrix αs0 → Type
-  NonExhaustive P = ∃[ vs ∈ _ ] ¬ Match P vs
+  NonExhaustive P = NonEmpty (∃[ ps ∈ _ ] (∀ {vs} → ps ≼* vs → ¬ Match P vs))
   {-# COMPILE AGDA2HS NonExhaustive inline #-}
 
   -- non-exhaustiveness defined in terms of usefulness:
   -- P is non-exhaustive if —* is useful with respect to P
   NonExhaustive' : PatternMatrix αs0 → Type
-  NonExhaustive' P = Useful P —*
+  NonExhaustive' P = UsefulP P —*
   {-# COMPILE AGDA2HS NonExhaustive' inline #-}
 
   -- P is exhaustive if —* is not useful with respect to P
@@ -48,16 +49,20 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
     nonExhaustive'ToNonExhaustive : NonExhaustive' P → NonExhaustive P
     nonExhaustive'ToNonExhaustive = λ where
-      (MkUseful vs nis _) → vs ⟨ contraposition firstToAny nis ⟩
+      (MkUsefulP hs) →
+        mapNonEmptyRefine (λ (disj , _) is ms → disj (firstToAny ms) is) hs
     {-# COMPILE AGDA2HS nonExhaustive'ToNonExhaustive inline #-}
 
-    nonExhaustiveToNonExhaustive' : NonExhaustive P → NonExhaustive' P
-    nonExhaustiveToNonExhaustive' (vs ⟨ h ⟩) =
-      MkUseful vs (notFirstToNotAny h) —≼*
+    nonExhaustiveToNonExhaustive' : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+      → NonExhaustive P → NonExhaustive' P
+    nonExhaustiveToNonExhaustive' hs =
+      MkUsefulP
+        (mapNonEmptyRefine (λ h → (λ iss is → notFirstToNotAny (h is) iss) , —⊆*) hs)
 
-    exhaustiveToExhaustive' : Exhaustive P → Exhaustive' P
-    exhaustiveToExhaustive' h (MkUseful vs nis _) =
-      contradiction (firstToAny (h vs)) nis
+    @0 exhaustiveToExhaustive' : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+      → Exhaustive P → Exhaustive' P
+    exhaustiveToExhaustive' h (MkUsefulP ((qs ⟨ disj , _ ⟩) ◂ _)) =
+      contradiction (firstToAny (h (insts qs))) (flip disj (inst≼* qs))
 
 
   module _ {P : PatternMatrix αs0} where
@@ -66,7 +71,15 @@ module _ ⦃ @0 sig : Signature ⦄ where
     exhaustive'ToExhaustive h vs =
       case decMatch P vs of λ where
         (Yes h') → h'
-        (No h')  → contradiction (MkUseful vs (notFirstToNotAny h') —≼*) h
+        (No h')  →
+          contradiction
+            (MkUsefulP (
+              (onlys vs
+              ⟨ (λ iss is →
+                   let iss' = subst (λ vs → P ≼** vs) (sym (only≼* is)) iss in
+                   notFirstToNotAny h' iss') ,
+              —⊆* ⟩) ◂ []))
+            h
 
 --------------------------------------------------------------------------------
 -- Entrypoint
@@ -74,7 +87,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
 module _ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄ where
 
   decNonExhaustive : (pss : PatternMatrix αs) → Either (Erase (Exhaustive pss)) (NonExhaustive pss)
-  decNonExhaustive pss = ifDecP (decUsefulTerm (λ ⦃ sig' ⦄ → Useful ⦃ sig = sig' ⦄) pss pWilds)
+  decNonExhaustive pss = ifDecP (decUsefulTerm (λ ⦃ sig' ⦄ → UsefulP ⦃ sig = sig' ⦄) pss pWilds)
     (λ ⦃ h ⦄ → Right (nonExhaustive'ToNonExhaustive h))
     (λ ⦃ h ⦄ → Left (Erased (exhaustive'ToExhaustive h)))
   {-# COMPILE AGDA2HS decNonExhaustive #-}

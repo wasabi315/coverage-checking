@@ -178,9 +178,6 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
 --------------------------------------------------------------------------------
 
-postulate sorry : {a : Type} → a
-{-# COMPILE AGDA2HS sorry #-}
-
 module _ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄ where
 
   inst  : Pattern α → Value α
@@ -192,6 +189,20 @@ module _ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄ w
 
   insts ⌈⌉       = ⌈⌉
   insts (p ◂ ps) = inst p ◂ insts ps
+
+
+module _ ⦃ @0 sig : Signature ⦄ where
+
+  only  : Value α0 → Pattern α0
+  onlys : Values αs0 → Patterns αs0
+
+  only (con c vs) = con c (onlys vs)
+
+  onlys ⌈⌉ = ⌈⌉
+  onlys (v ◂ vs) = only v ◂ onlys vs
+
+  {-# COMPILE AGDA2HS only #-}
+  {-# COMPILE AGDA2HS onlys #-}
 
 --------------------------------------------------------------------------------
 -- Non-empty axiom
