@@ -78,13 +78,13 @@ syntax InstanceMatrix P vs = P ≼** vs
 P ≼** vs = Any (λ ps → ps ≼* vs) P
 {-# COMPILE AGDA2HS InstanceMatrix #-}
 
-@0 _⋠_ : (p : Pattern α0) (v : Value α0) → Type
+_⋠_ : (@0 p : Pattern α0) (@0 v : Value α0) → Type
 p ⋠ v = ¬ p ≼ v
 
-@0 _⋠*_ : (ps : Patterns αs0) (vs : Values αs0) → Type
+_⋠*_ : (@0 ps : Patterns αs0) (@0 vs : Values αs0) → Type
 ps ⋠* vs = ¬ ps ≼* vs
 
-@0 _⋠**_ : (P : PatternMatrix αs0) (vs : Values αs0) → Type
+_⋠**_ : (@0 P : PatternMatrix αs0) (@0 vs : Values αs0) → Type
 P ⋠** vs = ¬ P ≼** vs
 
 --------------------------------------------------------------------------------
