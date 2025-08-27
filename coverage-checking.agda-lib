@@ -1,4 +1,4 @@
 name: coverage-checking
 include: src
-depend: standard-library base containers
+depend: standard-library agda2hs-base agda2hs-containers
 flags: --with-K --erasure --no-import-sorts

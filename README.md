@@ -42,4 +42,4 @@ _ = refl
 
 This formalization is compatible with agda2hs, allowing us to extract readable Haskell code from it!
 
-Tested with Agda v2.7.0, agda-stdlib v2.0, and agda2hs 39e9b0c.
+Tested with Agda v2.8.0, agda-stdlib v2.2, and agda2hs 94e360b.
