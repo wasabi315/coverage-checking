@@ -49,26 +49,28 @@ infixr 5 `consNonEmpty`
 consNonEmpty :: a -> NonEmpty a -> NonEmpty a
 consNonEmpty x (MkNonEmpty y ys) = MkNonEmpty x (y : ys)
 
+bindNonEmpty :: NonEmpty a -> (a -> NonEmpty b) -> NonEmpty b
+bindNonEmpty (MkNonEmpty x xs) f
+  = case f x of
+        MkNonEmpty y ys -> MkNonEmpty y
+                             (ys ++
+                                (xs >>=
+                                   \case
+                                       MkNonEmpty x xs -> x : xs
+                                     . f))
+
 instance Functor NonEmpty where
     fmap f (MkNonEmpty x xs) = MkNonEmpty (f x) (map f xs)
 
 instance Applicative NonEmpty where
     pure x = MkNonEmpty x []
-    MkNonEmpty f fs <*> MkNonEmpty x xs
-      = MkNonEmpty (f x) (map f xs ++ (fs <*> xs))
-    pure x = MkNonEmpty x []
-    MkNonEmpty f fs <*> MkNonEmpty x xs
-      = MkNonEmpty (f x) (map f xs ++ (fs <*> xs))
+    fs <*> xs
+      = bindNonEmpty fs (\ f -> bindNonEmpty xs (\ x -> pure (f x)))
+    xs <* ys = bindNonEmpty xs (\ x -> bindNonEmpty ys (\ _ -> pure x))
+    xs *> ys = bindNonEmpty xs (\ _ -> bindNonEmpty ys pure)
 
 instance Monad NonEmpty where
-    MkNonEmpty x xs >>= f
-      = case f x of
-            MkNonEmpty y ys -> MkNonEmpty y
-                                 (ys ++
-                                    (xs >>=
-                                       \case
-                                           MkNonEmpty x xs -> x : xs
-                                         . f))
+    (>>=) = bindNonEmpty
 
 instance Semigroup (NonEmpty a) where
     MkNonEmpty x xs <> MkNonEmpty y ys = MkNonEmpty x (xs ++ (y : ys))

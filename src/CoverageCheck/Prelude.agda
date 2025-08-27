@@ -15,7 +15,7 @@ open import Haskell.Prelude public
          Either; Left; Right; either;
          Semigroup; _<>_;
          Functor; DefaultFunctor; fmap;
-         Applicative; DefaultApplicative; pure; _<*>_;
+         Applicative; DefaultApplicative; pure; _<*>_; _<*_; _*>_;
          Monad; DefaultMonad; _>>=_;
          _≡_; refl)
 
@@ -251,6 +251,11 @@ consNonEmpty x (y ◂ ys) = x ◂ (y ∷ ys)
 {-# COMPILE AGDA2HS consNonEmpty #-}
 syntax consNonEmpty x xs = x ◂′ xs
 
+bindNonEmpty : {a b : Type} → NonEmpty a → (a → NonEmpty b) → NonEmpty b
+bindNonEmpty (x ◂ xs) f = case f x of λ where
+  (y ◂ ys) → y ◂ ys ++ (xs >>= (toListNonEmpty ∘ f))
+{-# COMPILE AGDA2HS bindNonEmpty #-}
+
 instance
   iDefaultFunctorNonEmpty : DefaultFunctor NonEmpty
   iDefaultFunctorNonEmpty .DefaultFunctor.fmap f (x ◂ xs) = f x ◂ map f xs
@@ -259,17 +264,15 @@ instance
   iFunctorNonEmpty = record {DefaultFunctor iDefaultFunctorNonEmpty}
   {-# COMPILE AGDA2HS iFunctorNonEmpty #-}
 
-  iDefaultApplicativeNonEmpty : DefaultApplicative NonEmpty
-  iDefaultApplicativeNonEmpty .DefaultApplicative.pure x = x ◂ []
-  iDefaultApplicativeNonEmpty .DefaultApplicative._<*>_ (f ◂ fs) (x ◂ xs) = f x ◂ map f xs ++ (fs <*> xs)
-
   iApplicativeNonEmpty : Applicative NonEmpty
-  iApplicativeNonEmpty = record {DefaultApplicative iDefaultApplicativeNonEmpty}
+  iApplicativeNonEmpty .pure x = x ◂ []
+  iApplicativeNonEmpty ._<*>_ fs xs = bindNonEmpty fs λ f → bindNonEmpty xs λ x → pure (f x)
+  iApplicativeNonEmpty ._<*_  xs ys = bindNonEmpty xs λ x → bindNonEmpty ys λ _ → pure x
+  iApplicativeNonEmpty ._*>_  xs ys = bindNonEmpty xs λ _ → bindNonEmpty ys λ y → pure y
   {-# COMPILE AGDA2HS iApplicativeNonEmpty #-}
 
   iDefaultMonadNonEmpty : DefaultMonad NonEmpty
-  iDefaultMonadNonEmpty .DefaultMonad._>>=_ (x ◂ xs) f =
-    case f x of λ where (y ◂ ys) → y ◂ ys ++ (xs >>= (toListNonEmpty ∘ f))
+  iDefaultMonadNonEmpty .DefaultMonad._>>=_ = bindNonEmpty
 
   iMonadNonEmpty : Monad NonEmpty
   iMonadNonEmpty = record {DefaultMonad iDefaultMonadNonEmpty}
