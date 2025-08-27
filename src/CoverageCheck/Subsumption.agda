@@ -24,7 +24,7 @@ private
     @0 d0 : NameData
 
 --------------------------------------------------------------------------------
--- Branch selection
+-- Subsumption
 
 data Subsumption  : (@0 p q : Pattern α0)     → Type
 data Subsumptions : (@0 ps qs : Patterns αs0) → Type

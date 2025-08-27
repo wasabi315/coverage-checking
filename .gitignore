@@ -1,5 +1,4 @@
 *.agdai
 MAlonzo/**
 _build
-lib
 dist-newstyle

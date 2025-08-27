@@ -1,0 +1,2 @@
+module CoverageCheck.GlobalScope where
+
