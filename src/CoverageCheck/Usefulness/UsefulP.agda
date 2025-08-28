@@ -33,14 +33,14 @@ private
 module _ ⦃ @0 sig : Signature ⦄ (@0 P : PatternMatrix αs0) (@0 ps : Patterns αs0) where
 
   -- ps is useful with respect to P iff there exists a pattern vector qs such that
-  --   1. there exists a value vector vs that matches qs
+  --   1. qs is not empty (that is, there exists a value vector vs that matches qs)
   --   2. all rows of P are disjoint from qs
   --   3. ps subsumes qs
   record UsefulP' : Type where
     constructor ⟪_,_,_,_⟫
     field
       qs       : Patterns αs0
-      @0 {vs}     : Values αs0
+      @0 {vs}  : Values αs0
       @0 qs≼vs : qs ≼* vs
       @0 P#qs  : P #** qs
       @0 ps⊆qs : ps ⊆* qs
@@ -176,16 +176,13 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ◂ αs0)} 
     fmap (usefulPWildCompCase' c) hs'
   {-# COMPILE AGDA2HS usefulPWildCompCase #-}
 
-  @0 usefulPWildCompCaseInv' : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
-    → (qs : Patterns (TyData d ◂ αs0)) {vs : Values (TyData d ◂ αs0)}
-    → @0 qs ≼* vs
-    → @0 P #** qs
-    → @0 (— ◂ ps) ⊆* qs
+  usefulPWildCompCaseInv' : ∀ qs {vs}
+    → qs ≼* vs → P #** qs → (— ◂ ps) ⊆* qs
     → Σ[ c ∈ NameCon d ] UsefulP' (specialize c P) (—* ◂◂ᵖ ps)
-  usefulPWildCompCaseInv' (— ◂ qs) (—≼ ◂ is) disj (_ ◂ ss) =
-    ( inhabCon
+  usefulPWildCompCaseInv' (— ◂ qs) {con c vs ◂ _} (—≼ ◂ is) disj (_ ◂ ss) =
+    ( c
     , ⟪ —* ◂◂ᵖ qs
-      , iWilds {vs = inhabArgs} ◂◂ⁱ is
+      , iWilds {vs = vs} ◂◂ⁱ is
       , specialize-preserves-#**-wild disj
       , —⊆* ◂◂ˢ ss ⟫)
   usefulPWildCompCaseInv' (con c qs' ◂ qs) (con≼ is' ◂ is) disj (s ◂ ss) =
@@ -228,8 +225,7 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ◂ αs0)} 
           ⟪ con c —* ◂ qs
           , con≼ (iWilds {vs = tabulateValues λ _ → nonEmptyAxiom}) ◂ is
           , default-preserves-#**⁻ h disj
-          , —⊆ ◂ ss ⟫
-          )
+          , —⊆ ◂ ss ⟫)
       hs
   {-# COMPILE AGDA2HS usefulPWildMissCase' #-}
 

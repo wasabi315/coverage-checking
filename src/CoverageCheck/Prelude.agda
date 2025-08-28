@@ -144,7 +144,7 @@ pattern there h = AnyThere h
 
 module _ {a : Type} {p : @0 a → Type} where
 
-  All¬⇒¬Any : ∀ {xs} → All (λ x → ¬ p x) xs → ¬ Any p xs
+  All¬⇒¬Any : ∀ {@0 xs} → All (λ x → ¬ p x) xs → ¬ Any p xs
   All¬⇒¬Any (¬p ◂ _)  (here  p) = ¬p p
   All¬⇒¬Any (_  ◂ ¬p) (there p) = All¬⇒¬Any ¬p p
 
@@ -152,21 +152,21 @@ module _ {a : Type} {p : @0 a → Type} where
   ¬Any⇒All¬ []       ¬p = ⌈⌉
   ¬Any⇒All¬ (x ∷ xs) ¬p = ¬p ∘ here ◂ ¬Any⇒All¬ xs (¬p ∘ there)
 
-  ++Any⁺ˡ : ∀ {xs ys} → Any p xs → Any p (xs ++ ys)
+  ++Any⁺ˡ : ∀ {@0 xs ys} → Any p xs → Any p (xs ++ ys)
   ++Any⁺ˡ (here x)  = here x
   ++Any⁺ˡ (there h) = there (++Any⁺ˡ h)
 
-  ++Any⁺ʳ : ∀ {xs ys} → Any p ys → Any p (xs ++ ys)
+  ++Any⁺ʳ : ∀ {xs} {@0 ys} → Any p ys → Any p (xs ++ ys)
   ++Any⁺ʳ {[]}     h = h
   ++Any⁺ʳ {x ∷ xs} h = there (++Any⁺ʳ h)
 
-  ++Any⁻ : ∀ xs {ys} → Any p (xs ++ ys) → Either (Any p xs) (Any p ys)
+  ++Any⁻ : ∀ xs {@0 ys} → Any p (xs ++ ys) → Either (Any p xs) (Any p ys)
   ++Any⁻ []       h         = Right h
   ++Any⁻ (x ∷ xs) (here h)  = Left (here h)
   ++Any⁻ (x ∷ xs) (there h) = mapEither there id (++Any⁻ xs h)
 
 
-module @0 _ {a b : Type} {p : @0 a → Type} {q : @0 b → Type} {@0 f : a → List b} where
+module _ {a b : Type} {p : @0 a → Type} {q : @0 b → Type} {f : a → List b} where
 
   gconcatMapAny⁺ :
       (∀ {x} → p x → Any q (f x))

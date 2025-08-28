@@ -122,8 +122,8 @@ module _ ⦃ @0 sig : Signature ⦄ where
   P #** qs = ∀ {vs} → P ≼** vs → qs ≼* vs → ⊥
 
 
-module @0 _ ⦃ @0 sig : Signature ⦄
-  {P : PatternMatrix (α0 ◂ αs0)} {p q : Pattern α0} {ps : Patterns αs0}
+module _ ⦃ @0 sig : Signature ⦄
+  {@0 P : PatternMatrix (α0 ◂ αs0)} {@0 p q : Pattern α0} {ps : Patterns αs0}
   where
 
   #-∣ˡ : P #** (p ∣ q ◂ ps) → P #** (p ◂ ps)
