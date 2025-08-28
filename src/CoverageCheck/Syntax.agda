@@ -218,8 +218,12 @@ module _ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄ w
   inhabCon = fst inhab'
   {-# COMPILE AGDA2HS inhabCon inline #-}
 
+  inhabArgs : ∀ {d} → Values (argsTy (dataDefs sig d) inhabCon)
+  inhabArgs = snd inhab'
+  {-# COMPILE AGDA2HS inhabArgs inline #-}
+
   inhab : ∀ {d} → Value (TyData d)
-  inhab = con inhabCon (snd inhab')
+  inhab = con inhabCon inhabArgs
   {-# COMPILE AGDA2HS inhab #-}
 
   inhabAt : (c : NameCon d) → Value (TyData d)

@@ -32,17 +32,29 @@ private
 
 module _ ⦃ @0 sig : Signature ⦄ (@0 P : PatternMatrix αs0) (@0 ps : Patterns αs0) where
 
-  UsefulP' : Type
-  UsefulP' = ∃[ qs ∈ Patterns αs0 ] (P #** qs) × (ps ⊆* qs)
+  -- ps is useful with respect to P iff there exists a pattern vector qs such that
+  --   1. there exists a value vector vs that matches qs
+  --   2. all rows of P are disjoint from qs
+  --   3. ps subsumes qs
+  record UsefulP' : Type where
+    constructor ⟪_,_,_,_⟫
+    field
+      qs       : Patterns αs0
+      @0 {vs}     : Values αs0
+      @0 qs≼vs : qs ≼* vs
+      @0 P#qs  : P #** qs
+      @0 ps⊆qs : ps ⊆* qs
+
+  open UsefulP'
 
   record UsefulP : Type where
     constructor MkUsefulP
     field
       witnesses : NonEmpty UsefulP'
 
-  open UsefulP  public
+  open UsefulP public
 
-  {-# COMPILE AGDA2HS UsefulP' inline  #-}
+  {-# COMPILE AGDA2HS UsefulP' unboxed #-}
   {-# COMPILE AGDA2HS UsefulP  newtype #-}
 
 --------------------------------------------------------------------------------
@@ -52,19 +64,19 @@ module _ ⦃ @0 sig : Signature ⦄ (@0 P : PatternMatrix αs0) (@0 ps : Pattern
 module _ ⦃ @0 sig : Signature ⦄ where
 
   usefulPNilOkCase : UsefulP [] ⌈⌉
-  usefulPNilOkCase = MkUsefulP ((⌈⌉ ⟨ (λ ()) , ⌈⌉ ⟩) ◂ [])
+  usefulPNilOkCase = MkUsefulP (⟪ ⌈⌉ , ⌈⌉ , (λ ()) , ⌈⌉ ⟫ ◂ [])
   {-# COMPILE AGDA2HS usefulPNilOkCase #-}
 
   usefulPNilBadCase : {ps : Patterns ⌈⌉} {P : PatternMatrix ⌈⌉} → ¬ UsefulP (ps ∷ P) ⌈⌉
-  usefulPNilBadCase {ps = ⌈⌉} (MkUsefulP ((⌈⌉ ⟨ h , _ ⟩) ◂ _)) =
+  usefulPNilBadCase {ps = ⌈⌉} (MkUsefulP (⟪ ⌈⌉ , _ , h , _ ⟫ ◂ _)) =
     contradiction ⌈⌉ (h (here ⌈⌉))
 
 
 module _ ⦃ @0 sig : Signature ⦄ {@0 P : PatternMatrix (α0 ◂ αs0)} {@0 r₁ r₂ : Pattern α0} {@0 ps : Patterns αs0} where
 
   usefulPOrCaseL' : UsefulP' P (r₁ ◂ ps) → UsefulP' P (r₁ ∣ r₂ ◂ ps)
-  usefulPOrCaseL' ((q ◂ qs) ⟨ disj , s ◂ ss ⟩) =
-    (q ◂ qs) ⟨ disj , (∣⊆ˡ s ◂ ss) ⟩
+  usefulPOrCaseL' ⟪ q ◂ qs , inh , disj , s ◂ ss ⟫ =
+    ⟪ q ◂ qs , inh , disj , ∣⊆ˡ s ◂ ss ⟫
   {-# COMPILE AGDA2HS usefulPOrCaseL' transparent #-}
 
   usefulPOrCaseList : List (UsefulP' P (r₁ ◂ ps)) → List (UsefulP' P (r₁ ∣ r₂ ◂ ps))
@@ -77,8 +89,8 @@ module _ ⦃ @0 sig : Signature ⦄ {@0 P : PatternMatrix (α0 ◂ αs0)} {@0 r�
   {-# COMPILE AGDA2HS usefulPOrCaseL transparent #-}
 
   usefulPOrCaseR' : UsefulP' P (r₂ ◂ ps) → UsefulP' P (r₁ ∣ r₂ ◂ ps)
-  usefulPOrCaseR' ((q ◂ qs) ⟨ disj , s ◂ ss ⟩) =
-    (q ◂ qs) ⟨ disj , (∣⊆ʳ s ◂ ss) ⟩
+  usefulPOrCaseR' ⟪ q ◂ qs , inh , disj , s ◂ ss ⟫ =
+    ⟪ q ◂ qs , inh , disj , ∣⊆ʳ s ◂ ss ⟫
   {-# COMPILE AGDA2HS usefulPOrCaseR' transparent #-}
 
   usefulPOrCaseRList : List (UsefulP' P (r₂ ◂ ps)) → List (UsefulP' P (r₁ ∣ r₂ ◂ ps))
@@ -97,8 +109,10 @@ module _ ⦃ @0 sig : Signature ⦄ {@0 P : PatternMatrix (α0 ◂ αs0)} {@0 r�
   {-# COMPILE AGDA2HS usefulPOrCase #-}
 
   @0 usefulPOrCaseInv' : UsefulP' P (r₁ ∣ r₂ ◂ ps) → Either (UsefulP' P (r₁ ◂ ps)) (UsefulP' P (r₂ ◂ ps))
-  usefulPOrCaseInv' (qs ⟨ disj , ∣⊆ˡ s ◂ ss ⟩) = Left (qs ⟨ disj , s ◂ ss ⟩)
-  usefulPOrCaseInv' (qs ⟨ disj , ∣⊆ʳ s ◂ ss ⟩) = Right (qs ⟨ disj , s ◂ ss ⟩)
+  usefulPOrCaseInv' ⟪ qs , inh , disj , ∣⊆ˡ s ◂ ss ⟫ =
+    Left (⟪ qs , inh , disj , s ◂ ss ⟫)
+  usefulPOrCaseInv' ⟪ qs , inh , disj , ∣⊆ʳ s ◂ ss ⟫ =
+    Right (⟪ qs , inh , disj , s ◂ ss ⟫)
 
   @0 usefulPOrCaseInv : UsefulP P (r₁ ∣ r₂ ◂ ps) → These (UsefulP P (r₁ ◂ ps)) (UsefulP P (r₂ ◂ ps))
   usefulPOrCaseInv (MkUsefulP hs) = mapThese MkUsefulP MkUsefulP
@@ -108,10 +122,17 @@ module _ ⦃ @0 sig : Signature ⦄ {@0 P : PatternMatrix (α0 ◂ αs0)} {@0 r�
 module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ◂ αs0)} {c : NameCon d} {@0 rs : Patterns (argsTy (dataDefs sig d) c)} {@0 ps : Patterns αs0} where
 
   usefulPConCase' : UsefulP' (specialize c P) (rs ◂◂ᵖ ps) → UsefulP' P (con c rs ◂ ps)
-  usefulPConCase' (qs ⟨ disj , ss ⟩) =
+  usefulPConCase' ⟪ qs , is , disj , ss ⟫ =
     case splitSubsumptions rs ss of λ where
       ((qs₁ , qs₂) ⟨ refl , (ss₁ , ss₂) ⟩) →
-        (con c qs₁ ◂ qs₂) ⟨ specialize-preserves-#**⁻ disj , (con⊆ ss₁ ◂ ss₂) ⟩
+        let @0 h : ∃[ vs ∈ _ ] (con c qs₁ ◂ qs₂ ≼* vs)
+            h = case splitInstances qs₁ is of λ where
+              (_ ⟨ refl , (is₁ , is₂) ⟩) → _ ⟨ con≼ is₁ ◂ is₂ ⟩
+         in ⟪ con c qs₁ ◂ qs₂
+            , proof h
+            , specialize-preserves-#**⁻ disj
+            , con⊆ ss₁ ◂ ss₂ ⟫
+
   {-# COMPILE AGDA2HS usefulPConCase' #-}
 
   usefulPConCase : UsefulP (specialize c P) (rs ◂◂ᵖ ps) → UsefulP P (con c rs ◂ ps)
@@ -122,8 +143,8 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ◂ αs0)} 
 module _ ⦃ @0 sig : Signature ⦄ {@0 P : PatternMatrix (TyData d0 ◂ αs0)} {@0 c : NameCon d0} {@0 rs : Patterns (argsTy (dataDefs sig d0) c)} {@0 ps : Patterns αs0} where
 
   usefulPConCaseInv' : UsefulP' P (con c rs ◂ ps) → UsefulP' (specialize c P) (rs ◂◂ᵖ ps)
-  usefulPConCaseInv' ((con c qs' ◂ qs) ⟨ disj , con⊆ ss' ◂ ss ⟩) =
-    (qs' ◂◂ᵖ qs) ⟨ specialize-preserves-#** disj , (ss' ◂◂ᵇ ss) ⟩
+  usefulPConCaseInv' ⟪ con c qs' ◂ qs , con≼ is' ◂ is , disj , con⊆ ss' ◂ ss ⟫ =
+    ⟪ qs' ◂◂ᵖ qs , is' ◂◂ⁱ is , specialize-preserves-#** disj , ss' ◂◂ˢ ss ⟫
 
   usefulPConCaseInv : UsefulP P (con c rs ◂ ps) → UsefulP (specialize c P) (rs ◂◂ᵖ ps)
   usefulPConCaseInv (MkUsefulP hs) = MkUsefulP (fmap usefulPConCaseInv' hs)
@@ -135,10 +156,16 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ◂ αs0)} 
   usefulPWildCompCase' : (c : NameCon d)
     → UsefulP' (specialize c P) (—* ◂◂ᵖ ps)
     → UsefulP' P (— ◂ ps)
-  usefulPWildCompCase' c (qs ⟨ disj , ss ⟩) =
+  usefulPWildCompCase' c ⟪ qs , is , disj , ss ⟫ =
     case splitSubsumptions {αs = argsTy (dataDefs sig d) c} —* ss of λ where
       ((qs₁ , qs₂) ⟨ refl , (ss₁ , ss₂) ⟩) →
-        (con c qs₁ ◂ qs₂) ⟨ specialize-preserves-#**⁻ disj , —⊆ ◂ ss₂ ⟩
+        let @0 h : ∃[ vs ∈ _ ] (con c qs₁ ◂ qs₂ ≼* vs)
+            h = case splitInstances qs₁ is of λ where
+              (_ ⟨ refl , (is₁ , is₂) ⟩) → _ ⟨ con≼ is₁ ◂ is₂ ⟩
+         in ⟪ con c qs₁ ◂ qs₂
+            , proof h
+            , specialize-preserves-#**⁻ disj
+            , —⊆ ◂ ss₂ ⟫
   {-# COMPILE AGDA2HS usefulPWildCompCase' #-}
 
   usefulPWildCompCase :
@@ -149,25 +176,35 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ◂ αs0)} 
     fmap (usefulPWildCompCase' c) hs'
   {-# COMPILE AGDA2HS usefulPWildCompCase #-}
 
-  usefulPWildCompCaseInv' : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
-    → (qs : Patterns (TyData d ◂ αs0))
+  @0 usefulPWildCompCaseInv' : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+    → (qs : Patterns (TyData d ◂ αs0)) {vs : Values (TyData d ◂ αs0)}
+    → @0 qs ≼* vs
     → @0 P #** qs
     → @0 (— ◂ ps) ⊆* qs
-    → NonEmpty (Σ[ c ∈ NameCon d ] UsefulP' (specialize c P) (—* ◂◂ᵖ ps))
-  usefulPWildCompCaseInv' (— ◂ qs) disj (s ◂ ss) =
-    (inhabCon , ((—* ◂◂ᵖ qs) ⟨ (specialize-preserves-#**-wild disj , —⊆* ◂◂ᵇ ss) ⟩)) ◂ []
-  usefulPWildCompCaseInv' (con c qs' ◂ qs) disj (s ◂ ss) =
-    ((c , ((qs' ◂◂ᵖ qs) ⟨ (specialize-preserves-#** disj , —⊆* ◂◂ᵇ ss) ⟩))) ◂ []
-  usefulPWildCompCaseInv' (q₁ ∣ q₂ ◂ qs) disj (s ◂ ss) =
-    usefulPWildCompCaseInv' (q₁ ◂ qs) (#-∣ˡ disj) (—⊆ ◂ ss) <>
-    usefulPWildCompCaseInv' (q₂ ◂ qs) (#-∣ʳ disj) (—⊆ ◂ ss)
+    → Σ[ c ∈ NameCon d ] UsefulP' (specialize c P) (—* ◂◂ᵖ ps)
+  usefulPWildCompCaseInv' (— ◂ qs) (—≼ ◂ is) disj (_ ◂ ss) =
+    ( inhabCon
+    , ⟪ —* ◂◂ᵖ qs
+      , iWilds {vs = inhabArgs} ◂◂ⁱ is
+      , specialize-preserves-#**-wild disj
+      , —⊆* ◂◂ˢ ss ⟫)
+  usefulPWildCompCaseInv' (con c qs' ◂ qs) (con≼ is' ◂ is) disj (s ◂ ss) =
+    ( c
+    , ⟪ qs' ◂◂ᵖ qs
+      , is' ◂◂ⁱ is
+      , specialize-preserves-#** disj
+      , —⊆* ◂◂ˢ ss ⟫)
+  usefulPWildCompCaseInv' (q₁ ∣ q₂ ◂ qs) (∣≼ˡ i ◂ is) disj (SCons s ss) =
+    usefulPWildCompCaseInv' (q₁ ◂ qs) (i ◂ is) (#-∣ˡ disj) (—⊆ ◂ ss)
+  usefulPWildCompCaseInv' (q₁ ∣ q₂ ◂ qs) (∣≼ʳ i ◂ is) disj (SCons s ss) =
+    usefulPWildCompCaseInv' (q₂ ◂ qs) (i ◂ is) (#-∣ʳ disj) (—⊆ ◂ ss)
 
   @0 usefulPWildCompCaseInv : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
     → UsefulP P (— ◂ ps)
     → NonEmpty (Σ[ c ∈ NameCon d ] UsefulP (specialize c P) (—* ◂◂ᵖ ps))
   usefulPWildCompCaseInv (MkUsefulP hs) = do
-    (qs ⟨ disj , ss ⟩) ← hs
-    (c , h') ← usefulPWildCompCaseInv' qs disj ss
+    ⟪ qs , is , disj , ss ⟫ ← hs
+    let (c , h') = usefulPWildCompCaseInv' qs is disj ss
     pure (c , MkUsefulP (h' ◂ []))
 
 
@@ -179,12 +216,20 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ◂ αs0)} 
       Either (Erase (∀ c → c ∉** P)) (NonEmpty (∃[ c ∈ NameCon d ] c ∉** P))
     → UsefulP' (default_ P) ps
     → NonEmpty (UsefulP' P (— ◂ ps))
-  usefulPWildMissCase' (Left (Erased h)) (vs ⟨ disj , ss ⟩) =
-    ((— ◂ vs) ⟨ default-preserves-#**⁻-wild h disj , (—⊆ ◂ ss) ⟩) ◂ []
-  usefulPWildMissCase' (Right hs) (qs ⟨ disj , ss ⟩) =
+  usefulPWildMissCase' (Left (Erased h)) ⟪ qs , is , disj , ss ⟫ =
+    ⟪ — ◂ qs
+    , IWild {v = inhab} ◂ is
+    , default-preserves-#**⁻-wild h disj
+    , —⊆ ◂ ss ⟫ ◂ []
+  usefulPWildMissCase' (Right hs) ⟪ qs , is , disj , ss ⟫ =
     fmap
       (λ where
-        (c ⟨ h ⟩) → (con c —* ◂ qs) ⟨ default-preserves-#**⁻ h disj , (—⊆ ◂ ss) ⟩)
+        (c ⟨ h ⟩) →
+          ⟪ con c —* ◂ qs
+          , con≼ (iWilds {vs = tabulateValues λ _ → nonEmptyAxiom}) ◂ is
+          , default-preserves-#**⁻ h disj
+          , —⊆ ◂ ss ⟫
+          )
       hs
   {-# COMPILE AGDA2HS usefulPWildMissCase' #-}
 
@@ -196,8 +241,8 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ◂ αs0)} 
   {-# COMPILE AGDA2HS usefulPWildMissCase #-}
 
   usefulPWildMissCaseInv' : UsefulP' P (— ◂ ps) → UsefulP' (default_ P) ps
-  usefulPWildMissCaseInv' ((q ◂ qs) ⟨ disj , s ◂ ss ⟩) =
-    qs ⟨ default-preserves-#** disj , ss ⟩
+  usefulPWildMissCaseInv' ⟪ q ◂ qs , i ◂ is , disj , s ◂ ss ⟫ =
+    ⟪ qs , is , default-preserves-#** disj , ss ⟫
 
   usefulPWildMissCaseInv : UsefulP P (— ◂ ps) → UsefulP (default_ P) ps
   usefulPWildMissCaseInv (MkUsefulP hs) =

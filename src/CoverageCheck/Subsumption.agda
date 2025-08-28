@@ -121,7 +121,7 @@ appendSubsumptions : {@0 ps ps' : Patterns αs0} {@0 qs qs' : Patterns βs0}
 appendSubsumptions ⌈⌉ bs' = bs'
 appendSubsumptions (s ◂ ss) ss' = s ◂ appendSubsumptions ss ss'
 {-# COMPILE AGDA2HS appendSubsumptions #-}
-syntax appendSubsumptions bs bs' = bs ◂◂ᵇ bs'
+syntax appendSubsumptions bs bs' = bs ◂◂ˢ bs'
 
 unappendSubsumptions : (ps : Patterns αs0) {@0 ps' : Patterns αs0} {@0 qs qs' : Patterns βs0}
   → (ps ◂◂ᵖ qs) ⊆* (ps' ◂◂ᵖ qs')
@@ -129,7 +129,7 @@ unappendSubsumptions : (ps : Patterns αs0) {@0 ps' : Patterns αs0} {@0 qs qs' 
 unappendSubsumptions ⌈⌉       {⌈⌉}    bs       = ⌈⌉ , bs
 unappendSubsumptions (p ◂ ps) {_ ◂ _} (s ◂ ss) = first (s ◂_) (unappendSubsumptions ps ss)
 {-# COMPILE AGDA2HS unappendSubsumptions #-}
-syntax unappendSubsumptions ps bs = ps ◂◂ᵇ⁻ bs
+syntax unappendSubsumptions ps bs = ps ◂◂ˢ⁻ bs
 
 splitSubsumptions : (@0 ps : Patterns αs) {@0 qs : Patterns βs0} {rs : Patterns (αs ◂◂ βs0)}
   → @0 (ps ◂◂ᵖ qs) ⊆* rs

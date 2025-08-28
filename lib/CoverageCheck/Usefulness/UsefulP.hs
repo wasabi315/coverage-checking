@@ -45,8 +45,8 @@ usefulPWildCompCase sig d hs
 usefulPWildMissCase' ::
                      Signature ->
                        Name -> Either () (NonEmpty Name) -> Patterns -> NonEmpty Patterns
-usefulPWildMissCase' sig d (Left ()) vs
-  = MkNonEmpty (PCons PWild vs) []
+usefulPWildMissCase' sig d (Left ()) qs
+  = MkNonEmpty (PCons PWild qs) []
 usefulPWildMissCase' sig d (Right hs) qs
   = fmap
       (\ c -> PCons (PCon c (pWilds (argsTy (dataDefs sig d) c))) qs)
