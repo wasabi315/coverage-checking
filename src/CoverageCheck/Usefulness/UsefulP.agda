@@ -196,8 +196,8 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ◂ αs0)} 
   usefulPWildCompCaseInv' (q₁ ∣ q₂ ◂ qs) (∣≼ʳ i ◂ is) disj (SCons s ss) =
     usefulPWildCompCaseInv' (q₂ ◂ qs) (i ◂ is) (#-∣ʳ disj) (—⊆ ◂ ss)
 
-  @0 usefulPWildCompCaseInv : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
-    → UsefulP P (— ◂ ps)
+  @0 usefulPWildCompCaseInv :
+      UsefulP P (— ◂ ps)
     → NonEmpty (Σ[ c ∈ NameCon d ] UsefulP (specialize c P) (—* ◂◂ᵖ ps))
   usefulPWildCompCaseInv (MkUsefulP hs) = do
     ⟪ qs , is , disj , ss ⟫ ← hs
