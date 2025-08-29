@@ -148,7 +148,7 @@ module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}
   specialize-preserves-#**⁻ :
     specialize c P #** (rs₁ +++ rs₂) → P #** (con c rs₁ ∷ rs₂)
   specialize-preserves-#**⁻ disj {con c us ∷ vs} iss (con≼ is₁ ∷ is₂) =
-    disj (specialize-preserves-≼ iss) (is₁ ++ⁱ is₂)
+    disj (specialize-preserves-≼ iss) (is₁ ++ʰ is₂)
 
 
 module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}

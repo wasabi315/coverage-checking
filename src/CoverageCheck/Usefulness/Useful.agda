@@ -94,7 +94,7 @@ module _ ⦃ @0 sig : Signature ⦄ {@0 P : PatternMatrix (TyData d0 ∷ αs0)} 
 
   usefulConCaseInv : Useful P (con c rs ∷ ps) → Useful (specialize c P) (rs +++ ps)
   usefulConCaseInv (MkUseful (con c vs ∷ us) nis (con≼ is ∷ is')) =
-    MkUseful (vs +++ us) (contraposition specialize-preserves-≼⁻ nis) (is ++ⁱ is')
+    MkUseful (vs +++ us) (contraposition specialize-preserves-≼⁻ nis) (is ++ʰ is')
 
 
 module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ∷ αs0)} {@0 ps : Patterns αs0}
@@ -116,7 +116,7 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ∷ αs0)} 
       Useful P (— ∷ ps)
     → NonEmpty (Σ[ c ∈ NameCon d ] Useful (specialize c P) (—* +++ ps))
   usefulWildCompCaseInv (MkUseful (con c us ∷ vs) nis (_ ∷ is)) =
-    (c , MkUseful (us +++ vs) (contraposition specialize-preserves-≼⁻ nis) (—≼* ++ⁱ is)) ∷ []
+    (c , MkUseful (us +++ vs) (contraposition specialize-preserves-≼⁻ nis) (—≼* ++ʰ is)) ∷ []
 
 
 module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ∷ αs0)} {@0 ps : Patterns αs0}

@@ -10,9 +10,8 @@ module CoverageCheck.Instance
 
 private open module @0 G = Globals globals
 
-infixr 5 _∷_ appendInstances
-infix  4 Instance Instances InstanceMatrix _⋠_ _⋠*_ _⋠**_
-         decInstance decInstances
+infix 4 Instance Instances InstanceMatrix _⋠_ _⋠*_ _⋠**_
+        decInstance decInstances
 
 private
   variable
@@ -26,8 +25,8 @@ private
 --------------------------------------------------------------------------------
 -- Instance relation
 
-data Instance  : (@0 p : Pattern α0)    (@0 v : Value α0)    → Type
-data Instances : (@0 ps : Patterns αs0) (@0 vs : Values αs0) → Type
+data Instance : (@0 p : Pattern α0) (@0 v : Value α0)    → Type
+Instances : (@0 ps : Patterns αs0) (@0 vs : Values αs0) → Type
 
 syntax Instance  p v   = p ≼ v
 syntax Instances ps vs = ps ≼* vs
@@ -60,17 +59,9 @@ pattern ∣≼ˡ i   = IOrL i
 pattern ∣≼ʳ i   = IOrR i
 
 -- ps ≼* vs : each pattern in ps matches the corresponding value in vs
-data Instances where
-  INil  : [] ≼* []
-  ICons : {@0 p : Pattern α0} {@0 v : Value α0} {@0 ps : Patterns αs0} {@0 vs : Values αs0}
-    → (i : p ≼ v)
-    → (is : ps ≼* vs)
-    → (p ∷ ps) ≼* (v ∷ vs)
+Instances = HAll2 (λ p v → p ≼ v)
 
-{-# COMPILE AGDA2HS Instances deriving Show #-}
-
-pattern []       = INil
-pattern _∷_  i is = ICons i is
+{-# COMPILE AGDA2HS Instances #-}
 
 -- P ≼** vs : some row in P matches vs
 InstanceMatrix : (@0 P : PatternMatrix αs0) (@0 vs : Values αs0) → Type
@@ -126,23 +117,6 @@ module _ {@0 p : Pattern α0} {@0 v : Value α0} {@0 ps : Patterns αs0} {@0 vs 
   syntax iUncons = ∷ⁱ⁻
 
 
-appendInstances : {@0 ps : Patterns αs0} {@0 us : Values αs0} {@0 qs : Patterns βs0} {@0 vs : Values βs0}
-  → ps ≼* us
-  → qs ≼* vs
-  → (ps +++ qs) ≼* (us +++ vs)
-appendInstances []         is2 = is2
-appendInstances (i1 ∷ is1) is2 = i1 ∷ appendInstances is1 is2
-{-# COMPILE AGDA2HS appendInstances #-}
-syntax appendInstances is1 is2 = is1 ++ⁱ is2
-
-unappendInstances : (ps : Patterns αs0) {@0 us : Values αs0} {@0 qs : Patterns βs0} {@0 vs : Values βs0}
-  → (ps +++ qs) ≼* (us +++ vs)
-  → (ps ≼* us) × (qs ≼* vs)
-unappendInstances []       {[]}    is       = [] , is
-unappendInstances (p ∷ ps) {_ ∷ _} (i ∷ is) = first (i ∷_) (unappendInstances ps is)
-{-# COMPILE AGDA2HS unappendInstances #-}
-syntax unappendInstances = ++ⁱ⁻
-
 splitInstances : (@0 ps : Patterns αs) {@0 qs : Patterns βs0} {us : Values (αs ++ βs0)}
   → @0 (ps +++ qs) ≼* us
   → ∃[ (vs , ws) ∈ (Values αs × Values βs0) ] (vs +++ ws ≡ us) × ((ps ≼* vs) × (qs ≼* ws))
@@ -155,12 +129,12 @@ splitInstances {αs = α ∷ αs} (p ∷ ps) {us = u ∷ us} (i ∷ is) =
 module _ {@0 ps : Patterns αs0} {@0 vs : Values αs0} {@0 u : Value β0} {@0 us : Values βs} where
 
   wildHeadLemma : (—* +++ ps) ≼* (us +++ vs) → (— ∷ ps) ≼* (u ∷ vs)
-  wildHeadLemma h = case unappendInstances —* h of λ where
+  wildHeadLemma h = case ++ʰ⁻ —* h of λ where
     (_ , h') → —≼ ∷ h'
   {-# COMPILE AGDA2HS wildHeadLemma #-}
 
   wildHeadLemmaInv : (— ∷ ps) ≼* (u ∷ vs) → (—* +++ ps) ≼* (us +++ vs)
-  wildHeadLemmaInv (—≼ ∷ h) = —≼* ++ⁱ h
+  wildHeadLemmaInv (—≼ ∷ h) = —≼* ++ʰ h
   {-# COMPILE AGDA2HS wildHeadLemmaInv #-}
 
 
@@ -188,7 +162,7 @@ module _ {c : NameCon d0}
 
   conHeadLemma : (rs +++ ps) ≼* (us +++ vs)
     → (con c rs ∷ ps) ≼* (con c us ∷ vs)
-  conHeadLemma h = case unappendInstances rs h of λ where
+  conHeadLemma h = case ++ʰ⁻ rs h of λ where
     (h1 , h2) → con≼ h1 ∷ h2
   {-# COMPILE AGDA2HS conHeadLemma #-}
 
@@ -202,7 +176,7 @@ module _ {@0 c : NameCon d0}
 
   conHeadLemmaInv : (con c rs ∷ ps) ≼* (con c us ∷ vs)
     → (rs +++ ps) ≼* (us +++ vs)
-  conHeadLemmaInv (con≼ h ∷ h') = h ++ⁱ h'
+  conHeadLemmaInv (con≼ h ∷ h') = h ++ʰ h'
   {-# COMPILE AGDA2HS conHeadLemmaInv #-}
 
 

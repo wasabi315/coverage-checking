@@ -1,9 +1,9 @@
 module CoverageCheck.Subsumption where
 
 import Control.Arrow (first)
-import CoverageCheck.Instance (Instance(ICon, IOrL, IOrR, IWild), Instances(ICons, INil))
+import CoverageCheck.Instance (Instance(ICon, IOrL, IOrR, IWild), Instances)
 import CoverageCheck.Name (Name)
-import CoverageCheck.Prelude (All(Cons, Nil))
+import CoverageCheck.Prelude (All(Cons, Nil), HAll2(HCons, HNil))
 import CoverageCheck.Syntax (Patterns, Tys)
 
 data Subsumption = SWild
@@ -12,13 +12,12 @@ data Subsumption = SWild
                  | SOrR Subsumption
                      deriving Show
 
-data Subsumptions = SNil
-                  | SCons Subsumption Subsumptions
-                      deriving Show
+infix 4 `Subsumptions`
+type Subsumptions = HAll2 Subsumption
 
 sWilds :: Tys -> Subsumptions
-sWilds [] = SNil
-sWilds (α : αs) = SCons SWild (sWilds αs)
+sWilds [] = HNil
+sWilds (α : αs) = HCons SWild (sWilds αs)
 
 sOrInv :: Subsumption -> Either Subsumption Subsumption
 sOrInv (SOrL s) = Left s
@@ -26,18 +25,6 @@ sOrInv (SOrR s) = Right s
 
 sConInv :: Subsumption -> Subsumptions
 sConInv (SCon c ss) = ss
-
-infixr 5 `appendSubsumptions`
-appendSubsumptions :: Subsumptions -> Subsumptions -> Subsumptions
-appendSubsumptions SNil bs' = bs'
-appendSubsumptions (SCons s ss) ss'
-  = SCons s (appendSubsumptions ss ss')
-
-unappendSubsumptions ::
-                     Patterns -> Subsumptions -> (Subsumptions, Subsumptions)
-unappendSubsumptions Nil bs = (SNil, bs)
-unappendSubsumptions (Cons p ps) (SCons s ss)
-  = first (SCons s) (unappendSubsumptions ps ss)
 
 splitSubsumptions :: Tys -> Patterns -> (Patterns, Patterns)
 splitSubsumptions [] rs = (Nil, rs)
@@ -54,7 +41,7 @@ subsumeConCase :: Subsumptions -> Instance -> Instance
 subsumeConCase ss (ICon c is) = ICon c (subsumes ss is)
 
 subsumes :: Subsumptions -> Instances -> Instances
-subsumes SNil INil = INil
-subsumes (SCons s ss) (ICons i is)
-  = ICons (subsume s i) (subsumes ss is)
+subsumes HNil HNil = HNil
+subsumes (HCons s ss) (HCons i is)
+  = HCons (subsume s i) (subsumes ss is)
 

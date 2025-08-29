@@ -11,7 +11,6 @@ module CoverageCheck.Subsumption
 
 private open module @0 G = Globals globals
 
-infixr 5 _∷_  appendSubsumptions
 infix  4 Subsumption Subsumptions _⊈_ _⊈*_
 
 private
@@ -26,8 +25,8 @@ private
 --------------------------------------------------------------------------------
 -- Subsumption
 
-data Subsumption  : (@0 p q : Pattern α0)     → Type
-data Subsumptions : (@0 ps qs : Patterns αs0) → Type
+data Subsumption : (@0 p q : Pattern α0) → Type
+Subsumptions : (@0 ps qs : Patterns αs0) → Type
 
 syntax Subsumption  p  q  = p ⊆ q
 syntax Subsumptions ps qs = ps ⊆* qs
@@ -58,17 +57,9 @@ pattern con⊆ bs = SCon bs
 pattern ∣⊆ˡ s   = SOrL s
 pattern ∣⊆ʳ s   = SOrR s
 
-data Subsumptions where
-  SNil : [] ⊆* []
-  SCons : {@0 p q : Pattern α0} {@0 ps qs : Patterns αs0}
-    → (s : p ⊆ q)
-    → (ss : ps ⊆* qs)
-    → (p ∷ ps) ⊆* (q ∷ qs)
+Subsumptions = HAll2 (λ p q → p ⊆ q)
 
-{-# COMPILE AGDA2HS Subsumptions deriving Show #-}
-
-pattern []       = SNil
-pattern _∷_  s ss = SCons s ss
+{-# COMPILE AGDA2HS Subsumptions #-}
 
 _⊈_ : (@0 p q : Pattern α0) → Type
 p ⊈ q = ¬ p ⊆ q
@@ -106,23 +97,6 @@ module _ {@0 c : NameCon d0}
   syntax sConInv = con⊆⁻
 
 
-appendSubsumptions : {@0 ps ps' : Patterns αs0} {@0 qs qs' : Patterns βs0}
-  → (ps ⊆* ps')
-  → (qs ⊆* qs')
-  → (ps +++ qs) ⊆* (ps' +++ qs')
-appendSubsumptions [] bs' = bs'
-appendSubsumptions (s ∷ ss) ss' = s ∷ appendSubsumptions ss ss'
-{-# COMPILE AGDA2HS appendSubsumptions #-}
-syntax appendSubsumptions bs bs' = bs ++ˢ bs'
-
-unappendSubsumptions : (ps : Patterns αs0) {@0 ps' : Patterns αs0} {@0 qs qs' : Patterns βs0}
-  → (ps +++ qs) ⊆* (ps' +++ qs')
-  → (ps ⊆* ps') × (qs ⊆* qs')
-unappendSubsumptions []       {[]}    bs       = [] , bs
-unappendSubsumptions (p ∷ ps) {_ ∷ _} (s ∷ ss) = first (s ∷_) (unappendSubsumptions ps ss)
-{-# COMPILE AGDA2HS unappendSubsumptions #-}
-syntax unappendSubsumptions ps bs = ps ++ˢ⁻ bs
-
 splitSubsumptions : (@0 ps : Patterns αs) {@0 qs : Patterns βs0} {rs : Patterns (αs ++ βs0)}
   → @0 (ps +++ qs) ⊆* rs
   → ∃[ (rs₁ , rs₂) ∈ (Patterns αs × Patterns βs0) ] (rs₁ +++ rs₂ ≡ rs) × ((ps ⊆* rs₁) × (qs ⊆* rs₂))
@@ -131,7 +105,6 @@ splitSubsumptions {αs = α ∷ αs} (p ∷ ps) {rs = r ∷ rs} (s ∷ ss) =
   let rs' ⟨ eq , ss' ⟩ = splitSubsumptions ps ss in
   first (r ∷_) rs' ⟨ cong (r ∷_) eq , first (s ∷_) ss' ⟩
 {-# COMPILE AGDA2HS splitSubsumptions #-}
-
 
 subsume : {@0 p q : Pattern α0} {@0 v : Value α0}
   → p ⊆ q

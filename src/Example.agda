@@ -139,8 +139,7 @@ instance
 P : PatternMatrix (TyData ⟨list⟩ ∷ TyData ⟨list⟩ ∷ [])
 P =
   (nil ∷ —   ∷ []) ∷
-  (—   ∷ nil ∷ []) ∷
-  []
+  (—   ∷ nil ∷ []) ∷ []
 
 -- P is non-exhaustive, witnessed by the following list of patterns
 _ : decNonExhaustive P
@@ -158,8 +157,7 @@ Q =
   (one —    ∷ —        ∷ []) ∷
   (—        ∷ one —    ∷ []) ∷
   (cons — — ∷ —        ∷ []) ∷
-  (—        ∷ cons — — ∷ []) ∷
-  []
+  (—        ∷ cons — — ∷ []) ∷ []
 
 -- Q is exhaustive, so we get a total matching function of type `∀ vs → Match Q vs`
 _ : decNonExhaustive Q ≡ Left (Erased (the (∀ vs → Match Q vs) _))

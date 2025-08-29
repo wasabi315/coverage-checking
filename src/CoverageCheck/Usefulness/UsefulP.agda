@@ -144,7 +144,7 @@ module _ ⦃ @0 sig : Signature ⦄ {@0 P : PatternMatrix (TyData d0 ∷ αs0)} 
 
   usefulPConCaseInv' : UsefulP' P (con c rs ∷ ps) → UsefulP' (specialize c P) (rs +++ ps)
   usefulPConCaseInv' ⟪ con c qs' ∷ qs , con≼ is' ∷ is , disj , con⊆ ss' ∷ ss ⟫ =
-    ⟪ qs' +++ qs , is' ++ⁱ is , specialize-preserves-#** disj , ss' ++ˢ ss ⟫
+    ⟪ qs' +++ qs , is' ++ʰ is , specialize-preserves-#** disj , ss' ++ʰ ss ⟫
 
   usefulPConCaseInv : UsefulP P (con c rs ∷ ps) → UsefulP (specialize c P) (rs +++ ps)
   usefulPConCaseInv (MkUsefulP hs) = MkUsefulP (fmap usefulPConCaseInv' hs)
@@ -182,18 +182,18 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ∷ αs0)} 
   usefulPWildCompCaseInv' (— ∷ qs) {con c vs ∷ _} (—≼ ∷ is) disj (_ ∷ ss) =
     ( c
     , ⟪ —* +++ qs
-      , iWilds {vs = vs} ++ⁱ is
+      , iWilds {vs = vs} ++ʰ is
       , specialize-preserves-#**-wild disj
-      , —⊆* ++ˢ ss ⟫)
+      , —⊆* ++ʰ ss ⟫)
   usefulPWildCompCaseInv' (con c qs' ∷ qs) (con≼ is' ∷ is) disj (s ∷ ss) =
     ( c
     , ⟪ qs' +++ qs
-      , is' ++ⁱ is
+      , is' ++ʰ is
       , specialize-preserves-#** disj
-      , —⊆* ++ˢ ss ⟫)
-  usefulPWildCompCaseInv' (q₁ ∣ q₂ ∷ qs) (∣≼ˡ i ∷ is) disj (SCons s ss) =
+      , —⊆* ++ʰ ss ⟫)
+  usefulPWildCompCaseInv' (q₁ ∣ q₂ ∷ qs) (∣≼ˡ i ∷ is) disj (s ∷ ss) =
     usefulPWildCompCaseInv' (q₁ ∷ qs) (i ∷ is) (#-∣ˡ disj) (—⊆ ∷ ss)
-  usefulPWildCompCaseInv' (q₁ ∣ q₂ ∷ qs) (∣≼ʳ i ∷ is) disj (SCons s ss) =
+  usefulPWildCompCaseInv' (q₁ ∣ q₂ ∷ qs) (∣≼ʳ i ∷ is) disj (s ∷ ss) =
     usefulPWildCompCaseInv' (q₂ ∷ qs) (i ∷ is) (#-∣ʳ disj) (—⊆ ∷ ss)
 
   @0 usefulPWildCompCaseInv :
