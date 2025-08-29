@@ -7,13 +7,18 @@ mapEither f g (Right y) = Right (g y)
 
 data All p = Nil
            | Cons p (All p)
-               deriving Show
+               deriving (Eq, Show)
 
 headAll :: forall p . All p -> p
 headAll (Cons h _) = h
 
 tailAll :: forall p . All p -> All p
 tailAll (Cons _ hs) = hs
+
+infixr 5 `appendAll`
+appendAll :: forall p . All p -> All p -> All p
+appendAll Nil ys = ys
+appendAll (Cons x xs) ys = Cons x (appendAll xs ys)
 
 data Any p = Here p
            | There (Any p)
@@ -23,7 +28,7 @@ data First p = FHere p
              | FThere (First p)
                  deriving Show
 
-firstToAny :: forall a p . First p -> Any p
+firstToAny :: forall p . First p -> Any p
 firstToAny (FHere h) = Here h
 firstToAny (FThere h) = There (firstToAny h)
 

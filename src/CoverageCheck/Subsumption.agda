@@ -109,14 +109,14 @@ module _ {@0 c : NameCon d0}
 appendSubsumptions : {@0 ps ps' : Patterns αs0} {@0 qs qs' : Patterns βs0}
   → (ps ⊆* ps')
   → (qs ⊆* qs')
-  → (ps ++ᵖ qs) ⊆* (ps' ++ᵖ qs')
+  → (ps +++ qs) ⊆* (ps' +++ qs')
 appendSubsumptions [] bs' = bs'
 appendSubsumptions (s ∷ ss) ss' = s ∷ appendSubsumptions ss ss'
 {-# COMPILE AGDA2HS appendSubsumptions #-}
 syntax appendSubsumptions bs bs' = bs ++ˢ bs'
 
 unappendSubsumptions : (ps : Patterns αs0) {@0 ps' : Patterns αs0} {@0 qs qs' : Patterns βs0}
-  → (ps ++ᵖ qs) ⊆* (ps' ++ᵖ qs')
+  → (ps +++ qs) ⊆* (ps' +++ qs')
   → (ps ⊆* ps') × (qs ⊆* qs')
 unappendSubsumptions []       {[]}    bs       = [] , bs
 unappendSubsumptions (p ∷ ps) {_ ∷ _} (s ∷ ss) = first (s ∷_) (unappendSubsumptions ps ss)
@@ -124,8 +124,8 @@ unappendSubsumptions (p ∷ ps) {_ ∷ _} (s ∷ ss) = first (s ∷_) (unappendS
 syntax unappendSubsumptions ps bs = ps ++ˢ⁻ bs
 
 splitSubsumptions : (@0 ps : Patterns αs) {@0 qs : Patterns βs0} {rs : Patterns (αs ++ βs0)}
-  → @0 (ps ++ᵖ qs) ⊆* rs
-  → ∃[ (rs₁ , rs₂) ∈ (Patterns αs × Patterns βs0) ] (rs₁ ++ᵖ rs₂ ≡ rs) × ((ps ⊆* rs₁) × (qs ⊆* rs₂))
+  → @0 (ps +++ qs) ⊆* rs
+  → ∃[ (rs₁ , rs₂) ∈ (Patterns αs × Patterns βs0) ] (rs₁ +++ rs₂ ≡ rs) × ((ps ⊆* rs₁) × (qs ⊆* rs₂))
 splitSubsumptions {αs = []} [] {rs = rs} bs = ([] , rs) ⟨ refl , ([] , bs) ⟩
 splitSubsumptions {αs = α ∷ αs} (p ∷ ps) {rs = r ∷ rs} (s ∷ ss) =
   let rs' ⟨ eq , ss' ⟩ = splitSubsumptions ps ss in

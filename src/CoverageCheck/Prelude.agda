@@ -124,12 +124,13 @@ data All {@0 a : Type} (p : @0 a → Type) : (@0 xs : List a) → Type where
   Nil  : All p []
   Cons : ∀ {@0 x xs} → p x → All p xs → All p (x ∷ xs)
 
-{-# COMPILE AGDA2HS All deriving Show #-}
+{-# COMPILE AGDA2HS All deriving (Eq, Show) #-}
 
 pattern []       = Nil
 pattern _∷_ h hs = Cons h hs
 
 module _ {@0 a : Type} {p : @0 a → Type} where
+  infixr 5 appendAll
 
   headAll : ∀ {@0 x xs} → All p (x ∷ xs) → p x
   headAll (h ∷ _) = h
@@ -138,6 +139,12 @@ module _ {@0 a : Type} {p : @0 a → Type} where
   tailAll : ∀ {@0 x xs} → All p (x ∷ xs) → All p xs
   tailAll (_ ∷ hs) = hs
   {-# COMPILE AGDA2HS tailAll #-}
+
+  appendAll : ∀ {@0 xs ys} → All p xs → All p ys → All p (xs ++ ys)
+  appendAll []       ys = ys
+  appendAll (x ∷ xs) ys = x ∷ appendAll xs ys
+  {-# COMPILE AGDA2HS appendAll #-}
+  syntax appendAll xs ys = xs +++ ys
 
 
 data Any {@0 a : Type} (p : @0 a → Type) : (@0 xs : List a) → Type where
@@ -198,7 +205,7 @@ data First {@0 a : Type} (p : @0 a → Type) : (@0 xs : List a) → Type where
 pattern [_] h    = FHere h
 pattern _∷_ h hs = FThere h hs
 
-module _ {a : Type} {p : @0 a → Type} where
+module _ {@0 a : Type} {p : @0 a → Type} where
 
   firstToAny : ∀ {@0 xs} → First p xs → Any p xs
   firstToAny [ h ]   = here h

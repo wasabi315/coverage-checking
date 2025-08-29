@@ -1,6 +1,7 @@
 module CoverageCheck.Syntax where
 
 import CoverageCheck.Name (Name)
+import CoverageCheck.Prelude (All(Cons, Nil))
 
 data Ty = TyData Name
             deriving Show
@@ -14,49 +15,35 @@ newtype Signature = Signature{dataDefs :: Name -> Dataty}
 data Value = VCon Name Values
                deriving (Show, Eq)
 
-data Values = VNil
-            | VCons Value Values
-                deriving (Show, Eq)
-
-infixr 5 `appendValues`
-appendValues :: Values -> Values -> Values
-appendValues VNil vs = vs
-appendValues (VCons u us) vs = VCons u (appendValues us vs)
+type Values = All Value
 
 tabulateValues :: Tys -> (Ty -> Value) -> Values
-tabulateValues [] f = VNil
-tabulateValues (α : αs) f = VCons (f α) (tabulateValues αs f)
+tabulateValues [] f = Nil
+tabulateValues (α : αs) f = Cons (f α) (tabulateValues αs f)
 
 data Pattern = PWild
              | PCon Name Patterns
              | POr Pattern Pattern
                  deriving (Show, Eq)
 
-data Patterns = PNil
-              | PCons Pattern Patterns
-                  deriving (Show, Eq)
+type Patterns = All Pattern
 
 pWilds :: Tys -> Patterns
-pWilds [] = PNil
-pWilds (α : αs) = PCons PWild (pWilds αs)
+pWilds [] = Nil
+pWilds (α : αs) = Cons PWild (pWilds αs)
 
 headPattern :: Patterns -> Pattern
-headPattern (PCons p _) = p
+headPattern (Cons p _) = p
 
 tailPatterns :: Patterns -> Patterns
-tailPatterns (PCons _ ps) = ps
-
-infixr 5 `appendPatterns`
-appendPatterns :: Patterns -> Patterns -> Patterns
-appendPatterns PNil qs = qs
-appendPatterns (PCons p ps) qs = PCons p (appendPatterns ps qs)
+tailPatterns (Cons _ ps) = ps
 
 only :: Value -> Pattern
 only (VCon c vs) = PCon c (onlys vs)
 
 onlys :: Values -> Patterns
-onlys VNil = PNil
-onlys (VCons v vs) = PCons (only v) (onlys vs)
+onlys Nil = Nil
+onlys (Cons v vs) = Cons (only v) (onlys vs)
 
 inhab' :: Signature -> (Ty -> Value) -> Name -> (Name, Values)
 inhab' sig nonEmptyAxiom d

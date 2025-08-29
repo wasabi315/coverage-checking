@@ -129,14 +129,14 @@ module _ {@0 p : Pattern α0} {@0 v : Value α0} {@0 ps : Patterns αs0} {@0 vs 
 appendInstances : {@0 ps : Patterns αs0} {@0 us : Values αs0} {@0 qs : Patterns βs0} {@0 vs : Values βs0}
   → ps ≼* us
   → qs ≼* vs
-  → (ps ++ᵖ qs) ≼* (us ++ᵛ vs)
+  → (ps +++ qs) ≼* (us +++ vs)
 appendInstances []         is2 = is2
 appendInstances (i1 ∷ is1) is2 = i1 ∷ appendInstances is1 is2
 {-# COMPILE AGDA2HS appendInstances #-}
 syntax appendInstances is1 is2 = is1 ++ⁱ is2
 
 unappendInstances : (ps : Patterns αs0) {@0 us : Values αs0} {@0 qs : Patterns βs0} {@0 vs : Values βs0}
-  → (ps ++ᵖ qs) ≼* (us ++ᵛ vs)
+  → (ps +++ qs) ≼* (us +++ vs)
   → (ps ≼* us) × (qs ≼* vs)
 unappendInstances []       {[]}    is       = [] , is
 unappendInstances (p ∷ ps) {_ ∷ _} (i ∷ is) = first (i ∷_) (unappendInstances ps is)
@@ -144,8 +144,8 @@ unappendInstances (p ∷ ps) {_ ∷ _} (i ∷ is) = first (i ∷_) (unappendInst
 syntax unappendInstances = ++ⁱ⁻
 
 splitInstances : (@0 ps : Patterns αs) {@0 qs : Patterns βs0} {us : Values (αs ++ βs0)}
-  → @0 (ps ++ᵖ qs) ≼* us
-  → ∃[ (vs , ws) ∈ (Values αs × Values βs0) ] (vs ++ᵛ ws ≡ us) × ((ps ≼* vs) × (qs ≼* ws))
+  → @0 (ps +++ qs) ≼* us
+  → ∃[ (vs , ws) ∈ (Values αs × Values βs0) ] (vs +++ ws ≡ us) × ((ps ≼* vs) × (qs ≼* ws))
 splitInstances {αs = []}     []       {us = us}     is       = ([] , us) ⟨ refl , ([] , is) ⟩
 splitInstances {αs = α ∷ αs} (p ∷ ps) {us = u ∷ us} (i ∷ is) =
   let vsws ⟨ eq , is' ⟩ = splitInstances ps is in
@@ -154,12 +154,12 @@ splitInstances {αs = α ∷ αs} (p ∷ ps) {us = u ∷ us} (i ∷ is) =
 
 module _ {@0 ps : Patterns αs0} {@0 vs : Values αs0} {@0 u : Value β0} {@0 us : Values βs} where
 
-  wildHeadLemma : (—* ++ᵖ ps) ≼* (us ++ᵛ vs) → (— ∷ ps) ≼* (u ∷ vs)
+  wildHeadLemma : (—* +++ ps) ≼* (us +++ vs) → (— ∷ ps) ≼* (u ∷ vs)
   wildHeadLemma h = case unappendInstances —* h of λ where
     (_ , h') → —≼ ∷ h'
   {-# COMPILE AGDA2HS wildHeadLemma #-}
 
-  wildHeadLemmaInv : (— ∷ ps) ≼* (u ∷ vs) → (—* ++ᵖ ps) ≼* (us ++ᵛ vs)
+  wildHeadLemmaInv : (— ∷ ps) ≼* (u ∷ vs) → (—* +++ ps) ≼* (us +++ vs)
   wildHeadLemmaInv (—≼ ∷ h) = —≼* ++ⁱ h
   {-# COMPILE AGDA2HS wildHeadLemmaInv #-}
 
@@ -186,7 +186,7 @@ module _ {c : NameCon d0}
   {@0 us : Values αs} {@0 vs : Values βs0}
   where
 
-  conHeadLemma : (rs ++ᵖ ps) ≼* (us ++ᵛ vs)
+  conHeadLemma : (rs +++ ps) ≼* (us +++ vs)
     → (con c rs ∷ ps) ≼* (con c us ∷ vs)
   conHeadLemma h = case unappendInstances rs h of λ where
     (h1 , h2) → con≼ h1 ∷ h2
@@ -201,7 +201,7 @@ module _ {@0 c : NameCon d0}
   where
 
   conHeadLemmaInv : (con c rs ∷ ps) ≼* (con c us ∷ vs)
-    → (rs ++ᵖ ps) ≼* (us ++ᵛ vs)
+    → (rs +++ ps) ≼* (us +++ vs)
   conHeadLemmaInv (con≼ h ∷ h') = h ++ⁱ h'
   {-# COMPILE AGDA2HS conHeadLemmaInv #-}
 

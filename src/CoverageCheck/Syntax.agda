@@ -85,10 +85,9 @@ tyData-injective refl = refl
 
 module _ ⦃ @0 sig : Signature ⦄ where
   infixr 6 _∣_
-  infixr 5 _∷_ appendValues appendPatterns
 
-  data Value  : (@0 α : Ty) → Type
-  data Values : (@0 αs : Tys) → Type
+  data Value : (@0 α : Ty) → Type
+  Values : (@0 αs : Tys) → Type
 
   data Value where
     VCon : (c : NameCon d0)
@@ -97,21 +96,10 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
   pattern con c vs = VCon c vs
 
-  data Values where
-    VNil  : Values []
-    VCons : (v : Value α0) (vs : Values αs0) → Values (α0 ∷ αs0)
-
-  pattern []         = VNil
-  pattern _∷_ v vs   = VCons v vs
+  Values = All Value
 
   {-# COMPILE AGDA2HS Value  deriving (Show, Eq) #-}
-  {-# COMPILE AGDA2HS Values deriving (Show, Eq) #-}
-
-  appendValues : Values αs0 → Values βs0 → Values (αs0 ++ βs0)
-  appendValues []       vs = vs
-  appendValues (u ∷ us) vs = u ∷ appendValues us vs
-  syntax appendValues us vs = us ++ᵛ vs
-  {-# COMPILE AGDA2HS appendValues #-}
+  {-# COMPILE AGDA2HS Values #-}
 
   tabulateValues : (∀ α → Value α) → Values αs
   tabulateValues {[]}     f = []
@@ -119,7 +107,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
   {-# COMPILE AGDA2HS tabulateValues #-}
 
   data Pattern  : (@0 α : Ty) → Type
-  data Patterns : (@0 αs : Tys) → Type
+  Patterns : (@0 αs : Tys) → Type
 
   data Pattern where
     PWild : Pattern α0
@@ -132,19 +120,14 @@ module _ ⦃ @0 sig : Signature ⦄ where
   pattern con c ps  = PCon c ps
   pattern _∣_ p₁ p₂ = POr p₁ p₂
 
-  data Patterns where
-    PNil  : Patterns []
-    PCons : (p : Pattern α0) (ps : Patterns αs0) → Patterns (α0 ∷ αs0)
-
-  pattern []         = PNil
-  pattern _∷_  p ps   = PCons p ps
+  Patterns = All Pattern
 
   PatternMatrix : (@0 αs : Tys) → Type
   PatternMatrix αs = List (Patterns αs)
 
   {-# COMPILE AGDA2HS Pattern       deriving (Show, Eq) #-}
-  {-# COMPILE AGDA2HS Patterns      deriving (Show, Eq) #-}
-  {-# COMPILE AGDA2HS PatternMatrix inline #-}
+  {-# COMPILE AGDA2HS Patterns                          #-}
+  {-# COMPILE AGDA2HS PatternMatrix inline              #-}
 
   pWilds : Patterns αs -- αs is not erasable
   pWilds {αs = []}     = []
@@ -159,12 +142,6 @@ module _ ⦃ @0 sig : Signature ⦄ where
   tailPatterns : Patterns (α0 ∷ αs0) → Patterns αs0
   tailPatterns (_ ∷ ps) = ps
   {-# COMPILE AGDA2HS tailPatterns #-}
-
-  appendPatterns : Patterns αs0 → Patterns βs0 → Patterns (αs0 ++ βs0)
-  appendPatterns []       qs = qs
-  appendPatterns (p ∷ ps) qs = p ∷ appendPatterns ps qs
-  syntax appendPatterns ps qs = ps ++ᵖ qs
-  {-# COMPILE AGDA2HS appendPatterns #-}
 
 --------------------------------------------------------------------------------
 

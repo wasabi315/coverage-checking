@@ -1,9 +1,9 @@
 module CoverageCheck.Usefulness.UsefulP where
 
 import CoverageCheck.Name (Name)
-import CoverageCheck.Prelude (NonEmpty(MkNonEmpty), These(Both, That, This))
+import CoverageCheck.Prelude (All(Cons, Nil), NonEmpty(MkNonEmpty), These(Both, That, This))
 import CoverageCheck.Subsumption (splitSubsumptions)
-import CoverageCheck.Syntax (Dataty(argsTy), Pattern(PCon, PWild), Patterns(PCons, PNil), Signature(dataDefs), pWilds)
+import CoverageCheck.Syntax (Dataty(argsTy), Pattern(PCon, PWild), Patterns, Signature(dataDefs), pWilds)
 import CoverageCheck.Usefulness.Algorithm (Usefulness)
 
 import CoverageCheck.Usefulness.Algorithm
@@ -11,7 +11,7 @@ import CoverageCheck.Usefulness.Algorithm
 newtype UsefulP = MkUsefulP{witnesses :: NonEmpty Patterns}
 
 usefulPNilOkCase :: UsefulP
-usefulPNilOkCase = MkUsefulP (MkNonEmpty PNil [])
+usefulPNilOkCase = MkUsefulP (MkNonEmpty Nil [])
 
 usefulPOrCase :: These UsefulP UsefulP -> UsefulP
 usefulPOrCase (This (MkUsefulP hs)) = MkUsefulP hs
@@ -23,7 +23,7 @@ usefulPConCase' ::
                 Signature -> Name -> Name -> Patterns -> Patterns
 usefulPConCase' sig d c qs
   = case splitSubsumptions (argsTy (dataDefs sig d) c) qs of
-        (qs₁, qs₂) -> PCons (PCon c qs₁) qs₂
+        (qs₁, qs₂) -> Cons (PCon c qs₁) qs₂
 
 usefulPConCase :: Signature -> Name -> Name -> UsefulP -> UsefulP
 usefulPConCase sig d c (MkUsefulP hs)
@@ -33,7 +33,7 @@ usefulPWildCompCase' ::
                      Signature -> Name -> Name -> Patterns -> Patterns
 usefulPWildCompCase' sig d c qs
   = case splitSubsumptions (argsTy (dataDefs sig d) c) qs of
-        (qs₁, qs₂) -> PCons (PCon c qs₁) qs₂
+        (qs₁, qs₂) -> Cons (PCon c qs₁) qs₂
 
 usefulPWildCompCase ::
                     Signature -> Name -> NonEmpty (Name, UsefulP) -> UsefulP
@@ -46,10 +46,10 @@ usefulPWildMissCase' ::
                      Signature ->
                        Name -> Either () (NonEmpty Name) -> Patterns -> NonEmpty Patterns
 usefulPWildMissCase' sig d (Left ()) qs
-  = MkNonEmpty (PCons PWild qs) []
+  = MkNonEmpty (Cons PWild qs) []
 usefulPWildMissCase' sig d (Right hs) qs
   = fmap
-      (\ c -> PCons (PCon c (pWilds (argsTy (dataDefs sig d) c))) qs)
+      (\ c -> Cons (PCon c (pWilds (argsTy (dataDefs sig d) c))) qs)
       hs
 
 usefulPWildMissCase ::

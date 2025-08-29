@@ -121,7 +121,7 @@ module _ ⦃ @0 sig : Signature ⦄ {@0 P : PatternMatrix (α0 ∷ αs0)} {@0 r�
 
 module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ∷ αs0)} {c : NameCon d} {@0 rs : Patterns (argsTy (dataDefs sig d) c)} {@0 ps : Patterns αs0} where
 
-  usefulPConCase' : UsefulP' (specialize c P) (rs ++ᵖ ps) → UsefulP' P (con c rs ∷ ps)
+  usefulPConCase' : UsefulP' (specialize c P) (rs +++ ps) → UsefulP' P (con c rs ∷ ps)
   usefulPConCase' ⟪ qs , is , disj , ss ⟫ =
     case splitSubsumptions rs ss of λ where
       ((qs₁ , qs₂) ⟨ refl , (ss₁ , ss₂) ⟩) →
@@ -135,18 +135,18 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ∷ αs0)} 
 
   {-# COMPILE AGDA2HS usefulPConCase' #-}
 
-  usefulPConCase : UsefulP (specialize c P) (rs ++ᵖ ps) → UsefulP P (con c rs ∷ ps)
+  usefulPConCase : UsefulP (specialize c P) (rs +++ ps) → UsefulP P (con c rs ∷ ps)
   usefulPConCase (MkUsefulP hs) = MkUsefulP (fmap usefulPConCase' hs)
   {-# COMPILE AGDA2HS usefulPConCase #-}
 
 
 module _ ⦃ @0 sig : Signature ⦄ {@0 P : PatternMatrix (TyData d0 ∷ αs0)} {@0 c : NameCon d0} {@0 rs : Patterns (argsTy (dataDefs sig d0) c)} {@0 ps : Patterns αs0} where
 
-  usefulPConCaseInv' : UsefulP' P (con c rs ∷ ps) → UsefulP' (specialize c P) (rs ++ᵖ ps)
+  usefulPConCaseInv' : UsefulP' P (con c rs ∷ ps) → UsefulP' (specialize c P) (rs +++ ps)
   usefulPConCaseInv' ⟪ con c qs' ∷ qs , con≼ is' ∷ is , disj , con⊆ ss' ∷ ss ⟫ =
-    ⟪ qs' ++ᵖ qs , is' ++ⁱ is , specialize-preserves-#** disj , ss' ++ˢ ss ⟫
+    ⟪ qs' +++ qs , is' ++ⁱ is , specialize-preserves-#** disj , ss' ++ˢ ss ⟫
 
-  usefulPConCaseInv : UsefulP P (con c rs ∷ ps) → UsefulP (specialize c P) (rs ++ᵖ ps)
+  usefulPConCaseInv : UsefulP P (con c rs ∷ ps) → UsefulP (specialize c P) (rs +++ ps)
   usefulPConCaseInv (MkUsefulP hs) = MkUsefulP (fmap usefulPConCaseInv' hs)
 
 
@@ -154,7 +154,7 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ∷ αs0)} 
   where
 
   usefulPWildCompCase' : (c : NameCon d)
-    → UsefulP' (specialize c P) (—* ++ᵖ ps)
+    → UsefulP' (specialize c P) (—* +++ ps)
     → UsefulP' P (— ∷ ps)
   usefulPWildCompCase' c ⟪ qs , is , disj , ss ⟫ =
     case splitSubsumptions {αs = argsTy (dataDefs sig d) c} —* ss of λ where
@@ -169,7 +169,7 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ∷ αs0)} 
   {-# COMPILE AGDA2HS usefulPWildCompCase' #-}
 
   usefulPWildCompCase :
-      NonEmpty (Σ[ c ∈ NameCon d ] UsefulP (specialize c P) (—* ++ᵖ ps))
+      NonEmpty (Σ[ c ∈ NameCon d ] UsefulP (specialize c P) (—* +++ ps))
     → UsefulP P (— ∷ ps)
   usefulPWildCompCase hs = MkUsefulP do
     (c , MkUsefulP hs') ← hs
@@ -178,16 +178,16 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ∷ αs0)} 
 
   usefulPWildCompCaseInv' : ∀ qs {vs}
     → qs ≼* vs → P #** qs → (— ∷ ps) ⊆* qs
-    → Σ[ c ∈ NameCon d ] UsefulP' (specialize c P) (—* ++ᵖ ps)
+    → Σ[ c ∈ NameCon d ] UsefulP' (specialize c P) (—* +++ ps)
   usefulPWildCompCaseInv' (— ∷ qs) {con c vs ∷ _} (—≼ ∷ is) disj (_ ∷ ss) =
     ( c
-    , ⟪ —* ++ᵖ qs
+    , ⟪ —* +++ qs
       , iWilds {vs = vs} ++ⁱ is
       , specialize-preserves-#**-wild disj
       , —⊆* ++ˢ ss ⟫)
   usefulPWildCompCaseInv' (con c qs' ∷ qs) (con≼ is' ∷ is) disj (s ∷ ss) =
     ( c
-    , ⟪ qs' ++ᵖ qs
+    , ⟪ qs' +++ qs
       , is' ++ⁱ is
       , specialize-preserves-#** disj
       , —⊆* ++ˢ ss ⟫)
@@ -198,7 +198,7 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ∷ αs0)} 
 
   @0 usefulPWildCompCaseInv :
       UsefulP P (— ∷ ps)
-    → NonEmpty (Σ[ c ∈ NameCon d ] UsefulP (specialize c P) (—* ++ᵖ ps))
+    → NonEmpty (Σ[ c ∈ NameCon d ] UsefulP (specialize c P) (—* +++ ps))
   usefulPWildCompCaseInv (MkUsefulP hs) = do
     ⟪ qs , is , disj , ss ⟫ ← hs
     let (c , h') = usefulPWildCompCaseInv' qs is disj ss

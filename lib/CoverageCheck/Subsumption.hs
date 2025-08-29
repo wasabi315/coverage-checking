@@ -3,7 +3,8 @@ module CoverageCheck.Subsumption where
 import Control.Arrow (first)
 import CoverageCheck.Instance (Instance(ICon, IOrL, IOrR, IWild), Instances(ICons, INil))
 import CoverageCheck.Name (Name)
-import CoverageCheck.Syntax (Patterns(PCons, PNil), Tys)
+import CoverageCheck.Prelude (All(Cons, Nil))
+import CoverageCheck.Syntax (Patterns, Tys)
 
 data Subsumption = SWild
                  | SCon Name Subsumptions
@@ -34,14 +35,14 @@ appendSubsumptions (SCons s ss) ss'
 
 unappendSubsumptions ::
                      Patterns -> Subsumptions -> (Subsumptions, Subsumptions)
-unappendSubsumptions PNil bs = (SNil, bs)
-unappendSubsumptions (PCons p ps) (SCons s ss)
+unappendSubsumptions Nil bs = (SNil, bs)
+unappendSubsumptions (Cons p ps) (SCons s ss)
   = first (SCons s) (unappendSubsumptions ps ss)
 
 splitSubsumptions :: Tys -> Patterns -> (Patterns, Patterns)
-splitSubsumptions [] rs = (PNil, rs)
-splitSubsumptions (α : αs) (PCons r rs)
-  = first (PCons r) (splitSubsumptions αs rs)
+splitSubsumptions [] rs = (Nil, rs)
+splitSubsumptions (α : αs) (Cons r rs)
+  = first (Cons r) (splitSubsumptions αs rs)
 
 subsume :: Subsumption -> Instance -> Instance
 subsume SWild i = IWild

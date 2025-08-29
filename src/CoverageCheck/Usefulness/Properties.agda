@@ -30,11 +30,11 @@ module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}
 
   specialize'-preserves-≼ : {ps : Patterns (TyData d ∷ βs)}
     → ps ≼* con c us ∷ vs
-    → specialize' c ps ≼** (us ++ᵛ vs)
+    → specialize' c ps ≼** (us +++ vs)
   specialize'-preserves-≼ {—         ∷ ps} is = here (wildHeadLemmaInv is)
   specialize'-preserves-≼ {con c' rs ∷ ps} is = lem (c ≟ c')
     where
-      lem : (eq : Dec (c ≡ c')) → specialize'ConCase c rs ps eq ≼** (us ++ᵛ vs)
+      lem : (eq : Dec (c ≡ c')) → specialize'ConCase c rs ps eq ≼** (us +++ vs)
       lem (False ⟨ c≢c' ⟩) = contradiction (sym (c≼c'⇒c≡c' (iUncons is .fst))) c≢c'
       lem (True ⟨ refl ⟩)  = here (conHeadLemmaInv is)
   specialize'-preserves-≼ {r₁ ∣ r₂   ∷ ps} =
@@ -46,17 +46,17 @@ module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}
   -- specialize preserves ≼
   specialize-preserves-≼ : {P : PatternMatrix (TyData d ∷ βs)}
     → P ≼** con c us ∷ vs
-    → specialize c P ≼** (us ++ᵛ vs)
+    → specialize c P ≼** (us +++ vs)
   specialize-preserves-≼ = gconcatMapAny⁺ specialize'-preserves-≼
 
   specialize'-preserves-≼⁻ : {ps : Patterns (TyData d ∷ βs)}
-    → specialize' c ps ≼** (us ++ᵛ vs)
+    → specialize' c ps ≼** (us +++ vs)
     → ps ≼* con c us ∷ vs
   specialize'-preserves-≼⁻ {—         ∷ ps} (here is) = wildHeadLemma is
   specialize'-preserves-≼⁻ {con c' rs ∷ ps} = lem (c ≟ c')
     where
       lem : (eq : Dec (c ≡ c'))
-        → specialize'ConCase c rs ps eq ≼** (us ++ᵛ vs)
+        → specialize'ConCase c rs ps eq ≼** (us +++ vs)
         → con c' rs ∷ ps ≼* con c us ∷ vs
       lem (True ⟨ refl ⟩) (here h) = conHeadLemma h
   specialize'-preserves-≼⁻ {r₁ ∣ r₂   ∷ ps} =
@@ -66,7 +66,7 @@ module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}
 
   -- Unspecialisation preserves ≼
   specialize-preserves-≼⁻ : {P : PatternMatrix (TyData d ∷ βs)}
-    → specialize c P ≼** (us ++ᵛ vs)
+    → specialize c P ≼** (us +++ vs)
     → P ≼** con c us ∷ vs
   specialize-preserves-≼⁻ = gconcatMapAny⁻ specialize'-preserves-≼⁻
 
@@ -140,13 +140,13 @@ module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}
   where
 
   specialize-preserves-#** :
-    P #** (con c rs₁ ∷ rs₂) → specialize c P #** (rs₁ ++ᵖ rs₂)
+    P #** (con c rs₁ ∷ rs₂) → specialize c P #** (rs₁ +++ rs₂)
   specialize-preserves-#** disj iss is = case splitInstances rs₁ is of λ where
     ((vs₁ , vs₂) ⟨ refl , (is₁ , is₂) ⟩) →
       disj (specialize-preserves-≼⁻ iss) (con≼ is₁ ∷ is₂)
 
   specialize-preserves-#**⁻ :
-    specialize c P #** (rs₁ ++ᵖ rs₂) → P #** (con c rs₁ ∷ rs₂)
+    specialize c P #** (rs₁ +++ rs₂) → P #** (con c rs₁ ∷ rs₂)
   specialize-preserves-#**⁻ disj {con c us ∷ vs} iss (con≼ is₁ ∷ is₂) =
     disj (specialize-preserves-≼ iss) (is₁ ++ⁱ is₂)
 
@@ -158,7 +158,7 @@ module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}
   where
 
   specialize-preserves-#**-wild :
-    P #** (— ∷ rs) → specialize c P #** (—* ++ᵖ rs)
+    P #** (— ∷ rs) → specialize c P #** (—* +++ rs)
   specialize-preserves-#**-wild disj iss is =
     case splitInstances {αs = argsTy (dataDefs sig d) c} —* is of λ where
       ((vs₁ , vs₂) ⟨ refl , (_ , is') ⟩) →

@@ -83,7 +83,7 @@ module _ ⦃ @0 sig : Signature ⦄ {@0 P : PatternMatrix (α0 ∷ αs0)} {@0 r�
 
 module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ∷ αs0)} {c : NameCon d} {@0 rs : Patterns (argsTy (dataDefs sig d) c)} {@0 ps : Patterns αs0} where
 
-  usefulConCase : Useful (specialize c P) (rs ++ᵖ ps) → Useful P (con c rs ∷ ps)
+  usefulConCase : Useful (specialize c P) (rs +++ ps) → Useful P (con c rs ∷ ps)
   usefulConCase (MkUseful usvs nis is) = case splitInstances rs is of λ where
     ((us , vs) ⟨ refl , (is1 , is2) ⟩) →
       MkUseful (con c us ∷ vs) (contraposition specialize-preserves-≼ nis) (con≼ is1 ∷ is2)
@@ -92,9 +92,9 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ∷ αs0)} 
 
 module _ ⦃ @0 sig : Signature ⦄ {@0 P : PatternMatrix (TyData d0 ∷ αs0)} {@0 c : NameCon d0} {@0 rs : Patterns (argsTy (dataDefs sig d0) c)} {@0 ps : Patterns αs0} where
 
-  usefulConCaseInv : Useful P (con c rs ∷ ps) → Useful (specialize c P) (rs ++ᵖ ps)
+  usefulConCaseInv : Useful P (con c rs ∷ ps) → Useful (specialize c P) (rs +++ ps)
   usefulConCaseInv (MkUseful (con c vs ∷ us) nis (con≼ is ∷ is')) =
-    MkUseful (vs ++ᵛ us) (contraposition specialize-preserves-≼⁻ nis) (is ++ⁱ is')
+    MkUseful (vs +++ us) (contraposition specialize-preserves-≼⁻ nis) (is ++ⁱ is')
 
 
 module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ∷ αs0)} {@0 ps : Patterns αs0}
@@ -102,7 +102,7 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ∷ αs0)} 
 
   -- If there exists a constructor c such that `∙* ++ ps` is useful wrt `specialize c P`, `∙ ∷ ps` is also useful wrt P
   usefulWildCompCase :
-      NonEmpty (Σ[ c ∈ NameCon d ] Useful (specialize c P) (—* ++ᵖ ps))
+      NonEmpty (Σ[ c ∈ NameCon d ] Useful (specialize c P) (—* +++ ps))
     → Useful P (— ∷ ps)
   -- only consider the first constructor
   usefulWildCompCase ((c , MkUseful usvs nis is) ∷ _) =
@@ -114,9 +114,9 @@ module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ∷ αs0)} 
   -- If `∙ ∷ ps` is useful wrt P, there exists a constructor c such that `∙* ++ ps` is useful wrt `specialize c P`
   usefulWildCompCaseInv :
       Useful P (— ∷ ps)
-    → NonEmpty (Σ[ c ∈ NameCon d ] Useful (specialize c P) (—* ++ᵖ ps))
+    → NonEmpty (Σ[ c ∈ NameCon d ] Useful (specialize c P) (—* +++ ps))
   usefulWildCompCaseInv (MkUseful (con c us ∷ vs) nis (_ ∷ is)) =
-    (c , MkUseful (us ++ᵛ vs) (contraposition specialize-preserves-≼⁻ nis) (—≼* ++ⁱ is)) ∷ []
+    (c , MkUseful (us +++ vs) (contraposition specialize-preserves-≼⁻ nis) (—≼* ++ⁱ is)) ∷ []
 
 
 module _ ⦃ sig : Signature ⦄ {d} {@0 P : PatternMatrix (TyData d ∷ αs0)} {@0 ps : Patterns αs0}

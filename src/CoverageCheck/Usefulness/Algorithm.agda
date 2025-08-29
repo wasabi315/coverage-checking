@@ -36,11 +36,11 @@ module _ ⦃ sig : Signature ⦄ {d : NameData} (c : NameCon d)
     (eq : Dec (c ≡ c'))
     → PatternMatrix (αs ++ βs0)
   specialize'ConCase rs ps eq =
-    ifDec eq (λ where ⦃ refl ⦄ → (rs ++ᵖ ps) ∷ []) []
+    ifDec eq (λ where ⦃ refl ⦄ → (rs +++ ps) ∷ []) []
   {-# COMPILE AGDA2HS specialize'ConCase inline #-}
 
   specialize' : Patterns (TyData d ∷ βs0) → PatternMatrix (αs ++ βs0)
-  specialize' (—         ∷ ps) = (—* ++ᵖ ps) ∷ []
+  specialize' (—         ∷ ps) = (—* +++ ps) ∷ []
   specialize' (con c' rs ∷ ps) = specialize'ConCase rs ps (c ≟ c')
   specialize' (r₁ ∣ r₂   ∷ ps) = specialize' (r₁ ∷ ps) ++ specialize' (r₂ ∷ ps)
   {-# COMPILE AGDA2HS specialize' #-}
@@ -98,8 +98,8 @@ module Raw where
     isUseful {TyData d ∷ αs} pss     (—        ∷ ps) =
       if existMissCon pss
         then isUseful (default_ pss) ps
-        else anyNameCon (dataDefs sig d) λ c → isUseful (specialize c pss) (—* ++ᵖ ps)
-    isUseful {TyData d ∷ αs} pss     (con c rs ∷ ps) = isUseful (specialize c pss) (rs ++ᵖ ps)
+        else anyNameCon (dataDefs sig d) λ c → isUseful (specialize c pss) (—* +++ ps)
+    isUseful {TyData d ∷ αs} pss     (con c rs ∷ ps) = isUseful (specialize c pss) (rs +++ ps)
     isUseful {TyData d ∷ αs} pss     (r₁ ∣ r₂  ∷ ps) = isUseful pss (r₁ ∷ ps) || isUseful pss (r₂ ∷ ps)
     {-# COMPILE AGDA2HS isUseful #-}
 
@@ -243,7 +243,7 @@ record Usefulness
       {d} {@0 pss : PatternMatrix (TyData d ∷ βs0)} {c : NameCon d}
       (let αs = argsTy (dataDefs sig d) c)
       {@0 rs : Patterns αs} {@0 ps : Patterns βs0}
-      → u (specialize c pss) (rs ++ᵖ ps)
+      → u (specialize c pss) (rs +++ ps)
       → u pss (con c rs ∷ ps)
 
     @0 conCaseInv : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
@@ -251,7 +251,7 @@ record Usefulness
       (let αs = argsTy (dataDefs sig d) c)
       {@0 rs : Patterns αs} {@0 ps : Patterns βs0}
       → u pss (con c rs ∷ ps)
-      → u (specialize c pss) (rs ++ᵖ ps)
+      → u (specialize c pss) (rs +++ ps)
 
     wildMissCase : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ∷ αs0)} {@0 ps : Patterns αs0}
@@ -268,14 +268,14 @@ record Usefulness
     wildCompCase : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ∷ αs0)} {@0 ps : Patterns αs0}
       → @0 (∀ c → c ∈** pss)
-      → NonEmpty (Σ[ c ∈ NameCon d ] u (specialize c pss) (—* ++ᵖ ps))
+      → NonEmpty (Σ[ c ∈ NameCon d ] u (specialize c pss) (—* +++ ps))
       → u pss (— ∷ ps)
 
     @0 wildCompCaseInv : ∀ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       {d} {@0 pss : PatternMatrix (TyData d ∷ αs0)} {@0 ps : Patterns αs0}
       → @0 (∀ c → c ∈** pss)
       → u pss (— ∷ ps)
-      → NonEmpty (Σ[ c ∈ NameCon d ] u (specialize c pss) (—* ++ᵖ ps))
+      → NonEmpty (Σ[ c ∈ NameCon d ] u (specialize c pss) (—* +++ ps))
 
 open Usefulness ⦃ ... ⦄ public
 {-# COMPILE AGDA2HS Usefulness class #-}
@@ -292,13 +292,13 @@ module _ ⦃ @0 sig : Signature ⦄ where
     step-wild : {P : PatternMatrix (TyData d ∷ αs)} {ps : Patterns αs}
       → (Either (Erase (∀ c → c ∉** P)) (NonEmpty (∃[ c ∈ NameCon d ] c ∉** P))
           → UsefulAcc (default_ P) ps)
-      → (∀ c → c ∈** P → UsefulAcc (specialize c P) (—* ++ᵖ ps))
+      → (∀ c → c ∈** P → UsefulAcc (specialize c P) (—* +++ ps))
       → UsefulAcc P (— ∷ ps)
 
     step-con : {P : PatternMatrix (TyData d ∷ βs)} {c : NameCon d}
       (let αs = argsTy (dataDefs sig d) c)
       {rs : Patterns αs} {ps : Patterns βs}
-      → UsefulAcc (specialize c P) (rs ++ᵖ ps)
+      → UsefulAcc (specialize c P) (rs +++ ps)
       → UsefulAcc P (con c rs ∷ ps)
 
     step-∣ : {P : PatternMatrix (α ∷ αs)} {p q : Pattern α} {ps : Patterns αs}
@@ -325,9 +325,9 @@ module _
       (Left (Erased comp)) →
         mapDecP (wildCompCase comp) (wildCompCaseInv comp)
           (decPAnyNameCon (dataDefs sig d) λ c →
-            decUseful (specialize c pss) (—* ++ᵖ ps) (h' c (comp c)))
+            decUseful (specialize c pss) (—* +++ ps) (h' c (comp c)))
   decUseful {TyData d ∷ αs} pss     (con c rs ∷ ps) (step-con h)     =
-    mapDecP conCase conCaseInv (decUseful (specialize c pss) (rs ++ᵖ ps) h)
+    mapDecP conCase conCaseInv (decUseful (specialize c pss) (rs +++ ps) h)
   decUseful {TyData d ∷ αs} pss     (r₁ ∣ r₂  ∷ ps) (step-∣ h h')    =
     mapDecP orCase orCaseInv
       (theseDecP (decUseful pss (r₁ ∷ ps) h) (decUseful pss (r₂ ∷ ps) h'))
@@ -372,7 +372,7 @@ module @0 _ ⦃ @0 sig : Signature ⦄ where
   patternMatrixSize P = sum (map (flip patternsSize 0) P)
 
   patternsSize-++ : (ps : Patterns αs) (qs : Patterns βs) (n : Nat)
-    → patternsSize (ps ++ᵖ qs) n ≡ patternsSize ps (patternsSize qs n)
+    → patternsSize (ps +++ qs) n ≡ patternsSize ps (patternsSize qs n)
   patternsSize-++ []              qs n = refl
   patternsSize-++ (—        ∷ ps) qs n = patternsSize-++ ps qs n
   patternsSize-++ (con c rs ∷ ps) qs n = cong (suc ∘ patternsSize rs) (patternsSize-++ ps qs n)
@@ -509,7 +509,7 @@ module @0 _ ⦃ @0 sig : Signature ⦄ where
 
   -- specialize strictly reduces the problem size
   specializeCon-⊏ : (P : PatternMatrix (TyData d0 ∷ αs0)) (c : NameCon d0) (rs : Patterns (argsTy (dataDefs sig d0) c)) (ps : Patterns αs0)
-    → (_ , (specialize c P , rs ++ᵖ ps)) ⊏ (_ , (P , con c rs ∷ ps))
+    → (_ , (specialize c P , rs +++ ps)) ⊏ (_ , (P , con c rs ∷ ps))
   specializeCon-⊏ P c rs ps
     rewrite patternsSize-++ rs ps 0
     = inj₁ (+-mono-≤-< (specialize-≤ c P) (n<1+n _))
@@ -524,7 +524,7 @@ module @0 _ ⦃ @0 sig : Signature ⦄ where
   -- specialize strictly reduces the problem size if the constructor is in the first column of the matrix
   specializeWild-⊏ : (c : NameCon d0) (P : PatternMatrix (TyData d0 ∷ αs0)) (qs : Patterns αs0)
     → c ∈** P
-    → (_ , (specialize c P , —* ++ᵖ qs)) ⊏ (_ , (P , — ∷ qs))
+    → (_ , (specialize c P , —* +++ qs)) ⊏ (_ , (P , — ∷ qs))
   specializeWild-⊏ {d0} c P qs c∈P
     rewrite patternsSize-++ (—* {αs = argsTy (dataDefs sig d0) c}) qs 0
     | patternsSize—* (argsTy (dataDefs sig d0) c) (patternsSize qs 0)
@@ -549,9 +549,9 @@ module @0 _ ⦃ @0 sig : Signature ⦄ where
   ∀UsefulAcc' {αs0 = TyData d ∷ αs0} P (— ∷ ps) (acc h) =
     step-wild
       (λ _ → ∀UsefulAcc' (default_ P) ps (h (default-⊏ P ps)))
-      (λ c c∈P → ∀UsefulAcc' (specialize c P) (—* ++ᵖ ps) (h (specializeWild-⊏ c P ps c∈P)))
+      (λ c c∈P → ∀UsefulAcc' (specialize c P) (—* +++ ps) (h (specializeWild-⊏ c P ps c∈P)))
   ∀UsefulAcc' P (con c rs ∷ ps) (acc h) =
-    step-con (∀UsefulAcc' (specialize c P) (rs ++ᵖ ps) (h (specializeCon-⊏ P c rs ps)))
+    step-con (∀UsefulAcc' (specialize c P) (rs +++ ps) (h (specializeCon-⊏ P c rs ps)))
   ∀UsefulAcc' P (r₁ ∣ r₂ ∷ ps) (acc h) =
     step-∣
       (∀UsefulAcc' P (r₁ ∷ ps) (h (chooseOr-⊏ₗ P r₁ r₂ ps)))

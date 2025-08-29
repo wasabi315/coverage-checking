@@ -2,8 +2,8 @@ module CoverageCheck.Instance where
 
 import Control.Arrow (first)
 import CoverageCheck.Name (Name)
-import CoverageCheck.Prelude (Any, DecP(No, Yes), First, eitherDecP, firstDecP, mapDecP, tupleDecP)
-import CoverageCheck.Syntax (Pattern(PCon, POr, PWild), Patterns(PCons, PNil), Tys, Value(VCon), Values(VCons, VNil), pWilds)
+import CoverageCheck.Prelude (All(Cons, Nil), Any, DecP(No, Yes), First, eitherDecP, firstDecP, mapDecP, tupleDecP)
+import CoverageCheck.Syntax (Pattern(PCon, POr, PWild), Patterns, Tys, Value(VCon), Values, pWilds)
 
 data Instance = IWild
               | ICon Name Instances
@@ -40,14 +40,14 @@ appendInstances (ICons i1 is1) is2
 
 unappendInstances ::
                   Patterns -> Instances -> (Instances, Instances)
-unappendInstances PNil is = (INil, is)
-unappendInstances (PCons p ps) (ICons i is)
+unappendInstances Nil is = (INil, is)
+unappendInstances (Cons p ps) (ICons i is)
   = first (ICons i) (unappendInstances ps is)
 
 splitInstances :: Tys -> Values -> (Values, Values)
-splitInstances [] us = (VNil, us)
-splitInstances (α : αs) (VCons u us)
-  = first (VCons u) (splitInstances αs us)
+splitInstances [] us = (Nil, us)
+splitInstances (α : αs) (Cons u us)
+  = first (Cons u) (splitInstances αs us)
 
 wildHeadLemma :: Tys -> Instances -> Instances
 wildHeadLemma βs h
@@ -84,8 +84,8 @@ decInstance (PCon c ps) (VCon c' vs)
 
 infix 4 `decInstances`
 decInstances :: Patterns -> Values -> DecP Instances
-decInstances PNil VNil = Yes INil
-decInstances (PCons p ps) (VCons v vs)
+decInstances Nil Nil = Yes INil
+decInstances (Cons p ps) (Cons v vs)
   = mapDecP (uncurry ICons)
       (tupleDecP (decInstance p v) (decInstances ps vs))
 
