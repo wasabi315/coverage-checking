@@ -1,5 +1,7 @@
 module CoverageCheck.Prelude where
 
+infixr 5 _∷_
+
 --------------------------------------------------------------------------------
 -- agda2hs re-exports
 
@@ -8,7 +10,7 @@ open import Haskell.Prelude public
          ⊤; tt;
          Bool; True; False; not; _&&_; _||_; if_then_else_;
          Nat; zero; suc; _+_;
-         List; []; _∷_; _++_; map; foldr; elem; sum; concat; concatMap; lengthNat; null; iMonadList;
+         List; _++_; map; foldr; elem; sum; concat; concatMap; lengthNat; null; iMonadList;
          String;
          _×_; _,_; fst; snd; uncurry;
          Maybe; Just; Nothing; maybe;
@@ -18,6 +20,10 @@ open import Haskell.Prelude public
          Applicative; DefaultApplicative; pure; _<*>_; _<*_; _*>_;
          Monad; DefaultMonad; _>>=_;
          _≡_; refl)
+
+-- For overloading
+pattern []       = List.[]
+pattern _∷_ h hs = List._∷_ h hs
 
 open import Haskell.Prim public
   using (⊥; the; Level)
@@ -114,43 +120,44 @@ mapListRefine f (x ∷ xs) = mapRefine f x ∷ mapListRefine f xs
 --------------------------------------------------------------------------------
 -- Relations on lists
 
-infixr 5 _◂_
-
 data All {@0 a : Type} (p : @0 a → Type) : (@0 xs : List a) → Type where
-  AllNil  : All p []
-  AllCons : ∀ {@0 x xs} → p x → All p xs → All p (x ∷ xs)
+  Nil  : All p []
+  Cons : ∀ {@0 x xs} → p x → All p xs → All p (x ∷ xs)
 
 {-# COMPILE AGDA2HS All deriving Show #-}
 
-pattern ⌈⌉       = AllNil
-pattern _◂_ h hs = AllCons h hs
+pattern []       = Nil
+pattern _∷_ h hs = Cons h hs
 
-headAll : ∀ {@0 a : Type} {p : @0 a → Type} {@0 x xs} → All p (x ∷ xs) → p x
-headAll (h ◂ _) = h
-{-# COMPILE AGDA2HS headAll #-}
+module _ {@0 a : Type} {p : @0 a → Type} where
 
-tailAll : ∀ {@0 a : Type} {p : @0 a → Type} {@0 x xs} → All p (x ∷ xs) → All p xs
-tailAll (_ ◂ hs) = hs
-{-# COMPILE AGDA2HS tailAll #-}
+  headAll : ∀ {@0 x xs} → All p (x ∷ xs) → p x
+  headAll (h ∷ _) = h
+  {-# COMPILE AGDA2HS headAll #-}
+
+  tailAll : ∀ {@0 x xs} → All p (x ∷ xs) → All p xs
+  tailAll (_ ∷ hs) = hs
+  {-# COMPILE AGDA2HS tailAll #-}
+
 
 data Any {@0 a : Type} (p : @0 a → Type) : (@0 xs : List a) → Type where
-  AnyHere  : ∀ {@0 x xs} → p x → Any p (x ∷ xs)
-  AnyThere : ∀ {@0 x xs} → Any p xs → Any p (x ∷ xs)
+  Here  : ∀ {@0 x xs} → p x → Any p (x ∷ xs)
+  There : ∀ {@0 x xs} → Any p xs → Any p (x ∷ xs)
 
 {-# COMPILE AGDA2HS Any deriving Show #-}
 
-pattern here  h = AnyHere h
-pattern there h = AnyThere h
+pattern here  h = Here h
+pattern there h = There h
 
 module _ {a : Type} {p : @0 a → Type} where
 
   All¬⇒¬Any : ∀ {@0 xs} → All (λ x → ¬ p x) xs → ¬ Any p xs
-  All¬⇒¬Any (¬p ◂ _)  (here  p) = ¬p p
-  All¬⇒¬Any (_  ◂ ¬p) (there p) = All¬⇒¬Any ¬p p
+  All¬⇒¬Any (¬p ∷ _)  (here  p) = ¬p p
+  All¬⇒¬Any (_  ∷ ¬p) (there p) = All¬⇒¬Any ¬p p
 
   ¬Any⇒All¬ : ∀ xs → ¬ Any p xs → All (λ x → ¬ p x) xs
-  ¬Any⇒All¬ []       ¬p = ⌈⌉
-  ¬Any⇒All¬ (x ∷ xs) ¬p = ¬p ∘ here ◂ ¬Any⇒All¬ xs (¬p ∘ there)
+  ¬Any⇒All¬ []       ¬p = []
+  ¬Any⇒All¬ (x ∷ xs) ¬p = ¬p ∘ here ∷ ¬Any⇒All¬ xs (¬p ∘ there)
 
   ++Any⁺ˡ : ∀ {@0 xs ys} → Any p xs → Any p (xs ++ ys)
   ++Any⁺ˡ (here x)  = here x
@@ -183,22 +190,25 @@ module _ {a b : Type} {p : @0 a → Type} {q : @0 b → Type} {f : a → List b}
 
 
 data First {@0 a : Type} (p : @0 a → Type) : (@0 xs : List a) → Type where
-  FirstHere  : ∀ {@0 x xs} → p x → First p (x ∷ xs)
-  FirstThere : ∀ {@0 x xs} → @0 ¬ p x → First p xs → First p (x ∷ xs)
+  FHere  : ∀ {@0 x xs} → p x → First p (x ∷ xs)
+  FThere : ∀ {@0 x xs} → @0 ¬ p x → First p xs → First p (x ∷ xs)
 
 {-# COMPILE AGDA2HS First deriving Show #-}
 
-pattern [_] h    = FirstHere h
-pattern _◂_ h hs = FirstThere h hs
+pattern [_] h    = FHere h
+pattern _∷_ h hs = FThere h hs
 
-firstToAny : ∀ {@0 a : Type} {p : @0 a → Type} {@0 xs} → First p xs → Any p xs
-firstToAny [ h ]   = here h
-firstToAny (_ ◂ h) = there (firstToAny h)
-{-# COMPILE AGDA2HS firstToAny #-}
+module _ {a : Type} {p : @0 a → Type} where
 
-notFirstToNotAny : ∀ {@0 a : Type} {p : @0 a → Type} {@0 xs} → ¬ First p xs → ¬ Any p xs
-notFirstToNotAny h (here h')  = h [ h' ]
-notFirstToNotAny h (there h') = notFirstToNotAny (h ∘ (h ∘ [_] ◂_)) h'
+  firstToAny : ∀ {@0 xs} → First p xs → Any p xs
+  firstToAny [ h ]   = here h
+  firstToAny (_ ∷ h) = there (firstToAny h)
+  {-# COMPILE AGDA2HS firstToAny #-}
+
+  notFirstToNotAny : ∀ {@0 xs} → ¬ First p xs → ¬ Any p xs
+  notFirstToNotAny h (here h')  = h [ h' ]
+  notFirstToNotAny h (there h') = notFirstToNotAny (h ∘ (h ∘ [_] ∷_)) h'
+
 
 @0 Fresh : {a : Type} → List a → Type
 Fresh []       = ⊤
@@ -240,32 +250,32 @@ record NonEmpty (a : Type) : Type where
 open NonEmpty public
 {-# COMPILE AGDA2HS NonEmpty deriving Show #-}
 
-pattern _◂_ x xs = MkNonEmpty x xs
+pattern _∷_ x xs = MkNonEmpty x xs
 
 toListNonEmpty : {a : Type} → NonEmpty a → List a
-toListNonEmpty = λ where (x ◂ xs) → x ∷ xs
+toListNonEmpty = λ where (x ∷ xs) → x ∷ xs
 {-# COMPILE AGDA2HS toListNonEmpty inline #-}
 
 consNonEmpty : {a : Type} → a → NonEmpty a → NonEmpty a
-consNonEmpty x (y ◂ ys) = x ◂ (y ∷ ys)
+consNonEmpty x (y ∷ ys) = x ∷ (y ∷ ys)
 {-# COMPILE AGDA2HS consNonEmpty #-}
-syntax consNonEmpty x xs = x ◂′ xs
+syntax consNonEmpty x xs = x ∷′ xs
 
 bindNonEmpty : {a b : Type} → NonEmpty a → (a → NonEmpty b) → NonEmpty b
-bindNonEmpty (x ◂ xs) f = case f x of λ where
-  (y ◂ ys) → y ◂ ys ++ (xs >>= (toListNonEmpty ∘ f))
+bindNonEmpty (x ∷ xs) f = case f x of λ where
+  (y ∷ ys) → y ∷ ys ++ (xs >>= (toListNonEmpty ∘ f))
 {-# COMPILE AGDA2HS bindNonEmpty #-}
 
 instance
   iDefaultFunctorNonEmpty : DefaultFunctor NonEmpty
-  iDefaultFunctorNonEmpty .DefaultFunctor.fmap f (x ◂ xs) = f x ◂ map f xs
+  iDefaultFunctorNonEmpty .DefaultFunctor.fmap f (x ∷ xs) = f x ∷ map f xs
 
   iFunctorNonEmpty : Functor NonEmpty
   iFunctorNonEmpty = record {DefaultFunctor iDefaultFunctorNonEmpty}
   {-# COMPILE AGDA2HS iFunctorNonEmpty #-}
 
   iApplicativeNonEmpty : Applicative NonEmpty
-  iApplicativeNonEmpty .pure x = x ◂ []
+  iApplicativeNonEmpty .pure x = x ∷ []
   iApplicativeNonEmpty ._<*>_ fs xs = bindNonEmpty fs λ f → bindNonEmpty xs λ x → pure (f x)
   iApplicativeNonEmpty ._<*_  xs ys = bindNonEmpty xs λ x → bindNonEmpty ys λ _ → pure x
   iApplicativeNonEmpty ._*>_  xs ys = bindNonEmpty xs λ _ → bindNonEmpty ys λ y → pure y
@@ -279,7 +289,7 @@ instance
   {-# COMPILE AGDA2HS iMonadNonEmpty #-}
 
   iSemigroupNonEmpty : {a : Type} → Semigroup (NonEmpty a)
-  iSemigroupNonEmpty ._<>_ (x ◂ xs) (y ◂ ys) = x ◂ (xs ++ y ∷ ys)
+  iSemigroupNonEmpty ._<>_ (x ∷ xs) (y ∷ ys) = x ∷ (xs ++ y ∷ ys)
   {-# COMPILE AGDA2HS iSemigroupNonEmpty #-}
 
 
@@ -287,11 +297,11 @@ mapNonEmptyRefine : {a : Type} {@0 p q : a → Type}
   → (@0 f : ∀ {x} → p x → q x)
   → NonEmpty (∃[ x ∈ a ] p x)
   → NonEmpty (∃[ x ∈ a ] q x)
-mapNonEmptyRefine f (x ◂ xs) = mapRefine f x ◂ mapListRefine f xs
+mapNonEmptyRefine f (x ∷ xs) = mapRefine f x ∷ mapListRefine f xs
 {-# COMPILE AGDA2HS mapNonEmptyRefine transparent #-}
 
 concatNonEmpty : {a : Type} → NonEmpty (NonEmpty a) → NonEmpty a
-concatNonEmpty (xs ◂ xss) = go xs xss
+concatNonEmpty (xs ∷ xss) = go xs xss
   where
     go : {a : Type} → NonEmpty a → List (NonEmpty a) → NonEmpty a
     go xs []         = xs
@@ -301,20 +311,20 @@ concatNonEmpty (xs ◂ xss) = go xs xss
 partitionEithersNonEmpty : {a b : Type}
   → NonEmpty (Either a b)
   → These (NonEmpty a) (NonEmpty b)
-partitionEithersNonEmpty {a} {b} (x ◂ xs) = go x xs
+partitionEithersNonEmpty {a} {b} (x ∷ xs) = go x xs
   where
     cons : Either a b → These (NonEmpty a) (NonEmpty b) → These (NonEmpty a) (NonEmpty b)
-    cons (Left x)  (This xs)    = This (x ◂′ xs)
-    cons (Left x)  (That ys)    = Both (x ◂ []) ys
-    cons (Left x)  (Both xs ys) = Both (x ◂′ xs) ys
-    cons (Right y) (This xs)    = Both xs (y ◂ [])
-    cons (Right y) (That ys)    = That (y ◂′ ys)
-    cons (Right y) (Both xs ys) = Both xs (y ◂′ ys)
+    cons (Left x)  (This xs)    = This (x ∷′ xs)
+    cons (Left x)  (That ys)    = Both (x ∷ []) ys
+    cons (Left x)  (Both xs ys) = Both (x ∷′ xs) ys
+    cons (Right y) (This xs)    = Both xs (y ∷ [])
+    cons (Right y) (That ys)    = That (y ∷′ ys)
+    cons (Right y) (Both xs ys) = Both xs (y ∷′ ys)
 
     go : Either a b → List (Either a b) → These (NonEmpty a) (NonEmpty b)
     go x         (y ∷ xs) = cons x (go y xs)
-    go (Left x)  []       = This (x ◂ [])
-    go (Right y) []       = That (y ◂ [])
+    go (Left x)  []       = This (x ∷ [])
+    go (Right y) []       = That (y ∷ [])
 
 --------------------------------------------------------------------------------
 -- Decidable relations
@@ -402,11 +412,11 @@ firstDecP : ∀ {a} {p : @0 a → Type}
 firstDecP         f []       = No λ ()
 firstDecP {p = p} f (x ∷ xs) = ifDecP (f x)
   (λ ⦃ h ⦄ → Yes [ h ])
-  (λ ⦃ h ⦄ → mapDecP (h ◂_) (lem h) (firstDecP f xs))
+  (λ ⦃ h ⦄ → mapDecP (h ∷_) (lem h) (firstDecP f xs))
   where
     @0 lem : ¬ p x → First p (x ∷ xs) → First p xs
     lem h [ h' ]   = contradiction h' h
-    lem h (x ◂ h') = h'
+    lem h (x ∷ h') = h'
 {-# COMPILE AGDA2HS firstDecP #-}
 
 --------------------------------------------------------------------------------
@@ -566,6 +576,6 @@ module _ {a : Type} ⦃ _ : Ord a ⦄ where
     (x ∷ xs) ⦃ h ⦄ →
       let @0 f : ∀ {y} → elem y (x ∷ xs) ≡ True → Set.member y s ≡ True
           f eq = trans (sym (prop-member-toAscList _ s)) (trans (cong (elem _) h) eq)
-       in Right (x ⟨ f (cong (_|| elem x xs) (eqReflexivity x)) ⟩ ◂
+       in Right (x ⟨ f (cong (_|| elem x xs) (eqReflexivity x)) ⟩ ∷
                  toAscListW' xs λ h → f (trans (cong (_ ||_) h) (prop-x-||-True _)))
   {-# COMPILE AGDA2HS toAscNonEmptyW inline #-}

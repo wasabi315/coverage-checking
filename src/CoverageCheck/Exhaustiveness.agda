@@ -64,8 +64,8 @@ module _ ⦃ @0 sig : Signature ⦄ where
     {-# COMPILE AGDA2HS nonExhaustiveUToNonExhaustive' transparent #-}
 
     nonExhaustiveUToNonExhaustive : NonEmpty (UsefulP' P —*) → NonExhaustive P
-    nonExhaustiveUToNonExhaustive (h ◂ hs) =
-      nonExhaustiveUToNonExhaustive'' h ◂ nonExhaustiveUToNonExhaustive' hs
+    nonExhaustiveUToNonExhaustive (h ∷ hs) =
+      nonExhaustiveUToNonExhaustive'' h ∷ nonExhaustiveUToNonExhaustive' hs
     {-# COMPILE AGDA2HS nonExhaustiveUToNonExhaustive transparent #-}
 
     nonExhaustiveToNonExhaustiveU : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
@@ -79,7 +79,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
     @0 exhaustiveToExhaustiveU : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       → Exhaustive P → ExhaustiveU P
-    exhaustiveToExhaustiveU h (MkUsefulP (⟪ qs , _ , disj , _ ⟫ ◂ _)) =
+    exhaustiveToExhaustiveU h (MkUsefulP (⟪ qs , _ , disj , _ ⟫ ∷ _)) =
       contradiction (firstToAny (h (insts qs))) (flip disj (inst≼* qs))
 
 
@@ -97,7 +97,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
               , (λ iss is →
                   let iss' = subst (λ vs → P ≼** vs) (sym (only≼*⇒≡ is)) iss in
                   notFirstToNotAny h' iss')
-              , —⊆* ⟫ ◂ []))
+              , —⊆* ⟫ ∷ []))
             h
 
 --------------------------------------------------------------------------------

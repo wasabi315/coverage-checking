@@ -26,9 +26,6 @@ sOrInv (SOrR s) = Right s
 sConInv :: Subsumption -> Subsumptions
 sConInv (SCon c ss) = ss
 
-sUncons :: Subsumptions -> (Subsumption, Subsumptions)
-sUncons (SCons s ss) = (s, ss)
-
 infixr 5 `appendSubsumptions`
 appendSubsumptions :: Subsumptions -> Subsumptions -> Subsumptions
 appendSubsumptions SNil bs' = bs'

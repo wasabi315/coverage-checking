@@ -93,19 +93,19 @@ pattern ⟨nil⟩  = `nil ⟨ InHere ⟩
 pattern ⟨one⟩  = `one ⟨ InThere InHere ⟩
 pattern ⟨cons⟩ = `cons ⟨ InThere (InThere InHere) ⟩
 
-pattern unit      = con ⟨unit⟩ ⌈⌉
-pattern nil       = con ⟨nil⟩ ⌈⌉
-pattern one x     = con ⟨one⟩ (x ◂ ⌈⌉)
-pattern cons x xs = con ⟨cons⟩ (x ◂ xs ◂ ⌈⌉)
+pattern unit      = con ⟨unit⟩ []
+pattern nil       = con ⟨nil⟩ []
+pattern one x     = con ⟨one⟩ (x ∷ [])
+pattern cons x xs = con ⟨cons⟩ (x ∷ xs ∷ [])
 
 instance
   globals : Globals
   globals .dataScope                   = `unit ∷ `list ∷ []
-  globals .freshDataScope              = (λ ()) ◂ ⌈⌉ , (⌈⌉ , tt)
+  globals .freshDataScope              = (λ ()) ∷ [] , ([] , tt)
   globals .conScope      (`unit ⟨ _ ⟩) = `unit ∷ []
   globals .conScope      (`list ⟨ _ ⟩) = `nil ∷ `one ∷ `cons ∷ []
-  globals .freshConScope {`unit ⟨ _ ⟩} = ⌈⌉ , tt
-  globals .freshConScope {`list ⟨ _ ⟩} = ((λ ()) ◂ (λ ()) ◂ ⌈⌉) , ((λ ()) ◂ ⌈⌉ , (⌈⌉ , tt))
+  globals .freshConScope {`unit ⟨ _ ⟩} = [] , tt
+  globals .freshConScope {`list ⟨ _ ⟩} = ((λ ()) ∷ (λ ()) ∷ []) , ((λ ()) ∷ [] , ([] , tt))
   globals .conScope      (_ ⟨ InThere (InThere ()) ⟩)
   globals .freshConScope {_ ⟨ InThere (InThere ()) ⟩}
 
@@ -131,34 +131,34 @@ instance
   sig .dataDefs (_ ⟨ InThere (InThere ()) ⟩)
 
   nonEmptyAxiom : {α : Ty} → Value α
-  nonEmptyAxiom {TyData (`unit ⟨ _ ⟩)} = con ⟨unit⟩ ⌈⌉
-  nonEmptyAxiom {TyData (`list ⟨ _ ⟩)} = con ⟨nil⟩ ⌈⌉
+  nonEmptyAxiom {TyData (`unit ⟨ _ ⟩)} = con ⟨unit⟩ []
+  nonEmptyAxiom {TyData (`list ⟨ _ ⟩)} = con ⟨nil⟩ []
   nonEmptyAxiom {TyData (_ ⟨ InThere (InThere ()) ⟩)}
 
 
 P : PatternMatrix (TyData ⟨list⟩ ∷ TyData ⟨list⟩ ∷ [])
 P =
-  (nil ◂ —   ◂ ⌈⌉) ∷
-  (—   ◂ nil ◂ ⌈⌉) ∷
+  (nil ∷ —   ∷ []) ∷
+  (—   ∷ nil ∷ []) ∷
   []
 
 -- P is non-exhaustive, witnessed by the following list of patterns
 _ : decNonExhaustive P
   ≡ Right (
-      ((cons — —  ◂ cons — — ◂ ⌈⌉) ⟨ _ ⟩) ◂
-      ((one —     ◂ cons — — ◂ ⌈⌉) ⟨ _ ⟩) ∷
-      ((cons — —  ◂ one —    ◂ ⌈⌉) ⟨ _ ⟩) ∷
-      ((one —     ◂ one —    ◂ ⌈⌉) ⟨ _ ⟩) ∷ [])
+      ((cons — —  ∷ cons — — ∷ []) ⟨ _ ⟩) ∷
+      ((one —     ∷ cons — — ∷ []) ⟨ _ ⟩) ∷
+      ((cons — —  ∷ one —    ∷ []) ⟨ _ ⟩) ∷
+      ((one —     ∷ one —    ∷ []) ⟨ _ ⟩) ∷ [])
 _ = refl
 
 Q : PatternMatrix (TyData ⟨list⟩ ∷ TyData ⟨list⟩ ∷ [])
 Q =
-  (nil      ◂ —        ◂ ⌈⌉) ∷
-  (—        ◂ nil      ◂ ⌈⌉) ∷
-  (one —    ◂ —        ◂ ⌈⌉) ∷
-  (—        ◂ one —    ◂ ⌈⌉) ∷
-  (cons — — ◂ —        ◂ ⌈⌉) ∷
-  (—        ◂ cons — — ◂ ⌈⌉) ∷
+  (nil      ∷ —        ∷ []) ∷
+  (—        ∷ nil      ∷ []) ∷
+  (one —    ∷ —        ∷ []) ∷
+  (—        ∷ one —    ∷ []) ∷
+  (cons — — ∷ —        ∷ []) ∷
+  (—        ∷ cons — — ∷ []) ∷
   []
 
 -- Q is exhaustive, so we get a total matching function of type `∀ vs → Match Q vs`

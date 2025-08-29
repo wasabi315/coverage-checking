@@ -1,31 +1,31 @@
-{-# LANGUAGE LambdaCase, ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables, LambdaCase #-}
 module CoverageCheck.Prelude where
 
 mapEither :: (a -> c) -> (b -> d) -> Either a b -> Either c d
 mapEither f g (Left x) = Left (f x)
 mapEither f g (Right y) = Right (g y)
 
-data All p = AllNil
-           | AllCons p (All p)
+data All p = Nil
+           | Cons p (All p)
                deriving Show
 
-headAll :: All p -> p
-headAll (AllCons h _) = h
+headAll :: forall p . All p -> p
+headAll (Cons h _) = h
 
-tailAll :: All p -> All p
-tailAll (AllCons _ hs) = hs
+tailAll :: forall p . All p -> All p
+tailAll (Cons _ hs) = hs
 
-data Any p = AnyHere p
-           | AnyThere (Any p)
+data Any p = Here p
+           | There (Any p)
                deriving Show
 
-data First p = FirstHere p
-             | FirstThere (First p)
+data First p = FHere p
+             | FThere (First p)
                  deriving Show
 
-firstToAny :: First p -> Any p
-firstToAny (FirstHere h) = AnyHere h
-firstToAny (FirstThere h) = AnyThere (firstToAny h)
+firstToAny :: forall a p . First p -> Any p
+firstToAny (FHere h) = Here h
+firstToAny (FThere h) = There (firstToAny h)
 
 data These a b = This a
                | That b
@@ -114,6 +114,6 @@ theseDecP No No = No
 firstDecP :: (a -> DecP p) -> [a] -> DecP (First p)
 firstDecP f [] = No
 firstDecP f (x : xs)
-  = ifDecP (f x) (\ h -> Yes (FirstHere h))
-      (mapDecP FirstThere (firstDecP f xs))
+  = ifDecP (f x) (\ h -> Yes (FHere h))
+      (mapDecP FThere (firstDecP f xs))
 

@@ -12,27 +12,27 @@ We prove that a pattern matrix is indeed exhaustive if the algorithm returns `tr
 
 P : PatternMatrix (TyData ⟨list⟩ ∷ TyData ⟨list⟩ ∷ [])
 P =
-  (nil ◂ —   ◂ ⌈⌉) ∷
-  (—   ◂ nil ◂ ⌈⌉) ∷
+  (nil ∷ —   ∷ []) ∷
+  (—   ∷ nil ∷ []) ∷
   []
 
 -- P is non-exhaustive, witnessed by the following list of patterns
 _ : decNonExhaustive P
   ≡ Right (
-      ((cons — —  ◂ cons — — ◂ ⌈⌉) ⟨ _ ⟩) ◂
-      ((one —     ◂ cons — — ◂ ⌈⌉) ⟨ _ ⟩) ∷
-      ((cons — —  ◂ one —    ◂ ⌈⌉) ⟨ _ ⟩) ∷
-      ((one —     ◂ one —    ◂ ⌈⌉) ⟨ _ ⟩) ∷ [])
+      ((cons — —  ∷ cons — — ∷ []) ⟨ _ ⟩) ∷
+      ((one —     ∷ cons — — ∷ []) ⟨ _ ⟩) ∷
+      ((cons — —  ∷ one —    ∷ []) ⟨ _ ⟩) ∷
+      ((one —     ∷ one —    ∷ []) ⟨ _ ⟩) ∷ [])
 _ = refl
 
 Q : PatternMatrix (TyData ⟨list⟩ ∷ TyData ⟨list⟩ ∷ [])
 Q =
-  (nil      ◂ —        ◂ ⌈⌉) ∷
-  (—        ◂ nil      ◂ ⌈⌉) ∷
-  (one —    ◂ —        ◂ ⌈⌉) ∷
-  (—        ◂ one —    ◂ ⌈⌉) ∷
-  (cons — — ◂ —        ◂ ⌈⌉) ∷
-  (—        ◂ cons — — ◂ ⌈⌉) ∷
+  (nil      ∷ —        ∷ []) ∷
+  (—        ∷ nil      ∷ []) ∷
+  (one —    ∷ —        ∷ []) ∷
+  (—        ∷ one —    ∷ []) ∷
+  (cons — — ∷ —        ∷ []) ∷
+  (—        ∷ cons — — ∷ []) ∷
   []
 
 -- Q is exhaustive, so we get a total matching function of type `∀ vs → Match Q vs`

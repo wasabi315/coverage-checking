@@ -48,8 +48,9 @@ usefulPWildMissCase' ::
 usefulPWildMissCase' sig d (Left ()) qs
   = MkNonEmpty (PCons PWild qs) []
 usefulPWildMissCase' sig d (Right hs) qs
-  = flip fmap hs
+  = fmap
       (\ c -> PCons (PCon c (pWilds (argsTy (dataDefs sig d) c))) qs)
+      hs
 
 usefulPWildMissCase ::
                     Signature ->

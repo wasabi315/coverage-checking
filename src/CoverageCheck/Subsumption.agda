@@ -11,7 +11,7 @@ module CoverageCheck.Subsumption
 
 private open module @0 G = Globals globals
 
-infixr 5 _◂_ appendSubsumptions
+infixr 5 _∷_  appendSubsumptions
 infix  4 Subsumption Subsumptions _⊈_ _⊈*_
 
 private
@@ -59,16 +59,16 @@ pattern ∣⊆ˡ s   = SOrL s
 pattern ∣⊆ʳ s   = SOrR s
 
 data Subsumptions where
-  SNil : ⌈⌉ ⊆* ⌈⌉
+  SNil : [] ⊆* []
   SCons : {@0 p q : Pattern α0} {@0 ps qs : Patterns αs0}
     → (s : p ⊆ q)
     → (ss : ps ⊆* qs)
-    → (p ◂ ps) ⊆* (q ◂ qs)
+    → (p ∷ ps) ⊆* (q ∷ qs)
 
 {-# COMPILE AGDA2HS Subsumptions deriving Show #-}
 
-pattern ⌈⌉       = SNil
-pattern _◂_ s ss = SCons s ss
+pattern []       = SNil
+pattern _∷_  s ss = SCons s ss
 
 _⊈_ : (@0 p q : Pattern α0) → Type
 p ⊈ q = ¬ p ⊆ q
@@ -80,8 +80,8 @@ qs ⊈* ps = ¬ ps ⊆* qs
 -- Properties of the branch selection relation
 
 sWilds : {@0 qs : Patterns αs} → Subsumptions {αs} —* qs
-sWilds {⌈⌉}     {⌈⌉}    = ⌈⌉
-sWilds {α ◂ αs} {_ ◂ _} = —⊆ ◂ sWilds
+sWilds {[]}     {[]}    = []
+sWilds {α ∷ αs} {_ ∷ _} = —⊆ ∷ sWilds
 {-# COMPILE AGDA2HS sWilds #-}
 syntax sWilds = —⊆*
 
@@ -106,38 +106,30 @@ module _ {@0 c : NameCon d0}
   syntax sConInv = con⊆⁻
 
 
-module _ {@0 p q : Pattern α0} {@0 ps qs : Patterns αs0} where
-
-  sUncons : (p ◂ ps ⊆* q ◂ qs) → (p ⊆ q) × (ps ⊆* qs)
-  sUncons (s ◂ ss) = s , ss
-  {-# COMPILE AGDA2HS sUncons #-}
-  syntax sUncons = ◂⊆⁻
-
-
 appendSubsumptions : {@0 ps ps' : Patterns αs0} {@0 qs qs' : Patterns βs0}
   → (ps ⊆* ps')
   → (qs ⊆* qs')
-  → (ps ◂◂ᵖ qs) ⊆* (ps' ◂◂ᵖ qs')
-appendSubsumptions ⌈⌉ bs' = bs'
-appendSubsumptions (s ◂ ss) ss' = s ◂ appendSubsumptions ss ss'
+  → (ps ++ᵖ qs) ⊆* (ps' ++ᵖ qs')
+appendSubsumptions [] bs' = bs'
+appendSubsumptions (s ∷ ss) ss' = s ∷ appendSubsumptions ss ss'
 {-# COMPILE AGDA2HS appendSubsumptions #-}
-syntax appendSubsumptions bs bs' = bs ◂◂ˢ bs'
+syntax appendSubsumptions bs bs' = bs ++ˢ bs'
 
 unappendSubsumptions : (ps : Patterns αs0) {@0 ps' : Patterns αs0} {@0 qs qs' : Patterns βs0}
-  → (ps ◂◂ᵖ qs) ⊆* (ps' ◂◂ᵖ qs')
+  → (ps ++ᵖ qs) ⊆* (ps' ++ᵖ qs')
   → (ps ⊆* ps') × (qs ⊆* qs')
-unappendSubsumptions ⌈⌉       {⌈⌉}    bs       = ⌈⌉ , bs
-unappendSubsumptions (p ◂ ps) {_ ◂ _} (s ◂ ss) = first (s ◂_) (unappendSubsumptions ps ss)
+unappendSubsumptions []       {[]}    bs       = [] , bs
+unappendSubsumptions (p ∷ ps) {_ ∷ _} (s ∷ ss) = first (s ∷_) (unappendSubsumptions ps ss)
 {-# COMPILE AGDA2HS unappendSubsumptions #-}
-syntax unappendSubsumptions ps bs = ps ◂◂ˢ⁻ bs
+syntax unappendSubsumptions ps bs = ps ++ˢ⁻ bs
 
-splitSubsumptions : (@0 ps : Patterns αs) {@0 qs : Patterns βs0} {rs : Patterns (αs ◂◂ βs0)}
-  → @0 (ps ◂◂ᵖ qs) ⊆* rs
-  → ∃[ (rs₁ , rs₂) ∈ (Patterns αs × Patterns βs0) ] (rs₁ ◂◂ᵖ rs₂ ≡ rs) × ((ps ⊆* rs₁) × (qs ⊆* rs₂))
-splitSubsumptions {αs = ⌈⌉} ⌈⌉ {rs = rs} bs = (⌈⌉ , rs) ⟨ refl , (⌈⌉ , bs) ⟩
-splitSubsumptions {αs = α ◂ αs} (p ◂ ps) {rs = r ◂ rs} (s ◂ ss) =
+splitSubsumptions : (@0 ps : Patterns αs) {@0 qs : Patterns βs0} {rs : Patterns (αs ++ βs0)}
+  → @0 (ps ++ᵖ qs) ⊆* rs
+  → ∃[ (rs₁ , rs₂) ∈ (Patterns αs × Patterns βs0) ] (rs₁ ++ᵖ rs₂ ≡ rs) × ((ps ⊆* rs₁) × (qs ⊆* rs₂))
+splitSubsumptions {αs = []} [] {rs = rs} bs = ([] , rs) ⟨ refl , ([] , bs) ⟩
+splitSubsumptions {αs = α ∷ αs} (p ∷ ps) {rs = r ∷ rs} (s ∷ ss) =
   let rs' ⟨ eq , ss' ⟩ = splitSubsumptions ps ss in
-  first (r ◂_) rs' ⟨ cong (r ◂_) eq , first (s ◂_) ss' ⟩
+  first (r ∷_) rs' ⟨ cong (r ∷_) eq , first (s ∷_) ss' ⟩
 {-# COMPILE AGDA2HS splitSubsumptions #-}
 
 
@@ -161,8 +153,8 @@ subsume (∣⊆ʳ s)    i = ∣≼ʳ (subsume s i)
 
 subsumeConCase ss (con≼ is) = con≼ (subsumes ss is)
 
-subsumes ⌈⌉       ⌈⌉       = ⌈⌉
-subsumes (s ◂ ss) (i ◂ is) = subsume s i ◂ subsumes ss is
+subsumes []       []       = []
+subsumes (s ∷ ss) (i ∷ is) = subsume s i ∷ subsumes ss is
 
 {-# COMPILE AGDA2HS subsume        #-}
 {-# COMPILE AGDA2HS subsumeConCase #-}

@@ -14,8 +14,6 @@ private
     d : NameData
     @0 d0 : NameData
 
-infixr 5 _◂_ appendTys
-
 --------------------------------------------------------------------------------
 -- Tys and Signatures
 
@@ -27,16 +25,8 @@ data Ty where
 
 Tys = List Ty
 
-pattern ⌈⌉       = []
-pattern _◂_ α αs = α ∷ αs
-
 {-# COMPILE AGDA2HS Ty  deriving Show #-}
 {-# COMPILE AGDA2HS Tys deriving Show #-}
-
-appendTys : Tys → Tys → Tys
-appendTys = _++_
-syntax appendTys αs βs = αs ◂◂ βs
-{-# COMPILE AGDA2HS appendTys inline #-}
 
 private
   variable
@@ -95,7 +85,7 @@ tyData-injective refl = refl
 
 module _ ⦃ @0 sig : Signature ⦄ where
   infixr 6 _∣_
-  infixr 5 _◂_ appendValues appendPatterns
+  infixr 5 _∷_ appendValues appendPatterns
 
   data Value  : (@0 α : Ty) → Type
   data Values : (@0 αs : Tys) → Type
@@ -108,24 +98,24 @@ module _ ⦃ @0 sig : Signature ⦄ where
   pattern con c vs = VCon c vs
 
   data Values where
-    VNil  : Values ⌈⌉
-    VCons : (v : Value α0) (vs : Values αs0) → Values (α0 ◂ αs0)
+    VNil  : Values []
+    VCons : (v : Value α0) (vs : Values αs0) → Values (α0 ∷ αs0)
 
-  pattern ⌈⌉         = VNil
-  pattern _◂_ v vs   = VCons v vs
+  pattern []         = VNil
+  pattern _∷_ v vs   = VCons v vs
 
   {-# COMPILE AGDA2HS Value  deriving (Show, Eq) #-}
   {-# COMPILE AGDA2HS Values deriving (Show, Eq) #-}
 
-  appendValues : Values αs0 → Values βs0 → Values (αs0 ◂◂ βs0)
-  appendValues ⌈⌉       vs = vs
-  appendValues (u ◂ us) vs = u ◂ appendValues us vs
-  syntax appendValues us vs = us ◂◂ᵛ vs
+  appendValues : Values αs0 → Values βs0 → Values (αs0 ++ βs0)
+  appendValues []       vs = vs
+  appendValues (u ∷ us) vs = u ∷ appendValues us vs
+  syntax appendValues us vs = us ++ᵛ vs
   {-# COMPILE AGDA2HS appendValues #-}
 
   tabulateValues : (∀ α → Value α) → Values αs
-  tabulateValues {⌈⌉}     f = ⌈⌉
-  tabulateValues {α ◂ αs} f = f α ◂ tabulateValues f
+  tabulateValues {[]}     f = []
+  tabulateValues {α ∷ αs} f = f α ∷ tabulateValues f
   {-# COMPILE AGDA2HS tabulateValues #-}
 
   data Pattern  : (@0 α : Ty) → Type
@@ -143,11 +133,11 @@ module _ ⦃ @0 sig : Signature ⦄ where
   pattern _∣_ p₁ p₂ = POr p₁ p₂
 
   data Patterns where
-    PNil  : Patterns ⌈⌉
-    PCons : (p : Pattern α0) (ps : Patterns αs0) → Patterns (α0 ◂ αs0)
+    PNil  : Patterns []
+    PCons : (p : Pattern α0) (ps : Patterns αs0) → Patterns (α0 ∷ αs0)
 
-  pattern ⌈⌉         = PNil
-  pattern _◂_ p ps   = PCons p ps
+  pattern []         = PNil
+  pattern _∷_  p ps   = PCons p ps
 
   PatternMatrix : (@0 αs : Tys) → Type
   PatternMatrix αs = List (Patterns αs)
@@ -157,23 +147,23 @@ module _ ⦃ @0 sig : Signature ⦄ where
   {-# COMPILE AGDA2HS PatternMatrix inline #-}
 
   pWilds : Patterns αs -- αs is not erasable
-  pWilds {αs = ⌈⌉}    = ⌈⌉
-  pWilds {αs = α ◂ αs} = — ◂ pWilds
+  pWilds {αs = []}     = []
+  pWilds {αs = α ∷ αs} = — ∷ pWilds
   syntax pWilds = —*
   {-# COMPILE AGDA2HS pWilds #-}
 
-  headPattern : Patterns (α0 ◂ αs0) → Pattern α0
-  headPattern (p ◂ _) = p
+  headPattern : Patterns (α0 ∷ αs0) → Pattern α0
+  headPattern (p ∷ _) = p
   {-# COMPILE AGDA2HS headPattern #-}
 
-  tailPatterns : Patterns (α0 ◂ αs0) → Patterns αs0
-  tailPatterns (_ ◂ ps) = ps
+  tailPatterns : Patterns (α0 ∷ αs0) → Patterns αs0
+  tailPatterns (_ ∷ ps) = ps
   {-# COMPILE AGDA2HS tailPatterns #-}
 
-  appendPatterns : Patterns αs0 → Patterns βs0 → Patterns (αs0 ◂◂ βs0)
-  appendPatterns ⌈⌉       qs = qs
-  appendPatterns (p ◂ ps) qs = p ◂ appendPatterns ps qs
-  syntax appendPatterns ps qs = ps ◂◂ᵖ qs
+  appendPatterns : Patterns αs0 → Patterns βs0 → Patterns (αs0 ++ βs0)
+  appendPatterns []       qs = qs
+  appendPatterns (p ∷ ps) qs = p ∷ appendPatterns ps qs
+  syntax appendPatterns ps qs = ps ++ᵖ qs
   {-# COMPILE AGDA2HS appendPatterns #-}
 
 --------------------------------------------------------------------------------
@@ -187,8 +177,8 @@ module _ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄ w
   inst (con c ps) = con c (insts ps)
   inst (p ∣ _)    = inst p
 
-  insts ⌈⌉       = ⌈⌉
-  insts (p ◂ ps) = inst p ◂ insts ps
+  insts []       = []
+  insts (p ∷ ps) = inst p ∷ insts ps
 
 
 module _ ⦃ @0 sig : Signature ⦄ where
@@ -198,8 +188,8 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
   only (con c vs) = con c (onlys vs)
 
-  onlys ⌈⌉ = ⌈⌉
-  onlys (v ◂ vs) = only v ◂ onlys vs
+  onlys [] = []
+  onlys (v ∷ vs) = only v ∷ onlys vs
 
   {-# COMPILE AGDA2HS only #-}
   {-# COMPILE AGDA2HS onlys #-}

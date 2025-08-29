@@ -22,8 +22,8 @@ module _ where
     @0 All≢⇒¬InHere : ∀ {x xs}
       → All (λ y → ¬ x ≡ y) xs
       → ¬ In x xs
-    All≢⇒¬InHere (h ◂ hs) InHere        = h refl
-    All≢⇒¬InHere (h ◂ hs) (InThere hs') = All≢⇒¬InHere hs hs'
+    All≢⇒¬InHere (h ∷ hs) InHere        = h refl
+    All≢⇒¬InHere (h ∷ hs) (InThere hs') = All≢⇒¬InHere hs hs'
 
     @0 fresh⇒uniqueIn : (x : Name) (xs : List Name)
       → Fresh xs
@@ -138,7 +138,7 @@ module _ where
     lem2 : ∀ {@0 x xs} {p : @0 NameIn (x ∷ xs) → Type}
       → NonEmpty (Σ[ y ∈ NameIn xs ] p (mapRefine InThere y))
       → NonEmpty (Σ[ y ∈ NameIn (x ∷ xs) ] p y)
-    lem2 ((y , h) ◂ ys) = (mapRefine InThere y , h) ◂ lem2' ys
+    lem2 ((y , h) ∷ ys) = (mapRefine InThere y , h) ∷ lem2' ys
     {-# COMPILE AGDA2HS lem2 transparent #-}
 
     @0 lem3 : ∀ {@0 x xs} {p : @0 NameIn (x ∷ xs) → Type}
@@ -164,7 +164,7 @@ module _ where
   decPAnyNameIn []       refl f = No λ _ → undefined
   decPAnyNameIn (x ∷ xs) refl f =
     mapDecP
-      (these (λ h → lem1 h ◂ []) lem2 (λ h hs → lem1 h ◂′ lem2 hs))
+      (these (λ h → lem1 h ∷ []) lem2 (λ h hs → lem1 h ∷′ lem2 hs))
       lem4
       (theseDecP (f (x ⟨ InHere ⟩)) (decPAnyNameIn xs refl λ y → f (mapRefine InThere y)))
   {-# COMPILE AGDA2HS decPAnyNameIn #-}
