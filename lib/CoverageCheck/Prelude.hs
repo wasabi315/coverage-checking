@@ -1,6 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables, LambdaCase #-}
 module CoverageCheck.Prelude where
 
+import Control.Arrow (first)
+
 mapEither :: (a -> c) -> (b -> d) -> Either a b -> Either c d
 mapEither f g (Left x) = Left (f x)
 mapEither f g (Right y) = Right (g y)
@@ -19,6 +21,24 @@ infixr 5 `appendAll`
 appendAll :: forall p . All p -> All p -> All p
 appendAll Nil ys = ys
 appendAll (Cons x xs) ys = Cons x (appendAll xs ys)
+
+data HAll2 r = HNil
+             | HCons r (HAll2 r)
+                 deriving (Eq, Show)
+
+hUncons :: forall r . HAll2 r -> (r, HAll2 r)
+hUncons (HCons h hs) = (h, hs)
+
+infixr 5 `hAppend`
+hAppend :: forall r . HAll2 r -> HAll2 r -> HAll2 r
+hAppend HNil ys = ys
+hAppend (HCons x xs) ys = HCons x (hAppend xs ys)
+
+infixr 5 `hUnappend`
+hUnappend :: forall p r . All p -> HAll2 r -> (HAll2 r, HAll2 r)
+hUnappend Nil xs = (HNil, xs)
+hUnappend (Cons hp hps) (HCons x xs)
+  = first (HCons x) (hUnappend hps xs)
 
 data Any p = Here p
            | There (Any p)
