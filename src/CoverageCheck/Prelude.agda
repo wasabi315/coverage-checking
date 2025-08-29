@@ -120,17 +120,18 @@ mapListRefine f (x ∷ xs) = mapRefine f x ∷ mapListRefine f xs
 --------------------------------------------------------------------------------
 -- Relations on lists
 
+infixr 5 _:>_
+
 data All {@0 a : Type} (p : @0 a → Type) : (@0 xs : List a) → Type where
   Nil  : All p []
-  Cons : ∀ {@0 x xs} → p x → All p xs → All p (x ∷ xs)
+  _:>_ : ∀ {@0 x xs} → p x → All p xs → All p (x ∷ xs)
 
 {-# COMPILE AGDA2HS All deriving (Eq, Show) #-}
 
 pattern []       = Nil
-pattern _∷_ h hs = Cons h hs
+pattern _∷_ h hs = h :> hs
 
 module _ {@0 a : Type} {p : @0 a → Type} where
-  infixr 5 appendAll
 
   headAll : ∀ {@0 x xs} → All p (x ∷ xs) → p x
   headAll (h ∷ _) = h
@@ -140,19 +141,13 @@ module _ {@0 a : Type} {p : @0 a → Type} where
   tailAll (_ ∷ hs) = hs
   {-# COMPILE AGDA2HS tailAll #-}
 
-  appendAll : ∀ {@0 xs ys} → All p xs → All p ys → All p (xs ++ ys)
-  appendAll []       ys = ys
-  appendAll (x ∷ xs) ys = x ∷ appendAll xs ys
-  {-# COMPILE AGDA2HS appendAll #-}
-  syntax appendAll xs ys = xs +++ ys
-
 
 module _ {@0 a : Type} {@0 p q : @0 a → Type} where
-  infixr 5 _∷_
+  infixr 5 _∷_ _:>>_
 
   data HAll2 (r : ∀ {@0 x} → @0 p x → @0 q x → Type) : ∀ {@0 xs} → @0 All p xs → @0 All q xs → Type where
     HNil  : HAll2 r [] []
-    HCons : ∀ {@0 x xs} {@0 h : p x} {@0 hs : All p xs} {@0 h' : q x} {@0 hs' : All q xs}
+    _:>>_ : ∀ {@0 x xs} {@0 h : p x} {@0 hs : All p xs} {@0 h' : q x} {@0 hs' : All q xs}
       → r h h'
       → HAll2 r hs hs'
       → HAll2 r (h ∷ hs) (h' ∷ hs')
@@ -160,40 +155,7 @@ module _ {@0 a : Type} {@0 p q : @0 a → Type} where
   {-# COMPILE AGDA2HS HAll2 deriving (Eq, Show) #-}
 
   pattern [] = HNil
-  pattern _∷_ h hs = HCons h hs
-
-  module _ {r : ∀ {@0 x} → @0 p x → @0 q x → Type} where
-    infixr 5 hAppend
-
-    hUncons : ∀ {@0 x xs} {@0 h : p x} {@0 hs : All p xs} {@0 h' : q x} {@0 hs' : All q xs}
-      → HAll2 r (h ∷ hs) (h' ∷ hs')
-      → r h h' × HAll2 r hs hs'
-    hUncons (h ∷ hs) = h , hs
-    syntax hUncons = ∷ʰ⁻
-    {-# COMPILE AGDA2HS hUncons #-}
-
-    hAppend : ∀ {@0 xs ys} {@0 hps : All p xs} {@0 hqs : All q xs} {@0 hps' : All p ys} {@0 hqs' : All q ys}
-      → HAll2 r hps hqs
-      → HAll2 r hps' hqs'
-      → HAll2 r (hps +++ hps') (hqs +++ hqs')
-    hAppend []       ys = ys
-    hAppend (x ∷ xs) ys = x ∷ hAppend xs ys
-    syntax hAppend xs ys = xs ++ʰ ys
-    {-# COMPILE AGDA2HS hAppend #-}
-
-
-module _ {@0 a : Type} {p : @0 a → Type} {@0 q : @0 a → Type}
-  {r : ∀ {@0 x} → @0 p x → @0 q x → Type}
-  where
-  infixr 5 hUnappend
-
-  hUnappend : ∀ {@0 xs ys} (hps : All p xs) {@0 hqs : All q xs} {@0 hps' : All p ys} {@0 hqs' : All q ys}
-    → HAll2 r (hps +++ hps') (hqs +++ hqs')
-    → HAll2 r hps hqs × HAll2 r hps' hqs'
-  hUnappend []         {[]}    xs       = [] , xs
-  hUnappend (hp ∷ hps) {_ ∷ _} (x ∷ xs) = first (x ∷_) (hUnappend hps xs)
-  syntax hUnappend = ++ʰ⁻
-  {-# COMPILE AGDA2HS hUnappend #-}
+  pattern _∷_ h hs = h :>> hs
 
 
 data Any {@0 a : Type} (p : @0 a → Type) : (@0 xs : List a) → Type where
@@ -227,6 +189,21 @@ module _ {a : Type} {p : @0 a → Type} where
   ++Any⁻ []       h         = Right h
   ++Any⁻ (x ∷ xs) (here h)  = Left (here h)
   ++Any⁻ (x ∷ xs) (there h) = mapEither there id (++Any⁻ xs h)
+
+
+module _ {a b : Type} {p : @0 a → Type} {q : @0 b → Type} {f : a → b} where
+
+  gmapAny⁺ :
+      (∀ {x} → p x → q (f x))
+    → (∀ {xs} → Any p xs → Any q (map f xs))
+  gmapAny⁺ g {x ∷ xs} (here h)  = here (g h)
+  gmapAny⁺ g {x ∷ xs} (there h) = there (gmapAny⁺ g h)
+
+  gmapAny⁻ :
+      (∀ {x} → q (f x) → p x)
+    → (∀ {xs} → Any q (map f xs) → Any p xs)
+  gmapAny⁻ g {x ∷ xs} (here h)  = here (g h)
+  gmapAny⁻ g {x ∷ xs} (there h) = there (gmapAny⁻ g h)
 
 
 module _ {a b : Type} {p : @0 a → Type} {q : @0 b → Type} {f : a → List b} where

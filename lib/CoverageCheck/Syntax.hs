@@ -1,7 +1,7 @@
 module CoverageCheck.Syntax where
 
 import CoverageCheck.Name (Name)
-import CoverageCheck.Prelude (All(Cons, Nil))
+import CoverageCheck.Prelude (All(Nil, (:>)))
 
 data Ty = TyData Name
             deriving Show
@@ -19,7 +19,7 @@ type Values = All Value
 
 tabulateValues :: Tys -> (Ty -> Value) -> Values
 tabulateValues [] f = Nil
-tabulateValues (α : αs) f = Cons (f α) (tabulateValues αs f)
+tabulateValues (α : αs) f = f α :> tabulateValues αs f
 
 data Pattern = PWild
              | PCon Name Patterns
@@ -30,20 +30,20 @@ type Patterns = All Pattern
 
 pWilds :: Tys -> Patterns
 pWilds [] = Nil
-pWilds (α : αs) = Cons PWild (pWilds αs)
+pWilds (α : αs) = PWild :> pWilds αs
 
 headPattern :: Patterns -> Pattern
-headPattern (Cons p _) = p
+headPattern (p :> _) = p
 
 tailPatterns :: Patterns -> Patterns
-tailPatterns (Cons _ ps) = ps
+tailPatterns (_ :> ps) = ps
 
 only :: Value -> Pattern
 only (VCon c vs) = PCon c (onlys vs)
 
 onlys :: Values -> Patterns
 onlys Nil = Nil
-onlys (Cons v vs) = Cons (only v) (onlys vs)
+onlys (v :> vs) = only v :> onlys vs
 
 inhab' :: Signature -> (Ty -> Value) -> Name -> (Name, Values)
 inhab' sig nonEmptyAxiom d

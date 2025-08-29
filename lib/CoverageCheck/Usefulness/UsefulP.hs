@@ -1,17 +1,20 @@
 module CoverageCheck.Usefulness.UsefulP where
 
 import CoverageCheck.Name (Name)
-import CoverageCheck.Prelude (All(Cons, Nil), NonEmpty(MkNonEmpty), These(Both, That, This))
-import CoverageCheck.Subsumption (splitSubsumptions)
+import CoverageCheck.Prelude (All(Nil, (:>)), NonEmpty(MkNonEmpty), These(Both, That, This))
 import CoverageCheck.Syntax (Dataty(argsTy), Pattern(PCon, PWild), Patterns, Signature(dataDefs), pWilds)
 import CoverageCheck.Usefulness.Algorithm (Usefulness)
 
 import CoverageCheck.Usefulness.Algorithm
 
-newtype UsefulP = MkUsefulP{witnesses :: NonEmpty Patterns}
+newtype UsefulP = MkUsefulP{witnesses :: NonEmpty (All Patterns)}
 
 usefulPNilOkCase :: UsefulP
 usefulPNilOkCase = MkUsefulP (MkNonEmpty Nil [])
+
+usefulPTailCase :: UsefulP -> UsefulP
+usefulPTailCase (MkUsefulP hs)
+  = MkUsefulP (fmap (\ qss -> Nil :> qss) hs)
 
 usefulPOrCase :: These UsefulP UsefulP -> UsefulP
 usefulPOrCase (This (MkUsefulP hs)) = MkUsefulP hs
@@ -19,37 +22,33 @@ usefulPOrCase (That (MkUsefulP hs)) = MkUsefulP hs
 usefulPOrCase (Both (MkUsefulP hs) (MkUsefulP hs'))
   = MkUsefulP (hs <> hs')
 
-usefulPConCase' ::
-                Signature -> Name -> Name -> Patterns -> Patterns
-usefulPConCase' sig d c qs
-  = case splitSubsumptions (argsTy (dataDefs sig d) c) qs of
-        (qs₁, qs₂) -> Cons (PCon c qs₁) qs₂
+usefulPConCase' :: Name -> All Patterns -> All Patterns
+usefulPConCase' c (qs' :> (qs :> qss)) = (PCon c qs' :> qs) :> qss
 
-usefulPConCase :: Signature -> Name -> Name -> UsefulP -> UsefulP
-usefulPConCase sig d c (MkUsefulP hs)
-  = MkUsefulP (fmap (usefulPConCase' sig d c) hs)
+usefulPConCase :: Name -> UsefulP -> UsefulP
+usefulPConCase c (MkUsefulP hs)
+  = MkUsefulP (fmap (usefulPConCase' c) hs)
 
-usefulPWildCompCase' ::
-                     Signature -> Name -> Name -> Patterns -> Patterns
-usefulPWildCompCase' sig d c qs
-  = case splitSubsumptions (argsTy (dataDefs sig d) c) qs of
-        (qs₁, qs₂) -> Cons (PCon c qs₁) qs₂
+usefulPWildCompCase' :: Name -> All Patterns -> All Patterns
+usefulPWildCompCase' c (qs' :> (qs :> qss))
+  = (PCon c qs' :> qs) :> qss
 
-usefulPWildCompCase ::
-                    Signature -> Name -> NonEmpty (Name, UsefulP) -> UsefulP
-usefulPWildCompCase sig d hs
+usefulPWildCompCase :: NonEmpty (Name, UsefulP) -> UsefulP
+usefulPWildCompCase hs
   = MkUsefulP
       (do (c, MkUsefulP hs') <- hs
-          fmap (usefulPWildCompCase' sig d c) hs')
+          fmap (usefulPWildCompCase' c) hs')
 
 usefulPWildMissCase' ::
                      Signature ->
-                       Name -> Either () (NonEmpty Name) -> Patterns -> NonEmpty Patterns
-usefulPWildMissCase' sig d (Left ()) qs
-  = MkNonEmpty (Cons PWild qs) []
-usefulPWildMissCase' sig d (Right hs) qs
+                       Name ->
+                         Either () (NonEmpty Name) ->
+                           All Patterns -> NonEmpty (All Patterns)
+usefulPWildMissCase' sig d (Left ()) (qs :> qss)
+  = MkNonEmpty ((PWild :> qs) :> qss) []
+usefulPWildMissCase' sig d (Right hs) (qs :> qss)
   = fmap
-      (\ c -> Cons (PCon c (pWilds (argsTy (dataDefs sig d) c))) qs)
+      (\ c -> (PCon c (pWilds (argsTy (dataDefs sig d) c)) :> qs) :> qss)
       hs
 
 usefulPWildMissCase ::
@@ -60,8 +59,9 @@ usefulPWildMissCase sig d h (MkUsefulP hs)
 
 instance Usefulness UsefulP where
     nilOkCase sig nonEmptyAxiom = usefulPNilOkCase
+    tailCase sig nonEmptyAxiom = usefulPTailCase
     orCase sig nonEmptyAxiom = usefulPOrCase
-    conCase sig nonEmptyAxiom d c = usefulPConCase sig d c
+    conCase sig nonEmptyAxiom d c = usefulPConCase c
     wildMissCase sig nonEmptyAxiom d = usefulPWildMissCase sig d
-    wildCompCase sig nonEmptyAxiom d = usefulPWildCompCase sig d
+    wildCompCase sig nonEmptyAxiom d = usefulPWildCompCase
 

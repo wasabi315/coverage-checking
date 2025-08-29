@@ -97,15 +97,6 @@ module _ {@0 c : NameCon d0}
   syntax sConInv = con⊆⁻
 
 
-splitSubsumptions : (@0 ps : Patterns αs) {@0 qs : Patterns βs0} {rs : Patterns (αs ++ βs0)}
-  → @0 (ps +++ qs) ⊆* rs
-  → ∃[ (rs₁ , rs₂) ∈ (Patterns αs × Patterns βs0) ] (rs₁ +++ rs₂ ≡ rs) × ((ps ⊆* rs₁) × (qs ⊆* rs₂))
-splitSubsumptions {αs = []} [] {rs = rs} bs = ([] , rs) ⟨ refl , ([] , bs) ⟩
-splitSubsumptions {αs = α ∷ αs} (p ∷ ps) {rs = r ∷ rs} (s ∷ ss) =
-  let rs' ⟨ eq , ss' ⟩ = splitSubsumptions ps ss in
-  first (r ∷_) rs' ⟨ cong (r ∷_) eq , first (s ∷_) ss' ⟩
-{-# COMPILE AGDA2HS splitSubsumptions #-}
-
 subsume : {@0 p q : Pattern α0} {@0 v : Value α0}
   → p ⊆ q
   → q ≼ v

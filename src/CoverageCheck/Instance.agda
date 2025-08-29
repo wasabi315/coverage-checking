@@ -117,69 +117,6 @@ module _ {@0 p : Pattern α0} {@0 v : Value α0} {@0 ps : Patterns αs0} {@0 vs 
   syntax iUncons = ∷ⁱ⁻
 
 
-splitInstances : (@0 ps : Patterns αs) {@0 qs : Patterns βs0} {us : Values (αs ++ βs0)}
-  → @0 (ps +++ qs) ≼* us
-  → ∃[ (vs , ws) ∈ (Values αs × Values βs0) ] (vs +++ ws ≡ us) × ((ps ≼* vs) × (qs ≼* ws))
-splitInstances {αs = []}     []       {us = us}     is       = ([] , us) ⟨ refl , ([] , is) ⟩
-splitInstances {αs = α ∷ αs} (p ∷ ps) {us = u ∷ us} (i ∷ is) =
-  let vsws ⟨ eq , is' ⟩ = splitInstances ps is in
-  first (u ∷_) vsws ⟨ cong (u ∷_) eq , first (i ∷_) is' ⟩
-{-# COMPILE AGDA2HS splitInstances #-}
-
-module _ {@0 ps : Patterns αs0} {@0 vs : Values αs0} {@0 u : Value β0} {@0 us : Values βs} where
-
-  wildHeadLemma : (—* +++ ps) ≼* (us +++ vs) → (— ∷ ps) ≼* (u ∷ vs)
-  wildHeadLemma h = case ++ʰ⁻ —* h of λ where
-    (_ , h') → —≼ ∷ h'
-  {-# COMPILE AGDA2HS wildHeadLemma #-}
-
-  wildHeadLemmaInv : (— ∷ ps) ≼* (u ∷ vs) → (—* +++ ps) ≼* (us +++ vs)
-  wildHeadLemmaInv (—≼ ∷ h) = —≼* ++ʰ h
-  {-# COMPILE AGDA2HS wildHeadLemmaInv #-}
-
-
-module _ {@0 p q : Pattern α0} {@0 ps : Patterns αs0} {@0 v : Value α0} {@0 vs : Values αs0} where
-
-  orHeadLemma : Either (p ∷ ps ≼* v ∷ vs) (q ∷ ps ≼* v ∷ vs)
-    → (p ∣ q ∷ ps) ≼* (v ∷ vs)
-  orHeadLemma (Left (h ∷ hs))  = ∣≼ˡ h ∷ hs
-  orHeadLemma (Right (h ∷ hs)) = ∣≼ʳ h ∷ hs
-  {-# COMPILE AGDA2HS orHeadLemma #-}
-
-  orHeadLemmaInv : (p ∣ q ∷ ps) ≼* (v ∷ vs)
-    → Either (p ∷ ps ≼* v ∷ vs) (q ∷ ps ≼* v ∷ vs)
-  orHeadLemmaInv (∣≼ˡ h ∷ hs) = Left (h ∷ hs)
-  orHeadLemmaInv (∣≼ʳ h ∷ hs) = Right (h ∷ hs)
-  {-# COMPILE AGDA2HS orHeadLemmaInv #-}
-
-
-module _ {c : NameCon d0}
-  (let @0 αs : Tys
-       αs = argsTy (dataDefs sig d0) c)
-  {rs : Patterns αs} {@0 ps : Patterns βs0}
-  {@0 us : Values αs} {@0 vs : Values βs0}
-  where
-
-  conHeadLemma : (rs +++ ps) ≼* (us +++ vs)
-    → (con c rs ∷ ps) ≼* (con c us ∷ vs)
-  conHeadLemma h = case ++ʰ⁻ rs h of λ where
-    (h1 , h2) → con≼ h1 ∷ h2
-  {-# COMPILE AGDA2HS conHeadLemma #-}
-
-
-module _ {@0 c : NameCon d0}
-  (let @0 αs : Tys
-       αs = argsTy (dataDefs sig d0) c)
-  {rs : Patterns αs} {@0 ps : Patterns βs0}
-  {@0 us : Values αs} {@0 vs : Values βs0}
-  where
-
-  conHeadLemmaInv : (con c rs ∷ ps) ≼* (con c us ∷ vs)
-    → (rs +++ ps) ≼* (us +++ vs)
-  conHeadLemmaInv (con≼ h ∷ h') = h ++ʰ h'
-  {-# COMPILE AGDA2HS conHeadLemmaInv #-}
-
-
 module _ {c c' : NameCon d0}
   (let @0 αs : Tys
        αs = argsTy (dataDefs sig d0) c

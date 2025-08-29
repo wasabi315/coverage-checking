@@ -1,48 +1,51 @@
 module CoverageCheck.Usefulness.Useful where
 
-import CoverageCheck.Instance (splitInstances)
 import CoverageCheck.Name (Name)
-import CoverageCheck.Prelude (All(Cons, Nil), NonEmpty(MkNonEmpty), These(Both, That, This))
-import CoverageCheck.Syntax (Dataty(argsTy), Signature(dataDefs), Ty, Value(VCon), Values, inhab, inhabAt)
+import CoverageCheck.Prelude (All(Nil, (:>)), NonEmpty(MkNonEmpty), These(Both, That, This))
+import CoverageCheck.Syntax (Signature, Ty, Value(VCon), Values, inhab, inhabAt)
 import CoverageCheck.Usefulness.Algorithm (Usefulness)
 
 import CoverageCheck.Usefulness.Algorithm
 
-newtype Useful = MkUseful{witness :: Values}
+newtype Useful = MkUseful{witness :: All Values}
 
 usefulNilOkCase :: Useful
 usefulNilOkCase = MkUseful Nil
+
+usefulTailCase :: Useful -> Useful
+usefulTailCase (MkUseful vss) = MkUseful (Nil :> vss)
 
 usefulOrCase :: These Useful Useful -> Useful
 usefulOrCase (This h) = h
 usefulOrCase (That h) = h
 usefulOrCase (Both h _) = h
 
-usefulConCase :: Signature -> Name -> Name -> Useful -> Useful
-usefulConCase sig d c (MkUseful usvs)
-  = case splitInstances (argsTy (dataDefs sig d) c) usvs of
-        (us, vs) -> MkUseful (Cons (VCon c us) vs)
+usefulConCase :: Name -> Useful -> Useful
+usefulConCase c (MkUseful (vs' :> (vs :> vss)))
+  = MkUseful ((VCon c vs' :> vs) :> vss)
 
-usefulWildCompCase ::
-                   Signature -> Name -> NonEmpty (Name, Useful) -> Useful
-usefulWildCompCase sig d (MkNonEmpty (c, MkUseful usvs) _)
-  = case splitInstances (argsTy (dataDefs sig d) c) usvs of
-        (us, vs) -> MkUseful (Cons (VCon c us) vs)
+usefulWildCompCase :: NonEmpty (Name, Useful) -> Useful
+usefulWildCompCase
+  (MkNonEmpty (c, MkUseful (vs' :> (vs :> vss))) _)
+  = MkUseful ((VCon c vs' :> vs) :> vss)
 
 usefulWildMissCase ::
                    Signature ->
-                     Name ->
-                       (Ty -> Value) -> Either () (NonEmpty Name) -> Useful -> Useful
-usefulWildMissCase sig d nonEmptyAxiom (Left ()) (MkUseful vs)
-  = MkUseful (Cons (inhab sig nonEmptyAxiom d) vs)
-usefulWildMissCase sig d nonEmptyAxiom (Right (MkNonEmpty c _))
-  (MkUseful vs) = MkUseful (Cons (inhabAt sig nonEmptyAxiom d c) vs)
+                     (Ty -> Value) ->
+                       Name -> Either () (NonEmpty Name) -> Useful -> Useful
+usefulWildMissCase sig nonEmptyAxiom d (Left ())
+  (MkUseful (vs :> vss))
+  = MkUseful ((inhab sig nonEmptyAxiom d :> vs) :> vss)
+usefulWildMissCase sig nonEmptyAxiom d (Right (MkNonEmpty c _))
+  (MkUseful (vs :> vss))
+  = MkUseful ((inhabAt sig nonEmptyAxiom d c :> vs) :> vss)
 
 instance Usefulness Useful where
     nilOkCase sig nonEmptyAxiom = usefulNilOkCase
+    tailCase sig nonEmptyAxiom = usefulTailCase
     orCase sig nonEmptyAxiom = usefulOrCase
-    conCase sig nonEmptyAxiom d c = usefulConCase sig d c
+    conCase sig nonEmptyAxiom d c = usefulConCase c
     wildMissCase sig nonEmptyAxiom d
-      = usefulWildMissCase sig d nonEmptyAxiom
-    wildCompCase sig nonEmptyAxiom d = usefulWildCompCase sig d
+      = usefulWildMissCase sig nonEmptyAxiom d
+    wildCompCase sig nonEmptyAxiom d = usefulWildCompCase
 
