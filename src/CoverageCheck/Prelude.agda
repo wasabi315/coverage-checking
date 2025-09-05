@@ -243,9 +243,17 @@ module _ {@0 a : Type} {p : @0 a → Type} where
   notFirstToNotAny h (there h') = notFirstToNotAny (h ∘ (h ∘ [_] ∷_)) h'
 
 
-@0 Fresh : {a : Type} → List a → Type
-Fresh []       = ⊤
-Fresh (x ∷ xs) = All (λ y → ¬ x ≡ y) xs × Fresh xs
+infixr 5 _:<>_
+
+data AllPair {@0 a : Type} (r : (@0 x y : a) → Type) : (@0 xs : List a) → Type where
+  PNil  : AllPair r []
+  _:<>_ : ∀ {@0 x xs} → All (r x) xs → AllPair r xs → AllPair r (x ∷ xs)
+
+pattern [] = PNil
+pattern _∷_ h hs = h :<> hs
+
+Fresh : {@0 a : Type} → @0 List a → Type
+Fresh = AllPair (λ x y → @0 x ≡ y → ⊥)
 
 --------------------------------------------------------------------------------
 -- These

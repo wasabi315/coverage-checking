@@ -20,7 +20,7 @@ NameIn xs = ∃[ x ∈ Name ] In x xs
 module _ where
   private
     @0 All≢⇒¬InHere : ∀ {x xs}
-      → All (λ y → ¬ x ≡ y) xs
+      → All (λ y → @0 x ≡ y → ⊥) xs
       → ¬ In x xs
     All≢⇒¬InHere (h ∷ hs) InHere        = h refl
     All≢⇒¬InHere (h ∷ hs) (InThere hs') = All≢⇒¬InHere hs hs'
@@ -29,10 +29,10 @@ module _ where
       → Fresh xs
       → (p q : In x xs)
       → p ≡ q
-    fresh⇒uniqueIn x (y ∷ xs) (h , h') InHere InHere = refl
-    fresh⇒uniqueIn x (y ∷ xs) (h , h') (InThere p) (InThere q) = cong InThere (fresh⇒uniqueIn x xs h' p q)
-    fresh⇒uniqueIn x (y ∷ xs) (h , h') InHere (InThere q) = explode (All≢⇒¬InHere h q)
-    fresh⇒uniqueIn x (y ∷ xs) (h , h') (InThere p) InHere = explode (All≢⇒¬InHere h p)
+    fresh⇒uniqueIn x (y ∷ xs) (h ∷ h') InHere InHere = refl
+    fresh⇒uniqueIn x (y ∷ xs) (h ∷ h') (InThere p) (InThere q) = cong InThere (fresh⇒uniqueIn x xs h' p q)
+    fresh⇒uniqueIn x (y ∷ xs) (h ∷ h') InHere (InThere q) = explode (All≢⇒¬InHere h q)
+    fresh⇒uniqueIn x (y ∷ xs) (h ∷ h') (InThere p) InHere = explode (All≢⇒¬InHere h p)
 
   @0 name-injective : ∀ {@0 xs} ⦃ @0 _ : Fresh xs ⦄ {x y : NameIn xs}
     → value x ≡ value y

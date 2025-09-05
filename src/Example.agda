@@ -101,11 +101,11 @@ pattern cons x xs = con ⟨cons⟩ (x ∷ xs ∷ [])
 instance
   globals : Globals
   globals .dataScope                   = `unit ∷ `list ∷ []
-  globals .freshDataScope              = (λ ()) ∷ [] , ([] , tt)
+  globals .freshDataScope              = ((λ ()) ∷ []) ∷ [] ∷ []
   globals .conScope      (`unit ⟨ _ ⟩) = `unit ∷ []
   globals .conScope      (`list ⟨ _ ⟩) = `nil ∷ `one ∷ `cons ∷ []
-  globals .freshConScope {`unit ⟨ _ ⟩} = [] , tt
-  globals .freshConScope {`list ⟨ _ ⟩} = ((λ ()) ∷ (λ ()) ∷ []) , ((λ ()) ∷ [] , ([] , tt))
+  globals .freshConScope {`unit ⟨ _ ⟩} = [] ∷ []
+  globals .freshConScope {`list ⟨ _ ⟩} = ((λ ()) ∷ (λ ()) ∷ []) ∷ ((λ ()) ∷ []) ∷ [] ∷ []
   globals .conScope      (_ ⟨ InThere (InThere ()) ⟩)
   globals .freshConScope {_ ⟨ InThere (InThere ()) ⟩}
 
