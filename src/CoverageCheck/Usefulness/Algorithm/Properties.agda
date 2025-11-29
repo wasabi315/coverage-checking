@@ -3,9 +3,11 @@ open import CoverageCheck.GlobalScope using (Globals)
 open import CoverageCheck.Instance
 open import CoverageCheck.Syntax
 open import CoverageCheck.Name
-open import CoverageCheck.Usefulness.Algorithm
 
-module CoverageCheck.Usefulness.Properties
+open import CoverageCheck.Usefulness.Algorithm.Raw
+open import CoverageCheck.Usefulness.Algorithm.MissingConstructors
+
+module CoverageCheck.Usefulness.Algorithm.Properties
   ⦃ @0 globals : Globals ⦄
   where
 

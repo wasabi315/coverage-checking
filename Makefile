@@ -14,8 +14,10 @@ alllib: lib \
 	lib/CoverageCheck/Subsumption.hs \
 	lib/CoverageCheck/Usefulness.hs \
 	lib/CoverageCheck/Usefulness/Algorithm.hs \
-	lib/CoverageCheck/Usefulness/Useful.hs \
-	lib/CoverageCheck/Usefulness/UsefulP.hs \
+	lib/CoverageCheck/Usefulness/Algorithm/Raw.hs \
+	lib/CoverageCheck/Usefulness/Algorithm/MissingConstructors.hs \
+	lib/CoverageCheck/Usefulness/Algorithm/Properties.hs \
+	lib/CoverageCheck/Usefulness/Definition.hs \
 	lib/CoverageCheck/Exhaustiveness.hs \
 	lib/CoverageCheck.hs
 

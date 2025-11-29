@@ -5,7 +5,6 @@ open import CoverageCheck.Subsumption
 open import CoverageCheck.Syntax
 open import CoverageCheck.Name
 open import CoverageCheck.Usefulness
-open import CoverageCheck.Usefulness.Properties
 
 open import Haskell.Data.List.NonEmpty as NonEmpty using (NonEmpty; _∷_)
 
@@ -45,7 +44,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
   -- non-exhaustiveness defined in terms of usefulness:
   -- P is non-exhaustive if —* is useful with respect to P
   NonExhaustiveU : PatternMatrix αs0 → Type
-  NonExhaustiveU P = UsefulP (map (_∷ []) P) (—* ∷ [])
+  NonExhaustiveU P = Useful (map (_∷ []) P) (—* ∷ [])
   {-# COMPILE AGDA2HS NonExhaustiveU inline #-}
 
   -- P is exhaustive if —* is not useful with respect to P
@@ -54,14 +53,14 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
   module _ {@0 P : PatternMatrix αs0} where
 
-    nonExhaustiveUToNonExhaustive' : UsefulP' (map (_∷ []) P) (—* ∷ []) → NonExhaustive' P
+    nonExhaustiveUToNonExhaustive' : Useful' (map (_∷ []) P) (—* ∷ []) → NonExhaustive' P
     nonExhaustiveUToNonExhaustive' = λ where
       ⟪ qs ∷ [] , is ∷ [] , disj , _ ⟫ →
         qs ⟨ (_ ⟨ is ⟩) , (λ is ms → disj (gmapAny⁺ (_∷ []) (firstToAny ms)) (is ∷ [])) ⟩
     {-# COMPILE AGDA2HS nonExhaustiveUToNonExhaustive' inline #-}
 
     nonExhaustiveUToNonExhaustive :
-        NonEmpty (UsefulP' (map (_∷ []) P) (—* ∷ []))
+        NonEmpty (Useful' (map (_∷ []) P) (—* ∷ []))
       → NonExhaustive P
     nonExhaustiveUToNonExhaustive = fmap nonExhaustiveUToNonExhaustive'
     {-# COMPILE AGDA2HS nonExhaustiveUToNonExhaustive inline #-}
@@ -69,7 +68,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
     @0 nonExhaustiveToNonExhaustiveU : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       → NonExhaustive P → NonExhaustiveU P
     nonExhaustiveToNonExhaustiveU hs =
-      MkUsefulP (flip fmap hs λ (qs ⟨ is , h ⟩) →
+      MkUseful (flip fmap hs λ (qs ⟨ is , h ⟩) →
         ⟪ qs ∷ []
         , proof is ∷ []
         , (λ where
@@ -80,7 +79,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
     @0 exhaustiveToExhaustiveU : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       → Exhaustive P → ExhaustiveU P
-    exhaustiveToExhaustiveU h (MkUsefulP (⟪ qs ∷ [] , _ , disj , _ ⟫ ∷ _)) =
+    exhaustiveToExhaustiveU h (MkUseful (⟪ qs ∷ [] , _ , disj , _ ⟫ ∷ _)) =
       contradiction (gmapAny⁺ (_∷ []) (firstToAny (h (insts qs)))) (flip disj (inst≼* qs ∷ []))
 
 
@@ -92,7 +91,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
         (Yes h') → h'
         (No h')  →
           contradiction
-            (MkUsefulP
+            (MkUseful
               (⟪ onlys vs ∷ []
               , only≼* vs ∷ []
               , (λ where
@@ -107,10 +106,10 @@ module _ ⦃ @0 sig : Signature ⦄ where
 --------------------------------------------------------------------------------
 -- Entrypoint
 
-module _ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄ where
+module _ ⦃ sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α ⦄ where
 
   decNonExhaustive : (pss : PatternMatrix αs) → Either (Erase (Exhaustive pss)) (NonExhaustive pss)
-  decNonExhaustive pss = ifDecP (decUseful (λ ⦃ sig' ⦄ → UsefulP ⦃ sig = sig' ⦄) pss pWilds)
+  decNonExhaustive pss = ifDecP (decUseful pss pWilds)
     (λ ⦃ h ⦄ → Right (nonExhaustiveUToNonExhaustive (h .witnesses)))
     (λ ⦃ h ⦄ → Left (Erased (exhaustiveUToExhaustive h)))
   {-# COMPILE AGDA2HS decNonExhaustive #-}

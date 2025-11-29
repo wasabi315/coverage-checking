@@ -4,6 +4,7 @@ module @0 Example where
 
 open import CoverageCheck
 open import Data.Set as Set using (Set)
+open import Haskell.Data.List.NonEmpty using (_∷_)
 
 --------------------------------------------------------------------------------
 -- Rewrite rules for Set operations

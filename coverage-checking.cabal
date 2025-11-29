@@ -29,8 +29,10 @@ library
                     , CoverageCheck.GlobalScope
                     , CoverageCheck.Usefulness
                     , CoverageCheck.Usefulness.Algorithm
-                    , CoverageCheck.Usefulness.Useful
-                    , CoverageCheck.Usefulness.UsefulP
+                    , CoverageCheck.Usefulness.Algorithm.Raw
+                    , CoverageCheck.Usefulness.Algorithm.MissingConstructors
+                    , CoverageCheck.Usefulness.Algorithm.Properties
+                    , CoverageCheck.Usefulness.Definition
                     , CoverageCheck.Exhaustiveness
                     , CoverageCheck
     build-depends:    base >=4.17 && <5
