@@ -1,5 +1,6 @@
 open import CoverageCheck.Prelude
 open import Data.Set as Set using (Set)
+open import Haskell.Data.List.NonEmpty as NonEmpty using (NonEmpty; _∷_; _<|_)
 
 module CoverageCheck.Name where
 
@@ -154,17 +155,17 @@ module _ where
       → These
           (p (x ⟨ InHere ⟩))
           (NonEmpty (Σ[ y ∈ NameIn xs ] p (mapRefine InThere y)))
-    lem4 = mapThese head id ∘ partitionEithersNonEmpty ∘ fmap lem3
+    lem4 = mapThese NonEmpty.head id ∘ partitionEithersNonEmpty ∘ fmap lem3
 
   decPAnyNameIn : (xs : List Name)
     → {@0 ys : List Name} (@0 eq : xs ≡ ys)
     → {p : @0 NameIn ys → Type}
     → (∀ x → DecP (p x))
     → DecP (NonEmpty (Σ[ x ∈ _ ] p x))
-  decPAnyNameIn []       refl f = No λ _ → undefined
+  decPAnyNameIn []       refl f = No λ where (x ∷ _) → undefined
   decPAnyNameIn (x ∷ xs) refl f =
     mapDecP
-      (these (λ h → lem1 h ∷ []) lem2 (λ h hs → lem1 h ∷′ lem2 hs))
+      (these (λ h → lem1 h ∷ []) lem2 (λ h hs → lem1 h <| lem2 hs))
       lem4
       (theseDecP (f (x ⟨ InHere ⟩)) (decPAnyNameIn xs refl λ y → f (mapRefine InThere y)))
   {-# COMPILE AGDA2HS decPAnyNameIn #-}

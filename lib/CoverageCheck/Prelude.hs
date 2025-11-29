@@ -1,9 +1,7 @@
-{-# LANGUAGE ScopedTypeVariables, LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module CoverageCheck.Prelude where
 
-mapEither :: (a -> c) -> (b -> d) -> Either a b -> Either c d
-mapEither f g (Left x) = Left (f x)
-mapEither f g (Right y) = Right (g y)
+import Data.List.NonEmpty (NonEmpty((:|)))
 
 data All p = Nil
            | (:>) p (All p)
@@ -46,41 +44,8 @@ mapThese f g (This x) = This (f x)
 mapThese f g (That x) = That (g x)
 mapThese f g (Both x y) = Both (f x) (g y)
 
-data NonEmpty a = MkNonEmpty{head :: a, tail :: [a]}
-                    deriving Show
-
-infixr 5 `consNonEmpty`
-consNonEmpty :: a -> NonEmpty a -> NonEmpty a
-consNonEmpty x (MkNonEmpty y ys) = MkNonEmpty x (y : ys)
-
-bindNonEmpty :: NonEmpty a -> (a -> NonEmpty b) -> NonEmpty b
-bindNonEmpty (MkNonEmpty x xs) f
-  = case f x of
-        MkNonEmpty y ys -> MkNonEmpty y
-                             (ys ++
-                                (xs >>=
-                                   \case
-                                       MkNonEmpty x xs -> x : xs
-                                     . f))
-
-instance Functor NonEmpty where
-    fmap f (MkNonEmpty x xs) = MkNonEmpty (f x) (map f xs)
-
-instance Applicative NonEmpty where
-    pure x = MkNonEmpty x []
-    fs <*> xs
-      = bindNonEmpty fs (\ f -> bindNonEmpty xs (\ x -> pure (f x)))
-    xs <* ys = bindNonEmpty xs (\ x -> bindNonEmpty ys (\ _ -> pure x))
-    xs *> ys = bindNonEmpty xs (\ _ -> bindNonEmpty ys pure)
-
-instance Monad NonEmpty where
-    (>>=) = bindNonEmpty
-
-instance Semigroup (NonEmpty a) where
-    MkNonEmpty x xs <> MkNonEmpty y ys = MkNonEmpty x (xs ++ (y : ys))
-
 concatNonEmpty :: NonEmpty (NonEmpty a) -> NonEmpty a
-concatNonEmpty (MkNonEmpty xs xss) = go xs xss
+concatNonEmpty (xs :| xss) = go xs xss
   where
     go :: NonEmpty a -> [NonEmpty a] -> NonEmpty a
     go xs [] = xs

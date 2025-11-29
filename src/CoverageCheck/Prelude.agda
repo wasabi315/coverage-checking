@@ -42,9 +42,6 @@ open import Haskell.Prim.Num public
 open import Haskell.Prim.Ord public
   using (Ord; OrdFromLessThan)
 
-open import Haskell.Prim.Tuple public
-  using (first; second)
-
 open import Haskell.Law.Bool public
   using (prop-x-||-True; prop-x-||-False; not-involution; not-not)
 
@@ -79,6 +76,13 @@ open import Haskell.Extra.Sigma public
   using (Σ; Σ-syntax; _,_; fst; snd)
 
 --------------------------------------------------------------------------------
+-- Things in Haskell base but not provided by agda2hs-base
+
+open import Haskell.Data.Bifunctor public using
+  (Bifunctor; bimap; first; second; BifunctorFromBimap; BifunctorFromFirstSecond;
+  iBifunctorTuple; iBifunctorEither)
+
+--------------------------------------------------------------------------------
 -- Bottom and negation
 
 infix 3 ¬_
@@ -103,11 +107,6 @@ contraposition f g = g ∘ f
 
 --------------------------------------------------------------------------------
 -- Utils
-
-mapEither : {a b c d : Type} → (a → c) → (b → d) → Either a b → Either c d
-mapEither f g (Left x)  = Left (f x)
-mapEither f g (Right y) = Right (g y)
-{-# COMPILE AGDA2HS mapEither #-}
 
 mapListRefine : {a : Type} {@0 p q : a → Type}
   → (@0 f : ∀ {x} → p x → q x)
@@ -188,7 +187,7 @@ module _ {a : Type} {p : @0 a → Type} where
   ++Any⁻ : ∀ xs {@0 ys} → Any p (xs ++ ys) → Either (Any p xs) (Any p ys)
   ++Any⁻ []       h         = Right h
   ++Any⁻ (x ∷ xs) (here h)  = Left (here h)
-  ++Any⁻ (x ∷ xs) (there h) = mapEither there id (++Any⁻ xs h)
+  ++Any⁻ (x ∷ xs) (there h) = bimap there id (++Any⁻ xs h)
 
 
 module _ {a b : Type} {p : @0 a → Type} {q : @0 b → Type} {f : a → b} where
@@ -280,59 +279,7 @@ mapThese f g (Both x y) = Both (f x) (g y)
 --------------------------------------------------------------------------------
 -- Non-empty lists
 
-infixr 5 consNonEmpty
-
-record NonEmpty (a : Type) : Type where
-  constructor MkNonEmpty
-  field
-    head : a
-    tail : List a
-
-open NonEmpty public
-{-# COMPILE AGDA2HS NonEmpty deriving Show #-}
-
-pattern _∷_ x xs = MkNonEmpty x xs
-
-toListNonEmpty : {a : Type} → NonEmpty a → List a
-toListNonEmpty = λ where (x ∷ xs) → x ∷ xs
-{-# COMPILE AGDA2HS toListNonEmpty inline #-}
-
-consNonEmpty : {a : Type} → a → NonEmpty a → NonEmpty a
-consNonEmpty x (y ∷ ys) = x ∷ (y ∷ ys)
-{-# COMPILE AGDA2HS consNonEmpty #-}
-syntax consNonEmpty x xs = x ∷′ xs
-
-bindNonEmpty : {a b : Type} → NonEmpty a → (a → NonEmpty b) → NonEmpty b
-bindNonEmpty (x ∷ xs) f = case f x of λ where
-  (y ∷ ys) → y ∷ ys ++ (xs >>= (toListNonEmpty ∘ f))
-{-# COMPILE AGDA2HS bindNonEmpty #-}
-
-instance
-  iDefaultFunctorNonEmpty : DefaultFunctor NonEmpty
-  iDefaultFunctorNonEmpty .DefaultFunctor.fmap f (x ∷ xs) = f x ∷ map f xs
-
-  iFunctorNonEmpty : Functor NonEmpty
-  iFunctorNonEmpty = record {DefaultFunctor iDefaultFunctorNonEmpty}
-  {-# COMPILE AGDA2HS iFunctorNonEmpty #-}
-
-  iApplicativeNonEmpty : Applicative NonEmpty
-  iApplicativeNonEmpty .pure x = x ∷ []
-  iApplicativeNonEmpty ._<*>_ fs xs = bindNonEmpty fs λ f → bindNonEmpty xs λ x → pure (f x)
-  iApplicativeNonEmpty ._<*_  xs ys = bindNonEmpty xs λ x → bindNonEmpty ys λ _ → pure x
-  iApplicativeNonEmpty ._*>_  xs ys = bindNonEmpty xs λ _ → bindNonEmpty ys λ y → pure y
-  {-# COMPILE AGDA2HS iApplicativeNonEmpty #-}
-
-  iDefaultMonadNonEmpty : DefaultMonad NonEmpty
-  iDefaultMonadNonEmpty .DefaultMonad._>>=_ = bindNonEmpty
-
-  iMonadNonEmpty : Monad NonEmpty
-  iMonadNonEmpty = record {DefaultMonad iDefaultMonadNonEmpty}
-  {-# COMPILE AGDA2HS iMonadNonEmpty #-}
-
-  iSemigroupNonEmpty : {a : Type} → Semigroup (NonEmpty a)
-  iSemigroupNonEmpty ._<>_ (x ∷ xs) (y ∷ ys) = x ∷ (xs ++ y ∷ ys)
-  {-# COMPILE AGDA2HS iSemigroupNonEmpty #-}
-
+open import Haskell.Data.List.NonEmpty using (NonEmpty; _∷_; _<|_)
 
 mapNonEmptyRefine : {a : Type} {@0 p q : a → Type}
   → (@0 f : ∀ {x} → p x → q x)
@@ -355,12 +302,12 @@ partitionEithersNonEmpty : {a b : Type}
 partitionEithersNonEmpty {a} {b} (x ∷ xs) = go x xs
   where
     cons : Either a b → These (NonEmpty a) (NonEmpty b) → These (NonEmpty a) (NonEmpty b)
-    cons (Left x)  (This xs)    = This (x ∷′ xs)
+    cons (Left x)  (This xs)    = This (x <| xs)
     cons (Left x)  (That ys)    = Both (x ∷ []) ys
-    cons (Left x)  (Both xs ys) = Both (x ∷′ xs) ys
+    cons (Left x)  (Both xs ys) = Both (x <| xs) ys
     cons (Right y) (This xs)    = Both xs (y ∷ [])
-    cons (Right y) (That ys)    = That (y ∷′ ys)
-    cons (Right y) (Both xs ys) = Both xs (y ∷′ ys)
+    cons (Right y) (That ys)    = That (y <| ys)
+    cons (Right y) (Both xs ys) = Both xs (y <| ys)
 
     go : Either a b → List (Either a b) → These (NonEmpty a) (NonEmpty b)
     go x         (y ∷ xs) = cons x (go y xs)

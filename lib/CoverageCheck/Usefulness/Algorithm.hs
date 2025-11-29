@@ -2,8 +2,9 @@
 module CoverageCheck.Usefulness.Algorithm where
 
 import CoverageCheck.Name (Name, anyNameIn', decPAnyNameIn)
-import CoverageCheck.Prelude (All(Nil, (:>)), DecP(No, Yes), NonEmpty(MkNonEmpty), These, headAll, mapDecP, tailAll, theseDecP)
+import CoverageCheck.Prelude (All(Nil, (:>)), DecP(No, Yes), These, headAll, mapDecP, tailAll, theseDecP)
 import CoverageCheck.Syntax (Dataty(argsTy, dataCons), Pattern(PCon, POr, PWild), Patterns, Signature(dataDefs), Ty(TyData), Tys, Value, headPattern, pWilds)
+import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.Set (Set)
 import qualified Data.Set (difference, empty, fromList, null, singleton, toAscList, union)
 
@@ -86,7 +87,7 @@ decExistMissCon sig d psss
   = case
       case Data.Set.toAscList missConSet of
           [] -> Left ()
-          x : xs -> Right (MkNonEmpty x xs)
+          x : xs -> Right (x :| xs)
       of
         Left () -> Left ()
         Right misses -> Right

@@ -6,6 +6,7 @@ open import CoverageCheck.Syntax
 open import CoverageCheck.Name
 open import CoverageCheck.Usefulness.Algorithm
 open import CoverageCheck.Usefulness.Properties
+open import Haskell.Data.List.NonEmpty using (NonEmpty; _∷_)
 
 module CoverageCheck.Usefulness.UsefulP
   ⦃ @0 globals : Globals ⦄
@@ -55,6 +56,8 @@ module _ ⦃ @0 sig : Signature ⦄
   --   2. all rows of P are disjoint from qs
   --   3. ps subsumes qs
   record UsefulP' : Type where
+    no-eta-equality
+    pattern
     constructor ⟪_,_,_,_⟫
     field
       qs       : PatternStack αss0
@@ -66,6 +69,8 @@ module _ ⦃ @0 sig : Signature ⦄
   open UsefulP'
 
   record UsefulP : Type where
+    no-eta-equality
+    pattern
     constructor MkUsefulP
     field
       witnesses : NonEmpty UsefulP'
@@ -97,7 +102,7 @@ module _ ⦃ @0 sig : Signature ⦄
   usefulPTailCase' : UsefulP' (map tailAll P) pss → UsefulP' P ([] ∷ pss)
   usefulPTailCase' ⟪ qss , iss , disj , sss ⟫ =
     ⟪ [] ∷ qss , [] ∷ iss , #**-tail⁻ disj , [] ∷ sss ⟫
-  {-# COMPILE AGDA2HS usefulPTailCase' inline #-}
+  {-# COMPILE AGDA2HS usefulPTailCase' #-}
 
   usefulPTailCase : UsefulP (map tailAll P) pss → UsefulP P ([] ∷ pss)
   usefulPTailCase (MkUsefulP hs) = MkUsefulP (fmap usefulPTailCase' hs)

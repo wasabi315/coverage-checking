@@ -2,6 +2,7 @@ open import CoverageCheck.Prelude
 open import CoverageCheck.Name
 open import CoverageCheck.GlobalScope using (Globals)
 open import Data.Set as Set using (Set)
+open import Haskell.Data.List.NonEmpty using (NonEmpty)
 
 module CoverageCheck.Syntax
   ⦃ @0 globals : Globals ⦄
@@ -36,6 +37,7 @@ private
     @0 αs0 βs0 : Tys
 
 record Dataty (@0 d : NameData) : Type where
+  no-eta-equality
   field
     dataCons        : List Name
     @0 fullDataCons : dataCons ≡ conScope d
@@ -71,6 +73,7 @@ open Dataty public
 {-# COMPILE AGDA2HS Dataty #-}
 
 record Signature : Type where
+  no-eta-equality
   field
     dataDefs : (d : NameData) → Dataty d
 

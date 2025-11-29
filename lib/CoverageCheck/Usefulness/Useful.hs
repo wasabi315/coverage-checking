@@ -1,9 +1,10 @@
 module CoverageCheck.Usefulness.Useful where
 
 import CoverageCheck.Name (Name)
-import CoverageCheck.Prelude (All(Nil, (:>)), NonEmpty(MkNonEmpty), These(Both, That, This))
+import CoverageCheck.Prelude (All(Nil, (:>)), These(Both, That, This))
 import CoverageCheck.Syntax (Signature, Ty, Value(VCon), Values, inhab, inhabAt)
 import CoverageCheck.Usefulness.Algorithm (Usefulness)
+import Data.List.NonEmpty (NonEmpty((:|)))
 
 import CoverageCheck.Usefulness.Algorithm
 
@@ -25,8 +26,7 @@ usefulConCase c (MkUseful (vs' :> (vs :> vss)))
   = MkUseful ((VCon c vs' :> vs) :> vss)
 
 usefulWildCompCase :: NonEmpty (Name, Useful) -> Useful
-usefulWildCompCase
-  (MkNonEmpty (c, MkUseful (vs' :> (vs :> vss))) _)
+usefulWildCompCase ((c, MkUseful (vs' :> (vs :> vss))) :| _)
   = MkUseful ((VCon c vs' :> vs) :> vss)
 
 usefulWildMissCase ::
@@ -36,7 +36,7 @@ usefulWildMissCase ::
 usefulWildMissCase sig nonEmptyAxiom d (Left ())
   (MkUseful (vs :> vss))
   = MkUseful ((inhab sig nonEmptyAxiom d :> vs) :> vss)
-usefulWildMissCase sig nonEmptyAxiom d (Right (MkNonEmpty c _))
+usefulWildMissCase sig nonEmptyAxiom d (Right (c :| _))
   (MkUseful (vs :> vss))
   = MkUseful ((inhabAt sig nonEmptyAxiom d c :> vs) :> vss)
 

@@ -4,6 +4,7 @@ open import CoverageCheck.Instance
 open import CoverageCheck.Syntax
 open import CoverageCheck.Name
 open import Data.Set as Set using (Set)
+open import Haskell.Data.List.NonEmpty using (NonEmpty)
 
 module CoverageCheck.Usefulness.Algorithm
   ⦃ @0 globals : Globals ⦄

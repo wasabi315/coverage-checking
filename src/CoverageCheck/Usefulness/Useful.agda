@@ -5,6 +5,7 @@ open import CoverageCheck.Syntax
 open import CoverageCheck.Name
 open import CoverageCheck.Usefulness.Algorithm
 open import CoverageCheck.Usefulness.Properties
+open import Haskell.Data.List.NonEmpty using (NonEmpty; _∷_)
 
 module CoverageCheck.Usefulness.Useful
   ⦃ @0 globals : Globals ⦄
@@ -38,6 +39,8 @@ module _ ⦃ @0 sig : Signature ⦄ where
   --   2. vs does not match any row in P
   -- Usefulness can also be used to formulate redundancy
   record Useful (@0 P : PatternMatrixStack αss0) (@0 ps : PatternStack αss0) : Type where
+    no-eta-equality
+    pattern
     constructor MkUseful
     field
       witness       : ValueStack αss0

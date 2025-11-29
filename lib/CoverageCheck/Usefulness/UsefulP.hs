@@ -1,20 +1,24 @@
 module CoverageCheck.Usefulness.UsefulP where
 
 import CoverageCheck.Name (Name)
-import CoverageCheck.Prelude (All(Nil, (:>)), NonEmpty(MkNonEmpty), These(Both, That, This))
+import CoverageCheck.Prelude (All(Nil, (:>)), These(Both, That, This))
 import CoverageCheck.Syntax (Dataty(argsTy), Pattern(PCon, PWild), Patterns, Signature(dataDefs), pWilds)
 import CoverageCheck.Usefulness.Algorithm (Usefulness)
+import Data.List.NonEmpty (NonEmpty((:|)))
 
 import CoverageCheck.Usefulness.Algorithm
 
 newtype UsefulP = MkUsefulP{witnesses :: NonEmpty (All Patterns)}
 
 usefulPNilOkCase :: UsefulP
-usefulPNilOkCase = MkUsefulP (MkNonEmpty Nil [])
+usefulPNilOkCase = MkUsefulP (Nil :| [])
+
+usefulPTailCase' :: All Patterns -> All Patterns
+usefulPTailCase' qss = Nil :> qss
 
 usefulPTailCase :: UsefulP -> UsefulP
 usefulPTailCase (MkUsefulP hs)
-  = MkUsefulP (fmap (\ qss -> Nil :> qss) hs)
+  = MkUsefulP (fmap usefulPTailCase' hs)
 
 usefulPOrCase :: These UsefulP UsefulP -> UsefulP
 usefulPOrCase (This (MkUsefulP hs)) = MkUsefulP hs
@@ -45,7 +49,7 @@ usefulPWildMissCase' ::
                          Either () (NonEmpty Name) ->
                            All Patterns -> NonEmpty (All Patterns)
 usefulPWildMissCase' sig d (Left ()) (qs :> qss)
-  = MkNonEmpty ((PWild :> qs) :> qss) []
+  = ((PWild :> qs) :> qss) :| []
 usefulPWildMissCase' sig d (Right hs) (qs :> qss)
   = fmap
       (\ c -> (PCon c (pWilds (argsTy (dataDefs sig d) c)) :> qs) :> qss)

@@ -7,6 +7,8 @@ open import CoverageCheck.Name
 open import CoverageCheck.Usefulness
 open import CoverageCheck.Usefulness.Properties
 
+open import Haskell.Data.List.NonEmpty as NonEmpty using (NonEmpty; _∷_)
+
 module CoverageCheck.Exhaustiveness
   ⦃ @0 globals : Globals ⦄
   where

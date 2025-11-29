@@ -37,7 +37,8 @@ decInstance (POr p q) v
   = mapDecP (either IOrL IOrR)
       (eitherDecP (decInstance p v) (decInstance q v))
 decInstance (PCon c ps) (VCon c' vs)
-  = if c == c' then mapDecP (ICon c) (decInstances ps vs) else No
+  = if c == c' then mapDecP (\ is -> ICon c is) (decInstances ps vs)
+      else No
 
 infix 4 `decInstances`
 decInstances :: Patterns -> Values -> DecP Instances

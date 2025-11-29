@@ -88,7 +88,7 @@ module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}
     either
       (λ where ((i ∷ is) ∷ iss) → (∣≼ˡ i ∷ is) ∷ iss)
       (λ where ((i ∷ is) ∷ iss) → (∣≼ʳ i ∷ is) ∷ iss)
-    ∘ mapEither
+    ∘ bimap
         (specialize'-preserves-≼⁻ {pss = (r₁ ∷ ps) ∷ pss})
         (specialize'-preserves-≼⁻ {pss = (r₂ ∷ ps) ∷ pss})
     ∘ ++Any⁻ _
@@ -139,7 +139,7 @@ module @0 _ ⦃ sig : Signature ⦄ {v : Value (TyData d)} {vs : Values αs} {vs
     either
       (λ where ((i ∷ is) ∷ iss) → (∣≼ˡ i ∷ is) ∷ iss)
       (λ where ((i ∷ is) ∷ iss) → (∣≼ʳ i ∷ is) ∷ iss)
-    ∘ mapEither
+    ∘ bimap
         (default'-preserves-≼⁻ {pss = (r₁ ∷ ps) ∷ pss})
         (default'-preserves-≼⁻ {pss = (r₂ ∷ ps) ∷ pss})
     ∘ ++Any⁻ _

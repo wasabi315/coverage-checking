@@ -1,10 +1,11 @@
 {-# LANGUAGE LambdaCase #-}
 module CoverageCheck.Exhaustiveness where
 
-import CoverageCheck.Prelude (All(Nil, (:>)), NonEmpty, ifDecP)
+import CoverageCheck.Prelude (All(Nil, (:>)), ifDecP)
 import CoverageCheck.Syntax (Pattern, Patterns, Signature, Ty, Tys, Value, pWilds)
 import CoverageCheck.Usefulness.Algorithm (decUseful)
 import CoverageCheck.Usefulness.UsefulP (UsefulP(witnesses))
+import Data.List.NonEmpty (NonEmpty)
 
 decNonExhaustive ::
                  Signature ->
