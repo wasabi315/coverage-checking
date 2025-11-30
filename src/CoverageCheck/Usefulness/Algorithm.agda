@@ -7,27 +7,30 @@ open import CoverageCheck.Name
 open import Data.Set as Set using (Set)
 open import Haskell.Data.List.NonEmpty using (NonEmpty; _∷_)
 
+open import CoverageCheck.Usefulness.Definition
+open import CoverageCheck.Usefulness.Algorithm.Types
 open import CoverageCheck.Usefulness.Algorithm.Raw
 open import CoverageCheck.Usefulness.Algorithm.MissingConstructors
 open import CoverageCheck.Usefulness.Algorithm.Properties
-open import CoverageCheck.Usefulness.Definition
 open import CoverageCheck.Usefulness.Algorithm.Termination
 
 module CoverageCheck.Usefulness.Algorithm
   ⦃ @0 globals : Globals ⦄
   where
 
+{-# FOREIGN AGDA2HS
+import CoverageCheck.Usefulness.Definition (Useful(..))
+#-}
+
 private open module @0 G = Globals globals
 
 private
   variable
-    α β : Ty
-    αs βs : Tys
-    αss βss : TyStack
-    d : NameData
-    @0 α0 β0 : Ty
-    @0 αs0 βs0 : Tys
-    @0 αss0 βss0 : TyStack
+    αs : Tys
+    αss : TyStack
+    @0 α0 : Ty
+    @0 αs0 : Tys
+    @0 αss0 : TyStack
     @0 d0 : NameData
 
 --------------------------------------------------------------------------------
@@ -35,13 +38,12 @@ private
 
 module _ ⦃ @0 sig : Signature ⦄ where
 
-  usefulNilOkCase : Useful [] []
-  usefulNilOkCase = MkUseful (⟪ [] , (λ ()) , [] ⟫ ∷ [])
+  usefulNilOkCase : NonEmpty (UsefulS [] [])
+  usefulNilOkCase = ⟪ [] , (λ ()) , [] ⟫ ∷ []
   {-# COMPILE AGDA2HS usefulNilOkCase #-}
 
-  usefulNilBadCase : {ps : PatternStack []} {P : PatternMatrixStack []}
-    → ¬ Useful (ps ∷ P) []
-  usefulNilBadCase {ps = []} (MkUseful (⟪ [] , h , _ ⟫ ∷ _)) =
+  usefulNilBadCase : ∀ {ps P} → ¬ NonEmpty (UsefulS (ps ∷ P) [])
+  usefulNilBadCase {ps = []} (⟪ [] , h , _ ⟫ ∷ _) =
     contradiction [] (h (here []))
 
 
@@ -49,21 +51,25 @@ module _ ⦃ @0 sig : Signature ⦄
   {@0 P : PatternMatrixStack ([] ∷ αss0)} {@0 pss : PatternStack αss0}
   where
 
-  usefulTailCase' : Useful' (map tailAll P) pss → Useful' P ([] ∷ pss)
+  usefulTailCase' : UsefulS (map tailAll P) pss → UsefulS P ([] ∷ pss)
   usefulTailCase' ⟪ qss , disj , sss ⟫ =
     ⟪ [] ∷ qss , #**-tail⁻ disj , [] ∷ sss ⟫
   {-# COMPILE AGDA2HS usefulTailCase' #-}
 
-  usefulTailCase : Useful (map tailAll P) pss → Useful P ([] ∷ pss)
-  usefulTailCase (MkUseful hs) = MkUseful (fmap usefulTailCase' hs)
-  {-# COMPILE AGDA2HS usefulTailCase #-}
+  usefulTailCase
+    : NonEmpty (UsefulS (map tailAll P) pss)
+    → NonEmpty (UsefulS P ([] ∷ pss))
+  usefulTailCase = fmap usefulTailCase'
+  {-# COMPILE AGDA2HS usefulTailCase inline #-}
 
-  usefulTailCaseInv' : Useful' P ([] ∷ pss) → Useful' (map tailAll P) pss
+  usefulTailCaseInv' : UsefulS P ([] ∷ pss) → UsefulS (map tailAll P) pss
   usefulTailCaseInv' ⟪ [] ∷ qss , disj , [] ∷ sss ⟫ =
     ⟪ qss , #**-tail disj , sss ⟫
 
-  usefulTailCaseInv : Useful P ([] ∷ pss) → Useful (map tailAll P) pss
-  usefulTailCaseInv (MkUseful hs) = MkUseful (fmap usefulTailCaseInv' hs)
+  usefulTailCaseInv
+    : NonEmpty (UsefulS P ([] ∷ pss))
+    → NonEmpty (UsefulS (map tailAll P) pss)
+  usefulTailCaseInv = fmap usefulTailCaseInv'
 
 
 module _ ⦃ @0 sig : Signature ⦄
@@ -71,89 +77,105 @@ module _ ⦃ @0 sig : Signature ⦄
   {@0 r₁ r₂ : Pattern α0} {@0 ps : Patterns αs0} {@0 pss : PatternStack αss0}
   where
 
-  usefulOrCaseL' : Useful' P ((r₁ ∷ ps) ∷ pss) → Useful' P ((r₁ ∣ r₂ ∷ ps) ∷ pss)
+  usefulOrCaseL'
+    : UsefulS P ((r₁ ∷ ps) ∷ pss)
+    → UsefulS P ((r₁ ∣ r₂ ∷ ps) ∷ pss)
   usefulOrCaseL' ⟪ (q ∷ qs) ∷ qss , disj , (s ∷ ss) ∷ sss ⟫ =
     ⟪ (q ∷ qs) ∷ qss , disj , (∣⊆ˡ s ∷ ss) ∷ sss ⟫
   {-# COMPILE AGDA2HS usefulOrCaseL' transparent #-}
 
-  usefulOrCaseList : List (Useful' P ((r₁ ∷ ps) ∷ pss)) → List (Useful' P ((r₁ ∣ r₂ ∷ ps) ∷ pss))
+  usefulOrCaseList
+    : List (UsefulS P ((r₁ ∷ ps) ∷ pss))
+    → List (UsefulS P ((r₁ ∣ r₂ ∷ ps) ∷ pss))
   usefulOrCaseList []       = []
   usefulOrCaseList (h ∷ hs) = usefulOrCaseL' h ∷ usefulOrCaseList hs
   {-# COMPILE AGDA2HS usefulOrCaseList transparent #-}
 
-  usefulOrCaseL : NonEmpty (Useful' P ((r₁ ∷ ps) ∷ pss)) → NonEmpty (Useful' P ((r₁ ∣ r₂ ∷ ps) ∷ pss))
+  usefulOrCaseL
+    : NonEmpty (UsefulS P ((r₁ ∷ ps) ∷ pss))
+    → NonEmpty (UsefulS P ((r₁ ∣ r₂ ∷ ps) ∷ pss))
   usefulOrCaseL (h ∷ hs) = usefulOrCaseL' h ∷ usefulOrCaseList hs
   {-# COMPILE AGDA2HS usefulOrCaseL transparent #-}
 
-  usefulOrCaseR' : Useful' P ((r₂ ∷ ps) ∷ pss) → Useful' P ((r₁ ∣ r₂ ∷ ps) ∷ pss)
+  usefulOrCaseR'
+    : UsefulS P ((r₂ ∷ ps) ∷ pss)
+    → UsefulS P ((r₁ ∣ r₂ ∷ ps) ∷ pss)
   usefulOrCaseR' ⟪ (q ∷ qs) ∷ qss , disj , (s ∷ ss) ∷ sss ⟫ =
     ⟪ (q ∷ qs) ∷ qss , disj , (∣⊆ʳ s ∷ ss) ∷ sss ⟫
   {-# COMPILE AGDA2HS usefulOrCaseR' transparent #-}
 
-  usefulOrCaseRList : List (Useful' P ((r₂ ∷ ps) ∷ pss)) → List (Useful' P ((r₁ ∣ r₂ ∷ ps) ∷ pss))
+  usefulOrCaseRList
+    : List (UsefulS P ((r₂ ∷ ps) ∷ pss))
+    → List (UsefulS P ((r₁ ∣ r₂ ∷ ps) ∷ pss))
   usefulOrCaseRList []       = []
   usefulOrCaseRList (h ∷ hs) = usefulOrCaseR' h ∷ usefulOrCaseRList hs
   {-# COMPILE AGDA2HS usefulOrCaseRList transparent #-}
 
-  usefulOrCaseR : NonEmpty (Useful' P ((r₂ ∷ ps) ∷ pss)) → NonEmpty (Useful' P ((r₁ ∣ r₂ ∷ ps) ∷ pss))
+  usefulOrCaseR
+    : NonEmpty (UsefulS P ((r₂ ∷ ps) ∷ pss))
+    → NonEmpty (UsefulS P ((r₁ ∣ r₂ ∷ ps) ∷ pss))
   usefulOrCaseR (h ∷ hs) = usefulOrCaseR' h ∷ usefulOrCaseRList hs
   {-# COMPILE AGDA2HS usefulOrCaseR transparent #-}
 
-  usefulOrCase :
-      These (Useful P ((r₁ ∷ ps) ∷ pss)) (Useful P ((r₂ ∷ ps) ∷ pss))
-    → Useful P ((r₁ ∣ r₂ ∷ ps) ∷ pss)
-  usefulOrCase (This (MkUseful hs)) = MkUseful (usefulOrCaseL hs)
-  usefulOrCase (That (MkUseful hs)) = MkUseful (usefulOrCaseR hs)
-  usefulOrCase (Both (MkUseful hs) (MkUseful hs')) = MkUseful (usefulOrCaseL hs <> usefulOrCaseR hs')
+  usefulOrCase
+    : These
+        (NonEmpty (UsefulS P ((r₁ ∷ ps) ∷ pss)))
+        (NonEmpty (UsefulS P ((r₂ ∷ ps) ∷ pss)))
+    → NonEmpty (UsefulS P ((r₁ ∣ r₂ ∷ ps) ∷ pss))
+  usefulOrCase (This hs) = usefulOrCaseL hs
+  usefulOrCase (That hs) = usefulOrCaseR hs
+  usefulOrCase (Both hs1 hs2) = usefulOrCaseL hs1 <> usefulOrCaseR hs2
   {-# COMPILE AGDA2HS usefulOrCase #-}
 
-  @0 usefulOrCaseInv' :
-      Useful' P ((r₁ ∣ r₂ ∷ ps) ∷ pss)
-    → Either (Useful' P ((r₁ ∷ ps) ∷ pss)) (Useful' P ((r₂ ∷ ps) ∷ pss))
+  @0 usefulOrCaseInv'
+    : UsefulS P ((r₁ ∣ r₂ ∷ ps) ∷ pss)
+    → Either (UsefulS P ((r₁ ∷ ps) ∷ pss)) (UsefulS P ((r₂ ∷ ps) ∷ pss))
   usefulOrCaseInv' ⟪ (q ∷ qs) ∷ qss , disj , (∣⊆ˡ s ∷ ss) ∷ sss ⟫ =
     Left (⟪ (q ∷ qs) ∷ qss , disj , (s ∷ ss) ∷ sss ⟫)
   usefulOrCaseInv' ⟪ (q ∷ qs) ∷ qss , disj , (∣⊆ʳ s ∷ ss) ∷ sss ⟫ =
     Right (⟪ (q ∷ qs) ∷ qss , disj , (s ∷ ss) ∷ sss ⟫)
 
-  @0 usefulOrCaseInv :
-      Useful P ((r₁ ∣ r₂ ∷ ps) ∷ pss)
-    → These (Useful P ((r₁ ∷ ps) ∷ pss)) (Useful P ((r₂ ∷ ps) ∷ pss))
-  usefulOrCaseInv (MkUseful hs) = mapThese MkUseful MkUseful
-    (partitionEithersNonEmpty (fmap usefulOrCaseInv' hs))
+  @0 usefulOrCaseInv
+    : NonEmpty (UsefulS P ((r₁ ∣ r₂ ∷ ps) ∷ pss))
+    → These
+        (NonEmpty (UsefulS P ((r₁ ∷ ps) ∷ pss)))
+        (NonEmpty (UsefulS P ((r₂ ∷ ps) ∷ pss)))
+  usefulOrCaseInv = partitionEithersNonEmpty ∘ fmap usefulOrCaseInv'
 
 
 module _ ⦃ @0 sig : Signature ⦄ {c : NameCon d0}
   {@0 P : PatternMatrixStack ((TyData d0 ∷ αs0) ∷ αss0)}
-  {@0 rs : Patterns (argsTy (dataDefs sig d0) c)} {@0 ps : Patterns αs0} {@0 pss : PatternStack αss0}
+  {@0 rs : Patterns (argsTy (dataDefs sig d0) c)}
+  {@0 ps : Patterns αs0} {@0 pss : PatternStack αss0}
   where
 
   usefulConCase' :
-      Useful' (specialize c P) (rs ∷ ps ∷ pss)
-    → Useful' P ((con c rs ∷ ps) ∷ pss)
+      UsefulS (specialize c P) (rs ∷ ps ∷ pss)
+    → UsefulS P ((con c rs ∷ ps) ∷ pss)
   usefulConCase' ⟪ qs' ∷ qs ∷ qss , disj , ss' ∷ ss ∷ sss ⟫ =
     ⟪ (con c qs' ∷ qs) ∷ qss
     , specialize-preserves-#**⁻ disj
     , (con⊆ ss' ∷ ss) ∷ sss ⟫
   {-# COMPILE AGDA2HS usefulConCase' #-}
 
-  usefulConCase :
-      Useful (specialize c P) (rs ∷ ps ∷ pss)
-    → Useful P ((con c rs ∷ ps) ∷ pss)
-  usefulConCase (MkUseful hs) = MkUseful (fmap usefulConCase' hs)
-  {-# COMPILE AGDA2HS usefulConCase #-}
+  usefulConCase
+    : NonEmpty (UsefulS (specialize c P) (rs ∷ ps ∷ pss))
+    → NonEmpty (UsefulS P ((con c rs ∷ ps) ∷ pss))
+  usefulConCase = fmap usefulConCase'
+  {-# COMPILE AGDA2HS usefulConCase inline #-}
 
   usefulConCaseInv' :
-      Useful' P ((con c rs ∷ ps) ∷ pss)
-    → Useful' (specialize c P) (rs ∷ ps ∷ pss)
+      UsefulS P ((con c rs ∷ ps) ∷ pss)
+    → UsefulS (specialize c P) (rs ∷ ps ∷ pss)
   usefulConCaseInv' ⟪ (con c qs' ∷ qs) ∷ qss , disj , (con⊆ ss' ∷ ss) ∷ sss ⟫ =
     ⟪ qs' ∷ qs ∷ qss
     , specialize-preserves-#** disj
     , ss' ∷ ss ∷ sss ⟫
 
-  usefulConCaseInv :
-      Useful P ((con c rs ∷ ps) ∷ pss)
-    → Useful (specialize c P) (rs ∷ ps ∷ pss)
-  usefulConCaseInv (MkUseful hs) = MkUseful (fmap usefulConCaseInv' hs)
+  usefulConCaseInv
+    : NonEmpty (UsefulS P ((con c rs ∷ ps) ∷ pss))
+    → NonEmpty (UsefulS (specialize c P) (rs ∷ ps ∷ pss))
+  usefulConCaseInv hs = fmap usefulConCaseInv' hs
 
 
 module _ ⦃ @0 sig : Signature ⦄
@@ -162,19 +184,21 @@ module _ ⦃ @0 sig : Signature ⦄
   where
 
   usefulWildCompCase' : (c : NameCon d0)
-    → Useful' (specialize c P) (—* ∷ ps ∷ pss)
-    → Useful' P ((— ∷ ps) ∷ pss)
+    → UsefulS (specialize c P) (—* ∷ ps ∷ pss)
+    → UsefulS P ((— ∷ ps) ∷ pss)
   usefulWildCompCase' c ⟪ qs' ∷ qs ∷ qss , disj , _ ∷ ss ∷ sss ⟫ =
     ⟪ (con c qs' ∷ qs) ∷ qss
     , specialize-preserves-#**⁻ disj
     , (—⊆ ∷ ss) ∷ sss ⟫
   {-# COMPILE AGDA2HS usefulWildCompCase' #-}
 
-  usefulWildCompCase :
-      NonEmpty (Σ[ c ∈ NameCon d0 ] Useful (specialize c P) (—* ∷ ps ∷ pss))
-    → Useful P ((— ∷ ps) ∷ pss)
-  usefulWildCompCase hs = MkUseful do
-    c , MkUseful hs' ← hs
+  usefulWildCompCase
+    : NonEmpty
+        (Σ[ c ∈ NameCon d0 ]
+          NonEmpty (UsefulS (specialize c P) (—* ∷ ps ∷ pss)))
+    → NonEmpty (UsefulS P ((— ∷ ps) ∷ pss))
+  usefulWildCompCase hs = do
+    c , hs' ← hs
     fmap (usefulWildCompCase' c) hs'
   {-# COMPILE AGDA2HS usefulWildCompCase #-}
 
@@ -187,7 +211,7 @@ module _ ⦃ @0 sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α
   @0 usefulWildCompCaseInv' : ∀ qss
     → P #** qss
     → ((— ∷ ps) ∷ pss) ⊆*ˢ qss
-    → Σ[ c ∈ NameCon d0 ] Useful' (specialize c P) (—* ∷ ps ∷ pss)
+    → Σ[ c ∈ NameCon d0 ] UsefulS (specialize c P) (—* ∷ ps ∷ pss)
   usefulWildCompCaseInv' ((— ∷ qs) ∷ qss) disj ((s ∷ ss) ∷ sss) =
     inhabCon ,
     ⟪ —* ∷ qs ∷ qss , specialize-preserves-#**-wild disj , —⊆* ∷ ss ∷ sss ⟫
@@ -197,13 +221,15 @@ module _ ⦃ @0 sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α
   usefulWildCompCaseInv' ((q₁ ∣ q₂ ∷ qs) ∷ qss) disj ((s ∷ ss) ∷ sss) =
     usefulWildCompCaseInv' ((q₁ ∷ qs) ∷ qss) (#-∣ˡ disj) ((—⊆ ∷ ss) ∷ sss)
 
-  @0 usefulWildCompCaseInv :
-      Useful P ((— ∷ ps) ∷ pss)
-    → NonEmpty (Σ[ c ∈ NameCon d0 ] Useful (specialize c P) (—* ∷ ps ∷ pss))
-  usefulWildCompCaseInv (MkUseful hs) = do
+  @0 usefulWildCompCaseInv
+    : NonEmpty (UsefulS P ((— ∷ ps) ∷ pss))
+    → NonEmpty
+        (Σ[ c ∈ NameCon d0 ]
+          NonEmpty (UsefulS (specialize c P) (—* ∷ ps ∷ pss)))
+  usefulWildCompCaseInv hs = do
     ⟪ qss , disj , sss ⟫ ← hs
     let c , h' = usefulWildCompCaseInv' qss disj sss
-    pure (c , MkUseful (h' ∷ []))
+    pure (c , h' ∷ [])
 
 
 module _ ⦃ sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α ⦄ {d}
@@ -211,10 +237,10 @@ module _ ⦃ sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α �
   {@0 ps : Patterns αs0} {@0 pss : PatternStack αss0}
   where
 
-  usefulWildMissCase' :
-      Either (Erase (∀ c → c ∉** P)) (NonEmpty (∃[ c ∈ NameCon d ] c ∉** P))
-    → Useful' (default_ P) (ps ∷ pss)
-    → NonEmpty (Useful' P ((— ∷ ps) ∷ pss))
+  usefulWildMissCase'
+    : Either (Erase (∀ c → c ∉** P)) (NonEmpty (∃[ c ∈ NameCon d ] c ∉** P))
+    → UsefulS (default_ P) (ps ∷ pss)
+    → NonEmpty (UsefulS P ((— ∷ ps) ∷ pss))
   usefulWildMissCase' (Left (Erased h)) ⟪ qs ∷ qss , disj , ss ∷ sss ⟫ =
     ⟪ (— ∷ qs) ∷ qss
     , default-preserves-#**⁻-wild h disj
@@ -229,24 +255,23 @@ module _ ⦃ sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α �
       hs
   {-# COMPILE AGDA2HS usefulWildMissCase' #-}
 
-  usefulWildMissCase :
-      Either (Erase (∀ c → c ∉** P)) (NonEmpty (∃[ c ∈ NameCon d ] c ∉** P))
-    → Useful (default_ P) (ps ∷ pss) → Useful P ((— ∷ ps) ∷ pss)
-  usefulWildMissCase h (MkUseful hs) =
-    MkUseful (hs >>= usefulWildMissCase' h)
+  usefulWildMissCase
+    : Either (Erase (∀ c → c ∉** P)) (NonEmpty (∃[ c ∈ NameCon d ] c ∉** P))
+    → NonEmpty (UsefulS (default_ P) (ps ∷ pss))
+    → NonEmpty (UsefulS P ((— ∷ ps) ∷ pss))
+  usefulWildMissCase h hs = hs >>= usefulWildMissCase' h
   {-# COMPILE AGDA2HS usefulWildMissCase #-}
 
-  usefulWildMissCaseInv' :
-      Useful' P ((— ∷ ps) ∷ pss)
-    → Useful' (default_ P) (ps ∷ pss)
+  usefulWildMissCaseInv'
+    : UsefulS P ((— ∷ ps) ∷ pss)
+    → UsefulS (default_ P) (ps ∷ pss)
   usefulWildMissCaseInv' ⟪ (q ∷ qs) ∷ qss , disj , (s ∷ ss) ∷ sss ⟫ =
     ⟪ qs ∷ qss , default-preserves-#** disj , ss ∷ sss ⟫
 
-  usefulWildMissCaseInv :
-      Useful P ((— ∷ ps) ∷ pss)
-    → Useful (default_ P) (ps ∷ pss)
-  usefulWildMissCaseInv (MkUseful hs) =
-    MkUseful (fmap usefulWildMissCaseInv' hs)
+  usefulWildMissCaseInv
+    : NonEmpty (UsefulS P ((— ∷ ps) ∷ pss))
+    → NonEmpty (UsefulS (default_ P) (ps ∷ pss))
+  usefulWildMissCaseInv = fmap usefulWildMissCaseInv'
 
 module _
   ⦃ sig : Signature ⦄
@@ -255,7 +280,7 @@ module _
 
   decUseful' : (P : PatternMatrixStack αss) (ps : PatternStack αss)
     → @0 UsefulAcc P ps
-    → DecP (Useful P ps)
+    → DecP (NonEmpty (UsefulS P ps))
   decUseful' {[]} []      [] done = Yes usefulNilOkCase
   decUseful' {[]} (_ ∷ _) [] done = No usefulNilBadCase
   decUseful' {[] ∷ αss} psss ([] ∷ pss) (step-tail h) =
@@ -279,7 +304,10 @@ module _
   {-# COMPILE AGDA2HS decUseful' #-}
 
   decUseful : (pss : PatternMatrix αs) (ps : Patterns αs)
-    → DecP (Useful (map (_∷ []) pss) (ps ∷ []))
+    → DecP (Useful pss ps)
   decUseful pss ps =
-    decUseful' (map (_∷ []) pss) (ps ∷ []) (∀UsefulAcc _ _)
+    mapDecP
+      (λ h → record { witnesses = fmap UsefulS→Useful' h })
+      (fmap Useful'→UsefulS ∘ witnesses)
+      (decUseful' (map (_∷ []) pss) (ps ∷ []) (∀UsefulAcc _ _))
   {-# COMPILE AGDA2HS decUseful #-}

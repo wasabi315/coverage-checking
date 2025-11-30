@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 module CoverageCheck.Usefulness.Algorithm where
 
 import CoverageCheck.Name (Name, decPAnyNameIn)
@@ -5,40 +6,36 @@ import CoverageCheck.Prelude (All(Nil, (:>)), DecP(No, Yes), These(Both, That, T
 import CoverageCheck.Syntax (Dataty(argsTy, dataCons), Pattern(PCon, POr, PWild), Patterns, Signature(dataDefs), Ty(TyData), Tys, pWilds)
 import CoverageCheck.Usefulness.Algorithm.MissingConstructors (decExistMissCon)
 import CoverageCheck.Usefulness.Algorithm.Raw (default_, specialize)
-import CoverageCheck.Usefulness.Definition (Useful(MkUseful))
+import CoverageCheck.Usefulness.Definition (Useful)
 import Data.List.NonEmpty (NonEmpty((:|)))
 
-usefulNilOkCase :: Useful
-usefulNilOkCase = MkUseful (Nil :| [])
+import CoverageCheck.Usefulness.Definition (Useful(..))
+
+usefulNilOkCase :: NonEmpty (All Patterns)
+usefulNilOkCase = Nil :| []
 
 usefulTailCase' :: All Patterns -> All Patterns
 usefulTailCase' qss = Nil :> qss
 
-usefulTailCase :: Useful -> Useful
-usefulTailCase (MkUseful hs) = MkUseful (fmap usefulTailCase' hs)
-
-usefulOrCase :: These Useful Useful -> Useful
-usefulOrCase (This (MkUseful hs)) = MkUseful hs
-usefulOrCase (That (MkUseful hs)) = MkUseful hs
-usefulOrCase (Both (MkUseful hs) (MkUseful hs'))
-  = MkUseful (hs <> hs')
+usefulOrCase ::
+             These (NonEmpty (All Patterns)) (NonEmpty (All Patterns)) ->
+               NonEmpty (All Patterns)
+usefulOrCase (This hs) = hs
+usefulOrCase (That hs) = hs
+usefulOrCase (Both hs1 hs2) = hs1 <> hs2
 
 usefulConCase' :: Name -> All Patterns -> All Patterns
 usefulConCase' c (qs' :> (qs :> qss)) = (PCon c qs' :> qs) :> qss
-
-usefulConCase :: Name -> Useful -> Useful
-usefulConCase c (MkUseful hs)
-  = MkUseful (fmap (usefulConCase' c) hs)
 
 usefulWildCompCase' :: Name -> All Patterns -> All Patterns
 usefulWildCompCase' c (qs' :> (qs :> qss))
   = (PCon c qs' :> qs) :> qss
 
-usefulWildCompCase :: NonEmpty (Name, Useful) -> Useful
+usefulWildCompCase ::
+                   NonEmpty (Name, NonEmpty (All Patterns)) -> NonEmpty (All Patterns)
 usefulWildCompCase hs
-  = MkUseful
-      (do (c, MkUseful hs') <- hs
-          fmap (usefulWildCompCase' c) hs')
+  = do (c, hs') <- hs
+       fmap (usefulWildCompCase' c) hs'
 
 usefulWildMissCase' ::
                     Signature ->
@@ -53,16 +50,20 @@ usefulWildMissCase' sig d (Right hs) (qs :> qss)
       hs
 
 usefulWildMissCase ::
-                   Signature -> Name -> Either () (NonEmpty Name) -> Useful -> Useful
-usefulWildMissCase sig d h (MkUseful hs)
-  = MkUseful (hs >>= usefulWildMissCase' sig d h)
+                   Signature ->
+                     Name ->
+                       Either () (NonEmpty Name) ->
+                         NonEmpty (All Patterns) -> NonEmpty (All Patterns)
+usefulWildMissCase sig d h hs = hs >>= usefulWildMissCase' sig d h
 
 decUseful' ::
-           Signature -> [Tys] -> [All Patterns] -> All Patterns -> DecP Useful
+           Signature ->
+             [Tys] ->
+               [All Patterns] -> All Patterns -> DecP (NonEmpty (All Patterns))
 decUseful' sig [] [] Nil = Yes usefulNilOkCase
 decUseful' sig [] (_ : _) Nil = No
 decUseful' sig ([] : αss) psss (Nil :> pss)
-  = mapDecP usefulTailCase
+  = mapDecP (fmap usefulTailCase')
       (decUseful' sig αss (map tailAll psss) pss)
 decUseful' sig ((TyData d : αs) : αss) psss ((PWild :> ps) :> pss)
   = case decExistMissCon sig d psss of
@@ -76,7 +77,7 @@ decUseful' sig ((TyData d : αs) : αss) psss ((PWild :> ps) :> pss)
                              (pWilds (argsTy (dataDefs sig d) c) :> (ps :> pss))))
 decUseful' sig ((TyData d : αs) : αss) psss
   ((PCon c rs :> ps) :> pss)
-  = mapDecP (usefulConCase c)
+  = mapDecP (fmap (usefulConCase' c))
       (decUseful' sig (argsTy (dataDefs sig d) c : (αs : αss))
          (specialize sig d c psss)
          (rs :> (ps :> pss)))
@@ -90,5 +91,12 @@ decUseful' sig ((TyData d : αs) : αss) psss
 decUseful ::
           Signature -> Tys -> [Patterns] -> Patterns -> DecP Useful
 decUseful sig αs pss ps
-  = decUseful' sig [αs] (map (:> Nil) pss) (ps :> Nil)
+  = mapDecP
+      (\ h ->
+         Useful
+           (fmap
+              (\case
+                   qs :> Nil -> qs)
+              h))
+      (decUseful' sig [αs] (map (:> Nil) pss) (ps :> Nil))
 

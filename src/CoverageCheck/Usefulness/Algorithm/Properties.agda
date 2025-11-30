@@ -4,6 +4,7 @@ open import CoverageCheck.Instance
 open import CoverageCheck.Syntax
 open import CoverageCheck.Name
 
+open import CoverageCheck.Usefulness.Algorithm.Types
 open import CoverageCheck.Usefulness.Algorithm.Raw
 open import CoverageCheck.Usefulness.Algorithm.MissingConstructors
 
@@ -15,37 +16,15 @@ private open module @0 G = Globals globals
 
 private
   variable
-    α β : Ty
     αs βs : Tys
-    αss βss : TyStack
+    αss : TyStack
     d : NameData
-    @0 α0 β0 : Ty
-    @0 αs0 βs0 : Tys
-    @0 αss0 βss0 : TyStack
-    @0 d0 : NameData
+    @0 α0 : Ty
+    @0 αs0 : Tys
+    @0 αss0 : TyStack
 
 --------------------------------------------------------------------------------
 -- Properties of ≼ and specialize/default
-
-module _ ⦃ @0 sig : Signature ⦄ where
-  infix 4 InstanceStack InstanceMatrixStack _⋠*ˢ_ _⋠**ˢ_
-
-  InstanceStack : {@0 αss : TyStack} → @0 PatternStack αss → @0 ValueStack αss → Type
-  syntax InstanceStack pss vss = pss ≼*ˢ vss
-  pss ≼*ˢ vss = HPointwise (λ ps vs → ps ≼* vs) pss vss
-  {-# COMPILE AGDA2HS InstanceStack inline #-}
-
-  InstanceMatrixStack : {@0 αss : TyStack} → @0 PatternMatrixStack αss → @0 ValueStack αss → Type
-  syntax InstanceMatrixStack psss vss = psss ≼**ˢ vss
-  psss ≼**ˢ vss = Any (λ pss → pss ≼*ˢ vss) psss
-  {-# COMPILE AGDA2HS InstanceMatrixStack inline #-}
-
-  _⋠*ˢ_ : {@0 αss : TyStack} → @0 PatternStack αss → @0 ValueStack αss → Type
-  pss ⋠*ˢ vss = ¬ pss ≼*ˢ vss
-
-  _⋠**ˢ_ : {@0 αss : TyStack} → @0 PatternMatrixStack αss → @0 ValueStack αss → Type
-  psss ⋠**ˢ vss = ¬ psss ≼**ˢ vss
-
 
 module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}
   (let αs = argsTy (dataDefs sig d) c)
@@ -153,12 +132,6 @@ module @0 _ ⦃ sig : Signature ⦄ {v : Value (TyData d)} {vs : Values αs} {vs
 
 --------------------------------------------------------------------------------
 -- Properties of disjointness
-
-module _ ⦃ @0 sig : Signature ⦄ where
-
-  _#**_ : (@0 P : PatternMatrixStack αss0) (@0 qss : PatternStack αss0) → Type
-  P #** qss = ∀ {vss} → P ≼**ˢ vss → qss ≼*ˢ vss → ⊥
-
 
 module @0 _ ⦃ sig : Signature ⦄
   {P : PatternMatrixStack ([] ∷ αss0)} {pss : PatternStack αss0}

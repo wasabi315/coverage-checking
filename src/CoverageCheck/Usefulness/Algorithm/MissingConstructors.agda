@@ -5,6 +5,7 @@ open import CoverageCheck.Name
 open import Data.Set as Set using (Set)
 open import Haskell.Data.List.NonEmpty using (NonEmpty)
 
+open import CoverageCheck.Usefulness.Algorithm.Types
 open import CoverageCheck.Usefulness.Algorithm.Raw
 
 module CoverageCheck.Usefulness.Algorithm.MissingConstructors

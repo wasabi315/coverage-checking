@@ -21,6 +21,7 @@ open import CoverageCheck.Name
 open import Data.Set as Set using (Set)
 open import Haskell.Data.List.NonEmpty using (NonEmpty; _∷_)
 
+open import CoverageCheck.Usefulness.Algorithm.Types
 open import CoverageCheck.Usefulness.Algorithm.Raw
 open import CoverageCheck.Usefulness.Algorithm.MissingConstructors
 
@@ -68,7 +69,7 @@ data UsefulAcc : (P : PatternMatrixStack αss) (ps : PatternStack αss) → Type
     → UsefulAcc P ((p ∣ q ∷ ps) ∷ pss)
 
 --------------------------------------------------------------------------------
--- Termination proof
+-- Termination measures
 
 patternsSize : Patterns αs → Nat → Nat
 patternsSize []              n = n
@@ -82,6 +83,21 @@ patternStackSize (ps ∷ pss) n = patternsSize ps (patternStackSize pss n)
 
 patternMatrixStackSize : PatternMatrixStack αss → Nat
 patternMatrixStackSize P = sum (map (flip patternStackSize 0) P)
+
+Inputs : Type
+Inputs = Σ[ αss ∈ _ ] PatternMatrixStack αss × PatternStack αss
+
+inputSize : Inputs → Product Nat (Product Nat Nat)
+inputSize (αss , (P , ps)) =
+  (patternMatrixStackSize P + patternStackSize ps 0) ,
+  (sum (map lengthNat αss) ,
+  lengthNat αss)
+
+-- Lexicographic ordering on Inputs
+_⊏_ : (P Q : Inputs) → Type
+_⊏_ = ×-Lex _≡_ _<_ (×-Lex _≡_ _<_ _<_) on inputSize
+
+--------------------------------------------------------------------------------
 
 patternsSize—* : ∀ αs n → patternsSize (—* {αs = αs}) n ≡ n
 patternsSize—* []       n = refl
@@ -204,22 +220,9 @@ default-≤ [] = ≤-refl
 default-≤ (ps ∷ P) rewrite patternMatrixStackSize-++ (default' ps) (default_ P)
   = +-mono-≤ (default'-≤ ps) (default-≤ P)
 
-Problem : Type
-Problem = Σ[ αss ∈ _ ] PatternMatrixStack αss × PatternStack αss
-
-problemSize : Problem → Product Nat (Product Nat Nat)
-problemSize (αss , (P , ps)) =
-  (patternMatrixStackSize P + patternStackSize ps 0) ,
-  (sum (map lengthNat αss) ,
-  lengthNat αss)
-
--- Lexicographic ordering on Problem
-_⊏_ : (P Q : Problem) → Type
-_⊏_ = ×-Lex _≡_ _<_ (×-Lex _≡_ _<_ _<_) on problemSize
-
 -- _⊏_ is well-founded
 ⊏-wellFounded : WellFounded _⊏_
-⊏-wellFounded = on-wellFounded problemSize (×-wellFounded <-wellFounded (×-wellFounded <-wellFounded <-wellFounded))
+⊏-wellFounded = on-wellFounded inputSize (×-wellFounded <-wellFounded (×-wellFounded <-wellFounded <-wellFounded))
 
 tail-⊏ : (P : PatternMatrixStack ([] ∷ αss)) (pss : PatternStack αss)
   → (_ , (map tailAll P , pss)) ⊏ (_ , (P , [] ∷ pss))

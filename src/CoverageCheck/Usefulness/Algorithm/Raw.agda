@@ -4,6 +4,8 @@ open import CoverageCheck.Syntax
 open import CoverageCheck.Name
 open import Data.Set as Set using (Set)
 
+open import CoverageCheck.Usefulness.Algorithm.Types
+
 module CoverageCheck.Usefulness.Algorithm.Raw
   ⦃ @0 globals : Globals ⦄
   where
@@ -12,39 +14,15 @@ private open module @0 G = Globals globals
 
 private
   variable
-    α β : Ty
-    αs βs : Tys
+    αss : TyStack
     d : NameData
-    @0 α0 β0 : Ty
+    @0 α0 : Ty
     @0 αs0 βs0 : Tys
+    @0 αss0 βss0 : TyStack
     @0 d0 : NameData
 
 --------------------------------------------------------------------------------
 -- Raw algorithm
-
-TyStack : Type
-TyStack = List Tys
-{-# COMPILE AGDA2HS TyStack inline #-}
-
-private
-  variable
-    αss βss : TyStack
-    @0 αss0 βss0 : TyStack
-
-module _ ⦃ @0 sig : Signature ⦄ where
-
-  ValueStack : @0 TyStack → Type
-  ValueStack αss = All Values αss
-  {-# COMPILE AGDA2HS ValueStack inline #-}
-
-  PatternStack : @0 TyStack → Type
-  PatternStack αss = All Patterns αss
-  {-# COMPILE AGDA2HS PatternStack inline #-}
-
-  PatternMatrixStack : @0 TyStack → Type
-  PatternMatrixStack αss = List (PatternStack αss)
-  {-# COMPILE AGDA2HS PatternMatrixStack inline #-}
-
 
 module _ ⦃ sig : Signature ⦄ {d : NameData} (c : NameCon d)
   (let αs = argsTy (dataDefs sig d) c)
