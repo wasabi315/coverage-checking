@@ -8,18 +8,14 @@ LIBRARIES =
 alllib: lib \
 	lib/CoverageCheck/Prelude.hs \
 	lib/CoverageCheck/Name.hs \
-	lib/CoverageCheck/GlobalScope.hs \
 	lib/CoverageCheck/Syntax.hs \
 	lib/CoverageCheck/Instance.hs \
 	lib/CoverageCheck/Subsumption.hs \
-	lib/CoverageCheck/Usefulness.hs \
+	lib/CoverageCheck/Usefulness/Definition.hs \
 	lib/CoverageCheck/Usefulness/Algorithm.hs \
 	lib/CoverageCheck/Usefulness/Algorithm/Raw.hs \
 	lib/CoverageCheck/Usefulness/Algorithm/MissingConstructors.hs \
-	lib/CoverageCheck/Usefulness/Algorithm/Properties.hs \
-	lib/CoverageCheck/Usefulness/Definition.hs \
-	lib/CoverageCheck/Exhaustiveness.hs \
-	lib/CoverageCheck.hs
+	lib/CoverageCheck/Exhaustiveness.hs
 
 lib:
 	mkdir lib

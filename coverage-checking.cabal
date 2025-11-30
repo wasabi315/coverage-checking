@@ -26,15 +26,11 @@ library
                     , CoverageCheck.Instance
                     , CoverageCheck.Subsumption
                     , CoverageCheck.Name
-                    , CoverageCheck.GlobalScope
-                    , CoverageCheck.Usefulness
+                    , CoverageCheck.Usefulness.Definition
                     , CoverageCheck.Usefulness.Algorithm
                     , CoverageCheck.Usefulness.Algorithm.Raw
                     , CoverageCheck.Usefulness.Algorithm.MissingConstructors
-                    , CoverageCheck.Usefulness.Algorithm.Properties
-                    , CoverageCheck.Usefulness.Definition
                     , CoverageCheck.Exhaustiveness
-                    , CoverageCheck
     build-depends:    base >=4.17 && <5
                     , containers
     hs-source-dirs:   lib
