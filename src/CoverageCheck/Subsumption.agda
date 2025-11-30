@@ -57,7 +57,7 @@ pattern con⊆ bs = SCon bs
 pattern ∣⊆ˡ s   = SOrL s
 pattern ∣⊆ʳ s   = SOrR s
 
-Subsumptions = HAll2 (λ p q → p ⊆ q)
+Subsumptions = HPointwise (λ p q → p ⊆ q)
 
 {-# COMPILE AGDA2HS Subsumptions #-}
 
@@ -68,7 +68,7 @@ _⊈*_ : (@0 ps qs : Patterns αs0) → Type
 qs ⊈* ps = ¬ ps ⊆* qs
 
 --------------------------------------------------------------------------------
--- Properties of the branch selection relation
+-- Properties of the subsumption relation
 
 sWilds : {@0 qs : Patterns αs} → Subsumptions {αs} —* qs
 sWilds {[]}     {[]}    = []

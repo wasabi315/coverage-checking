@@ -20,7 +20,7 @@ postulate
     → Set.null {a} s ≡ null (Set.toAscList s)
   {-# REWRITE rewrite-null #-}
 
-module _ {A : Type} {{_ : Ord A}} where
+module _ {A : Type} ⦃ _ : Ord A ⦄ where
   open import Haskell.Prim.Ord using (_<_)
 
   -- PRE: xs is sorted and unique

@@ -144,14 +144,14 @@ module _ {@0 a : Type} {p : @0 a → Type} where
 module _ {@0 a : Type} {@0 p q : @0 a → Type} where
   infixr 5 _∷_ _:>>_
 
-  data HAll2 (r : ∀ {@0 x} → @0 p x → @0 q x → Type) : ∀ {@0 xs} → @0 All p xs → @0 All q xs → Type where
-    HNil  : HAll2 r [] []
+  data HPointwise (r : ∀ {@0 x} → @0 p x → @0 q x → Type) : ∀ {@0 xs} → @0 All p xs → @0 All q xs → Type where
+    HNil  : HPointwise r [] []
     _:>>_ : ∀ {@0 x xs} {@0 h : p x} {@0 hs : All p xs} {@0 h' : q x} {@0 hs' : All q xs}
       → r h h'
-      → HAll2 r hs hs'
-      → HAll2 r (h ∷ hs) (h' ∷ hs')
+      → HPointwise r hs hs'
+      → HPointwise r (h ∷ hs) (h' ∷ hs')
 
-  {-# COMPILE AGDA2HS HAll2 deriving (Eq, Show) #-}
+  {-# COMPILE AGDA2HS HPointwise deriving (Eq, Show) #-}
 
   pattern [] = HNil
   pattern _∷_ h hs = h :>> hs

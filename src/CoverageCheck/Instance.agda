@@ -59,7 +59,7 @@ pattern ∣≼ˡ i   = IOrL i
 pattern ∣≼ʳ i   = IOrR i
 
 -- ps ≼* vs : each pattern in ps matches the corresponding value in vs
-Instances = HAll2 (λ p v → p ≼ v)
+Instances = HPointwise (λ p v → p ≼ v)
 
 {-# COMPILE AGDA2HS Instances #-}
 

@@ -32,7 +32,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
   InstanceStack : {@0 αss : TyStack} → @0 PatternStack αss → @0 ValueStack αss → Type
   syntax InstanceStack pss vss = pss ≼*ˢ vss
-  pss ≼*ˢ vss = HAll2 (λ ps vs → ps ≼* vs) pss vss
+  pss ≼*ˢ vss = HPointwise (λ ps vs → ps ≼* vs) pss vss
   {-# COMPILE AGDA2HS InstanceStack inline #-}
 
   InstanceMatrixStack : {@0 αss : TyStack} → @0 PatternMatrixStack αss → @0 ValueStack αss → Type
