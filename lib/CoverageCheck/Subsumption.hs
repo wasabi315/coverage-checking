@@ -2,7 +2,7 @@ module CoverageCheck.Subsumption where
 
 import CoverageCheck.Instance (Instance(ICon, IOrL, IOrR, IWild), Instances)
 import CoverageCheck.Name (Name)
-import CoverageCheck.Prelude (HAll2(HNil, (:>>)))
+import CoverageCheck.Prelude (HPointwise(HNil, (:>>)))
 import CoverageCheck.Syntax (Tys)
 
 data Subsumption = SWild
@@ -12,7 +12,7 @@ data Subsumption = SWild
                      deriving Show
 
 infix 4 `Subsumptions`
-type Subsumptions = HAll2 Subsumption
+type Subsumptions = HPointwise Subsumption
 
 sWilds :: Tys -> Subsumptions
 sWilds [] = HNil

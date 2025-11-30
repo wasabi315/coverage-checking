@@ -1,7 +1,7 @@
 module CoverageCheck.Instance where
 
 import CoverageCheck.Name (Name)
-import CoverageCheck.Prelude (All(Nil, (:>)), Any, DecP(No, Yes), First, HAll2(HNil, (:>>)), eitherDecP, firstDecP, mapDecP, tupleDecP)
+import CoverageCheck.Prelude (All(Nil, (:>)), Any, DecP(No, Yes), First, HPointwise(HNil, (:>>)), eitherDecP, firstDecP, mapDecP, tupleDecP)
 import CoverageCheck.Syntax (Pattern(PCon, POr, PWild), Patterns, Tys, Value(VCon), Values)
 
 data Instance = IWild
@@ -11,7 +11,7 @@ data Instance = IWild
                   deriving Show
 
 infix 4 `Instances`
-type Instances = HAll2 Instance
+type Instances = HPointwise Instance
 
 infix 4 `InstanceMatrix`
 type InstanceMatrix = Any Instances

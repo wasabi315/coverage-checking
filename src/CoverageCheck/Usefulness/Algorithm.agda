@@ -36,11 +36,12 @@ private
 module _ ⦃ @0 sig : Signature ⦄ where
 
   usefulNilOkCase : Useful [] []
-  usefulNilOkCase = MkUseful (⟪ [] , [] , (λ ()) , [] ⟫ ∷ [])
+  usefulNilOkCase = MkUseful (⟪ [] , (λ ()) , [] ⟫ ∷ [])
   {-# COMPILE AGDA2HS usefulNilOkCase #-}
 
-  usefulNilBadCase : {ps : PatternStack []} {P : PatternMatrixStack []} → ¬ Useful (ps ∷ P) []
-  usefulNilBadCase {ps = []} (MkUseful (⟪ [] , _ , h , _ ⟫ ∷ _)) =
+  usefulNilBadCase : {ps : PatternStack []} {P : PatternMatrixStack []}
+    → ¬ Useful (ps ∷ P) []
+  usefulNilBadCase {ps = []} (MkUseful (⟪ [] , h , _ ⟫ ∷ _)) =
     contradiction [] (h (here []))
 
 
@@ -49,8 +50,8 @@ module _ ⦃ @0 sig : Signature ⦄
   where
 
   usefulTailCase' : Useful' (map tailAll P) pss → Useful' P ([] ∷ pss)
-  usefulTailCase' ⟪ qss , iss , disj , sss ⟫ =
-    ⟪ [] ∷ qss , [] ∷ iss , #**-tail⁻ disj , [] ∷ sss ⟫
+  usefulTailCase' ⟪ qss , disj , sss ⟫ =
+    ⟪ [] ∷ qss , #**-tail⁻ disj , [] ∷ sss ⟫
   {-# COMPILE AGDA2HS usefulTailCase' #-}
 
   usefulTailCase : Useful (map tailAll P) pss → Useful P ([] ∷ pss)
@@ -58,8 +59,8 @@ module _ ⦃ @0 sig : Signature ⦄
   {-# COMPILE AGDA2HS usefulTailCase #-}
 
   usefulTailCaseInv' : Useful' P ([] ∷ pss) → Useful' (map tailAll P) pss
-  usefulTailCaseInv' ⟪ [] ∷ qss , [] ∷ iss , disj , [] ∷ sss ⟫ =
-    ⟪ qss , iss , #**-tail disj , sss ⟫
+  usefulTailCaseInv' ⟪ [] ∷ qss , disj , [] ∷ sss ⟫ =
+    ⟪ qss , #**-tail disj , sss ⟫
 
   usefulTailCaseInv : Useful P ([] ∷ pss) → Useful (map tailAll P) pss
   usefulTailCaseInv (MkUseful hs) = MkUseful (fmap usefulTailCaseInv' hs)
@@ -71,8 +72,8 @@ module _ ⦃ @0 sig : Signature ⦄
   where
 
   usefulOrCaseL' : Useful' P ((r₁ ∷ ps) ∷ pss) → Useful' P ((r₁ ∣ r₂ ∷ ps) ∷ pss)
-  usefulOrCaseL' ⟪ (q ∷ qs) ∷ qss , iss , disj , (s ∷ ss) ∷ sss ⟫ =
-    ⟪ (q ∷ qs) ∷ qss , iss , disj , (∣⊆ˡ s ∷ ss) ∷ sss ⟫
+  usefulOrCaseL' ⟪ (q ∷ qs) ∷ qss , disj , (s ∷ ss) ∷ sss ⟫ =
+    ⟪ (q ∷ qs) ∷ qss , disj , (∣⊆ˡ s ∷ ss) ∷ sss ⟫
   {-# COMPILE AGDA2HS usefulOrCaseL' transparent #-}
 
   usefulOrCaseList : List (Useful' P ((r₁ ∷ ps) ∷ pss)) → List (Useful' P ((r₁ ∣ r₂ ∷ ps) ∷ pss))
@@ -85,8 +86,8 @@ module _ ⦃ @0 sig : Signature ⦄
   {-# COMPILE AGDA2HS usefulOrCaseL transparent #-}
 
   usefulOrCaseR' : Useful' P ((r₂ ∷ ps) ∷ pss) → Useful' P ((r₁ ∣ r₂ ∷ ps) ∷ pss)
-  usefulOrCaseR' ⟪ (q ∷ qs) ∷ qss , iss , disj , (s ∷ ss) ∷ sss ⟫ =
-    ⟪ (q ∷ qs) ∷ qss , iss , disj , (∣⊆ʳ s ∷ ss) ∷ sss ⟫
+  usefulOrCaseR' ⟪ (q ∷ qs) ∷ qss , disj , (s ∷ ss) ∷ sss ⟫ =
+    ⟪ (q ∷ qs) ∷ qss , disj , (∣⊆ʳ s ∷ ss) ∷ sss ⟫
   {-# COMPILE AGDA2HS usefulOrCaseR' transparent #-}
 
   usefulOrCaseRList : List (Useful' P ((r₂ ∷ ps) ∷ pss)) → List (Useful' P ((r₁ ∣ r₂ ∷ ps) ∷ pss))
@@ -109,10 +110,10 @@ module _ ⦃ @0 sig : Signature ⦄
   @0 usefulOrCaseInv' :
       Useful' P ((r₁ ∣ r₂ ∷ ps) ∷ pss)
     → Either (Useful' P ((r₁ ∷ ps) ∷ pss)) (Useful' P ((r₂ ∷ ps) ∷ pss))
-  usefulOrCaseInv' ⟪ (q ∷ qs) ∷ qss , iss , disj , (∣⊆ˡ s ∷ ss) ∷ sss ⟫ =
-    Left (⟪ (q ∷ qs) ∷ qss , iss , disj , (s ∷ ss) ∷ sss ⟫)
-  usefulOrCaseInv' ⟪ (q ∷ qs) ∷ qss , iss , disj , (∣⊆ʳ s ∷ ss) ∷ sss ⟫ =
-    Right (⟪ (q ∷ qs) ∷ qss , iss , disj , (s ∷ ss) ∷ sss ⟫)
+  usefulOrCaseInv' ⟪ (q ∷ qs) ∷ qss , disj , (∣⊆ˡ s ∷ ss) ∷ sss ⟫ =
+    Left (⟪ (q ∷ qs) ∷ qss , disj , (s ∷ ss) ∷ sss ⟫)
+  usefulOrCaseInv' ⟪ (q ∷ qs) ∷ qss , disj , (∣⊆ʳ s ∷ ss) ∷ sss ⟫ =
+    Right (⟪ (q ∷ qs) ∷ qss , disj , (s ∷ ss) ∷ sss ⟫)
 
   @0 usefulOrCaseInv :
       Useful P ((r₁ ∣ r₂ ∷ ps) ∷ pss)
@@ -129,9 +130,8 @@ module _ ⦃ @0 sig : Signature ⦄ {c : NameCon d0}
   usefulConCase' :
       Useful' (specialize c P) (rs ∷ ps ∷ pss)
     → Useful' P ((con c rs ∷ ps) ∷ pss)
-  usefulConCase' ⟪ qs' ∷ qs ∷ qss , is' ∷ is ∷ iss , disj , ss' ∷ ss ∷ sss ⟫ =
+  usefulConCase' ⟪ qs' ∷ qs ∷ qss , disj , ss' ∷ ss ∷ sss ⟫ =
     ⟪ (con c qs' ∷ qs) ∷ qss
-    , (con≼ is' ∷ is) ∷ iss
     , specialize-preserves-#**⁻ disj
     , (con⊆ ss' ∷ ss) ∷ sss ⟫
   {-# COMPILE AGDA2HS usefulConCase' #-}
@@ -145,9 +145,8 @@ module _ ⦃ @0 sig : Signature ⦄ {c : NameCon d0}
   usefulConCaseInv' :
       Useful' P ((con c rs ∷ ps) ∷ pss)
     → Useful' (specialize c P) (rs ∷ ps ∷ pss)
-  usefulConCaseInv' ⟪ (con c qs' ∷ qs) ∷ qss , (con≼ is' ∷ is) ∷ iss , disj , (con⊆ ss' ∷ ss) ∷ sss ⟫ =
+  usefulConCaseInv' ⟪ (con c qs' ∷ qs) ∷ qss , disj , (con⊆ ss' ∷ ss) ∷ sss ⟫ =
     ⟪ qs' ∷ qs ∷ qss
-    , is' ∷ is ∷ iss
     , specialize-preserves-#** disj
     , ss' ∷ ss ∷ sss ⟫
 
@@ -165,9 +164,8 @@ module _ ⦃ @0 sig : Signature ⦄
   usefulWildCompCase' : (c : NameCon d0)
     → Useful' (specialize c P) (—* ∷ ps ∷ pss)
     → Useful' P ((— ∷ ps) ∷ pss)
-  usefulWildCompCase' c ⟪ qs' ∷ qs ∷ qss , is' ∷ is ∷ iss , disj , _ ∷ ss ∷ sss ⟫ =
+  usefulWildCompCase' c ⟪ qs' ∷ qs ∷ qss , disj , _ ∷ ss ∷ sss ⟫ =
     ⟪ (con c qs' ∷ qs) ∷ qss
-    , (con≼ is' ∷ is) ∷ iss
     , specialize-preserves-#**⁻ disj
     , (—⊆ ∷ ss) ∷ sss ⟫
   {-# COMPILE AGDA2HS usefulWildCompCase' #-}
@@ -180,32 +178,31 @@ module _ ⦃ @0 sig : Signature ⦄
     fmap (usefulWildCompCase' c) hs'
   {-# COMPILE AGDA2HS usefulWildCompCase #-}
 
-  @0 usefulWildCompCaseInv' : ∀ qss {vss}
-    → qss ≼*ˢ vss
+
+module _ ⦃ @0 sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α ⦄
+  {@0 P : PatternMatrixStack ((TyData d0 ∷ αs0) ∷ αss0)}
+  {@0 ps : Patterns αs0} {@0 pss : PatternStack αss0}
+  where
+
+  @0 usefulWildCompCaseInv' : ∀ qss
     → P #** qss
     → ((— ∷ ps) ∷ pss) ⊆*ˢ qss
     → Σ[ c ∈ NameCon d0 ] Useful' (specialize c P) (—* ∷ ps ∷ pss)
-  usefulWildCompCaseInv' ((— ∷ qs) ∷ qss) {(con c vs' ∷ vs) ∷ vss} ((i ∷ is) ∷ iss) disj ((s ∷ ss) ∷ sss) =
-    c , ⟪ —* ∷ qs ∷ qss
-        , iWilds {vs = vs'} ∷ is ∷ iss
-        , specialize-preserves-#**-wild disj
-        , —⊆* ∷ ss ∷ sss ⟫
-  usefulWildCompCaseInv' ((con c qs' ∷ qs) ∷ qss) ((con≼ is' ∷ is) ∷ iss) disj ((s ∷ ss) ∷ sss) =
-    c , ⟪ qs' ∷ qs ∷ qss
-        , is' ∷ is ∷ iss
-        , specialize-preserves-#** disj
-        , —⊆* ∷ ss ∷ sss ⟫
-  usefulWildCompCaseInv' ((q₁ ∣ q₂ ∷ qs) ∷ qss) ((∣≼ˡ i ∷ is) ∷ iss) disj ((s ∷ ss) ∷ sss) =
-    usefulWildCompCaseInv' ((q₁ ∷ qs) ∷ qss) ((i ∷ is) ∷ iss) (#-∣ˡ disj) ((—⊆ ∷ ss) ∷ sss)
-  usefulWildCompCaseInv' ((q₁ ∣ q₂ ∷ qs) ∷ qss) ((∣≼ʳ i ∷ is) ∷ iss) disj ((s ∷ ss) ∷ sss) =
-    usefulWildCompCaseInv' ((q₂ ∷ qs) ∷ qss) ((i ∷ is) ∷ iss) (#-∣ʳ disj) ((—⊆ ∷ ss) ∷ sss)
+  usefulWildCompCaseInv' ((— ∷ qs) ∷ qss) disj ((s ∷ ss) ∷ sss) =
+    inhabCon ,
+    ⟪ —* ∷ qs ∷ qss , specialize-preserves-#**-wild disj , —⊆* ∷ ss ∷ sss ⟫
+  usefulWildCompCaseInv' ((con c qs' ∷ qs) ∷ qss) disj ((s ∷ ss) ∷ sss) =
+    c ,
+    ⟪ qs' ∷ qs ∷ qss , specialize-preserves-#** disj , —⊆* ∷ ss ∷ sss ⟫
+  usefulWildCompCaseInv' ((q₁ ∣ q₂ ∷ qs) ∷ qss) disj ((s ∷ ss) ∷ sss) =
+    usefulWildCompCaseInv' ((q₁ ∷ qs) ∷ qss) (#-∣ˡ disj) ((—⊆ ∷ ss) ∷ sss)
 
   @0 usefulWildCompCaseInv :
       Useful P ((— ∷ ps) ∷ pss)
     → NonEmpty (Σ[ c ∈ NameCon d0 ] Useful (specialize c P) (—* ∷ ps ∷ pss))
   usefulWildCompCaseInv (MkUseful hs) = do
-    ⟪ qss , iss , disj , sss ⟫ ← hs
-    let c , h' = usefulWildCompCaseInv' qss iss disj sss
+    ⟪ qss , disj , sss ⟫ ← hs
+    let c , h' = usefulWildCompCaseInv' qss disj sss
     pure (c , MkUseful (h' ∷ []))
 
 
@@ -218,17 +215,15 @@ module _ ⦃ sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α �
       Either (Erase (∀ c → c ∉** P)) (NonEmpty (∃[ c ∈ NameCon d ] c ∉** P))
     → Useful' (default_ P) (ps ∷ pss)
     → NonEmpty (Useful' P ((— ∷ ps) ∷ pss))
-  usefulWildMissCase' (Left (Erased h)) ⟪ qs ∷ qss , is ∷ iss , disj , ss ∷ sss ⟫ =
+  usefulWildMissCase' (Left (Erased h)) ⟪ qs ∷ qss , disj , ss ∷ sss ⟫ =
     ⟪ (— ∷ qs) ∷ qss
-    , (IWild {v = inhab} ∷ is) ∷ iss
     , default-preserves-#**⁻-wild h disj
     , (—⊆ ∷ ss) ∷ sss ⟫ ∷ []
-  usefulWildMissCase' (Right hs) ⟪ qs ∷ qss , is ∷ iss , disj , ss ∷ sss ⟫ =
+  usefulWildMissCase' (Right hs) ⟪ qs ∷ qss , disj , ss ∷ sss ⟫ =
     fmap
       (λ where
         (c ⟨ h ⟩) →
           ⟪ (con c —* ∷ qs) ∷ qss
-          , (con≼ (iWilds {vs = tabulateValues λ _ → nonEmptyAxiom}) ∷ is) ∷ iss
           , default-preserves-#**⁻ h disj
           , (—⊆ ∷ ss) ∷ sss ⟫)
       hs
@@ -244,8 +239,8 @@ module _ ⦃ sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α �
   usefulWildMissCaseInv' :
       Useful' P ((— ∷ ps) ∷ pss)
     → Useful' (default_ P) (ps ∷ pss)
-  usefulWildMissCaseInv' ⟪ (q ∷ qs) ∷ qss , (i ∷ is) ∷ iss , disj , (s ∷ ss) ∷ sss ⟫ =
-    ⟪ qs ∷ qss , is ∷ iss , default-preserves-#** disj , ss ∷ sss ⟫
+  usefulWildMissCaseInv' ⟪ (q ∷ qs) ∷ qss , disj , (s ∷ ss) ∷ sss ⟫ =
+    ⟪ qs ∷ qss , default-preserves-#** disj , ss ∷ sss ⟫
 
   usefulWildMissCaseInv :
       Useful P ((— ∷ ps) ∷ pss)

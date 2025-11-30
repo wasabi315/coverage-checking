@@ -56,11 +56,9 @@ module _ ⦃ @0 sig : Signature ⦄
   record Useful' : Type where
     no-eta-equality
     pattern
-    constructor ⟪_,_,_,_⟫
+    constructor ⟪_,_,_⟫
     field
       qs       : PatternStack αss0
-      @0 {vs}  : ValueStack αss0
-      @0 qs≼vs : qs ≼*ˢ vs
       @0 P#qs  : P #** qs
       @0 ps⊆qs : ps ⊆*ˢ qs
 

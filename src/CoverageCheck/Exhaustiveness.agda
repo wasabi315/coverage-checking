@@ -34,7 +34,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
   -- There is a list of patterns that has at least one instance and whose instances do not match any row in P
   NonExhaustive' : PatternMatrix αs0 → Type
-  NonExhaustive' P = ∃[ ps ∈ _ ] (∃[ vs ∈ _ ] ps ≼* vs) × (∀ {vs} → ps ≼* vs → ¬ Match P vs)
+  NonExhaustive' P = ∃[ ps ∈ _ ] ∀ {vs} → ps ≼* vs → ¬ Match P vs
   {-# COMPILE AGDA2HS NonExhaustive' inline #-}
 
   NonExhaustive : PatternMatrix αs0 → Type
@@ -55,8 +55,8 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
     nonExhaustiveUToNonExhaustive' : Useful' (map (_∷ []) P) (—* ∷ []) → NonExhaustive' P
     nonExhaustiveUToNonExhaustive' = λ where
-      ⟪ qs ∷ [] , is ∷ [] , disj , _ ⟫ →
-        qs ⟨ (_ ⟨ is ⟩) , (λ is ms → disj (gmapAny⁺ (_∷ []) (firstToAny ms)) (is ∷ [])) ⟩
+      ⟪ qs ∷ [] , disj , _ ⟫ →
+        qs ⟨ (λ is ms → disj (gmapAny⁺ (_∷ []) (firstToAny ms)) (is ∷ [])) ⟩
     {-# COMPILE AGDA2HS nonExhaustiveUToNonExhaustive' inline #-}
 
     nonExhaustiveUToNonExhaustive :
@@ -68,9 +68,8 @@ module _ ⦃ @0 sig : Signature ⦄ where
     @0 nonExhaustiveToNonExhaustiveU : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       → NonExhaustive P → NonExhaustiveU P
     nonExhaustiveToNonExhaustiveU hs =
-      MkUseful (flip fmap hs λ (qs ⟨ is , h ⟩) →
+      MkUseful (flip fmap hs λ (qs ⟨ h ⟩) →
         ⟪ qs ∷ []
-        , proof is ∷ []
         , (λ where
              isss (is ∷ []) →
                notFirstToNotAny (h is) (gmapAny⁻ (λ where (iss ∷ _) → iss) isss))
@@ -79,7 +78,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
     @0 exhaustiveToExhaustiveU : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       → Exhaustive P → ExhaustiveU P
-    exhaustiveToExhaustiveU h (MkUseful (⟪ qs ∷ [] , _ , disj , _ ⟫ ∷ _)) =
+    exhaustiveToExhaustiveU h (MkUseful (⟪ qs ∷ [] , disj , _ ⟫ ∷ _)) =
       contradiction (gmapAny⁺ (_∷ []) (firstToAny (h (insts qs)))) (flip disj (inst≼* qs ∷ []))
 
 
@@ -93,7 +92,6 @@ module _ ⦃ @0 sig : Signature ⦄ where
           contradiction
             (MkUseful
               (⟪ onlys vs ∷ []
-              , only≼* vs ∷ []
               , (λ where
                     isss (is ∷ []) →
                       let iss = gmapAny⁻ (λ where (iss ∷ _) → iss) isss

@@ -13,9 +13,9 @@ headAll (h :> _) = h
 tailAll :: forall p . All p -> All p
 tailAll (_ :> hs) = hs
 
-data HAll2 r = HNil
-             | (:>>) r (HAll2 r)
-                 deriving (Eq, Show)
+data HPointwise r = HNil
+                  | (:>>) r (HPointwise r)
+                      deriving (Eq, Show)
 
 data Any p = Here p
            | There (Any p)
