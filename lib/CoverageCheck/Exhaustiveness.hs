@@ -6,11 +6,11 @@ import CoverageCheck.Usefulness.Algorithm (decUseful)
 import CoverageCheck.Usefulness.Definition (Useful(witnesses))
 import Data.List.NonEmpty (NonEmpty((:|)))
 
-decNonExhaustive ::
-                 Signature ->
-                   Tys -> [Patterns] -> Either () (NonEmpty (All Pattern))
-decNonExhaustive sig αs pss
+decExhaustive ::
+              Signature ->
+                Tys -> [Patterns] -> Either (NonEmpty (All Pattern)) ()
+decExhaustive sig αs pss
   = ifDecP (decUseful sig αs pss (pWilds αs))
-      (\ h -> Right (witnesses h))
-      (Left ())
+      (\ h -> Left (witnesses h))
+      (Right ())
 

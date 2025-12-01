@@ -143,8 +143,8 @@ P =
   (—   ∷ nil ∷ []) ∷ []
 
 -- P is non-exhaustive, witnessed by the following list of patterns
-_ : decNonExhaustive P
-  ≡ Right (
+_ : decExhaustive P
+  ≡ Left (
       ((cons — —  ∷ cons — — ∷ []) ⟨ _ ⟩) ∷
       ((one —     ∷ cons — — ∷ []) ⟨ _ ⟩) ∷
       ((cons — —  ∷ one —    ∷ []) ⟨ _ ⟩) ∷
@@ -161,5 +161,5 @@ Q =
   (—        ∷ cons — — ∷ []) ∷ []
 
 -- Q is exhaustive, so we get a total matching function of type `∀ vs → Match Q vs`
-_ : decNonExhaustive Q ≡ Left (Erased (the (∀ vs → Match Q vs) _))
+_ : decExhaustive Q ≡ Right (Erased (the (∀ vs → Match Q vs) _))
 _ = refl

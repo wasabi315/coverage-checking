@@ -16,8 +16,8 @@ P =
   (—   ∷ nil ∷ []) ∷ []
 
 -- P is non-exhaustive, witnessed by the following list of patterns
-_ : decNonExhaustive P
-  ≡ Right (
+_ : decExhaustive P
+  ≡ Left (
       ((cons — —  ∷ cons — — ∷ []) ⟨ _ ⟩) ∷
       ((one —     ∷ cons — — ∷ []) ⟨ _ ⟩) ∷
       ((cons — —  ∷ one —    ∷ []) ⟨ _ ⟩) ∷
@@ -34,10 +34,10 @@ Q =
   (—        ∷ cons — — ∷ []) ∷ []
 
 -- Q is exhaustive, so we get a total matching function of type `∀ vs → Match Q vs`
-_ : decNonExhaustive Q ≡ Left (Erased (the (∀ vs → Match Q vs) _))
+_ : decExhaustive Q ≡ Right (Erased (the (∀ vs → Match Q vs) _))
 _ = refl
 ```
 
 This formalization is compatible with agda2hs, allowing us to extract readable Haskell code from it!
 
-Tested with Agda v2.8.0, agda-stdlib v2.2, and agda2hs 94e360b.
+Tested with Agda v2.8.0, agda-stdlib v2.2, and agda2hs v1.4.

@@ -104,9 +104,9 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
 module _ ⦃ sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α ⦄ where
 
-  decNonExhaustive : (pss : PatternMatrix αs)
-    → Either (Erase (Exhaustive pss)) (NonExhaustive pss)
-  decNonExhaustive pss = ifDecP (decUseful pss pWilds)
-    (λ ⦃ h ⦄ → Right (nonExhaustiveUToNonExhaustive (h .witnesses)))
-    (λ ⦃ h ⦄ → Left (Erased (exhaustiveUToExhaustive h)))
-  {-# COMPILE AGDA2HS decNonExhaustive #-}
+  decExhaustive : (pss : PatternMatrix αs)
+    → Either (NonExhaustive pss) (Erase (Exhaustive pss))
+  decExhaustive pss = ifDecP (decUseful pss pWilds)
+    (λ ⦃ h ⦄ → Left (nonExhaustiveUToNonExhaustive (h .witnesses)))
+    (λ ⦃ h ⦄ → Right (Erased (exhaustiveUToExhaustive h)))
+  {-# COMPILE AGDA2HS decExhaustive #-}
