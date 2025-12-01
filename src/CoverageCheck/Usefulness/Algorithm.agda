@@ -283,10 +283,10 @@ module _
     → DecP (NonEmpty (UsefulS P ps))
   decUseful' {[]} []      [] done = Yes usefulNilOkCase
   decUseful' {[]} (_ ∷ _) [] done = No usefulNilBadCase
-  decUseful' {[] ∷ αss} psss ([] ∷ pss) (step-tail h) =
+  decUseful' {[] ∷ αss} psss ([] ∷ pss) (tailStep h) =
     mapDecP usefulTailCase usefulTailCaseInv
       (decUseful' (map tailAll psss) pss h)
-  decUseful' {(TyData d ∷ αs) ∷ αss} psss ((— ∷ ps) ∷ pss) (step-wild h h') =
+  decUseful' {(TyData d ∷ αs) ∷ αss} psss ((— ∷ ps) ∷ pss) (wildStep h h') =
     case decExistMissCon psss of λ where
       (Right miss) →
         mapDecP (usefulWildMissCase miss) usefulWildMissCaseInv
@@ -295,10 +295,10 @@ module _
         mapDecP usefulWildCompCase usefulWildCompCaseInv
           (decPAnyNameCon (dataDefs sig d) λ c →
             decUseful' (specialize c psss) (—* ∷ ps ∷ pss) (h' c (comp c)))
-  decUseful' {(TyData d ∷ αs) ∷ αss} psss ((con c rs ∷ ps) ∷ pss) (step-con h) =
+  decUseful' {(TyData d ∷ αs) ∷ αss} psss ((con c rs ∷ ps) ∷ pss) (conStep h) =
     mapDecP usefulConCase usefulConCaseInv
       (decUseful' (specialize c psss) (rs ∷ ps ∷ pss) h)
-  decUseful' {(TyData d ∷ αs) ∷ αss} psss ((r₁ ∣ r₂ ∷ ps) ∷ pss) (step-∣ h h') =
+  decUseful' {(TyData d ∷ αs) ∷ αss} psss ((r₁ ∣ r₂ ∷ ps) ∷ pss) (orStep h h') =
     mapDecP usefulOrCase usefulOrCaseInv
       (theseDecP (decUseful' psss ((r₁ ∷ ps) ∷ pss) h) (decUseful' psss ((r₂ ∷ ps) ∷ pss) h'))
   {-# COMPILE AGDA2HS decUseful' #-}

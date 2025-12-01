@@ -46,23 +46,23 @@ private
 data UsefulAcc : (P : PatternMatrixStack αss) (ps : PatternStack αss) → Type where
   done : {P : PatternMatrixStack []} → UsefulAcc P []
 
-  step-tail : {P : PatternMatrixStack ([] ∷ αss)} {pss : PatternStack αss}
+  tailStep : {P : PatternMatrixStack ([] ∷ αss)} {pss : PatternStack αss}
     → UsefulAcc (map tailAll P) pss
     → UsefulAcc P ([] ∷ pss)
 
-  step-wild : {P : PatternMatrixStack ((TyData d ∷ αs) ∷ αss)}
+  wildStep : {P : PatternMatrixStack ((TyData d ∷ αs) ∷ αss)}
     {ps : Patterns αs} {pss : PatternStack αss}
     → UsefulAcc (default_ P) (ps ∷ pss)
     → (∀ c → c ∈** P → UsefulAcc (specialize c P) (—* ∷ ps ∷ pss))
     → UsefulAcc P ((— ∷ ps) ∷ pss)
 
-  step-con : {P : PatternMatrixStack ((TyData d ∷ βs) ∷ αss)} {c : NameCon d}
+  conStep : {P : PatternMatrixStack ((TyData d ∷ βs) ∷ αss)} {c : NameCon d}
     (let αs = argsTy (dataDefs sig d) c)
     {rs : Patterns αs} {ps : Patterns βs} {pss : PatternStack αss}
     → UsefulAcc (specialize c P) (rs ∷ ps ∷ pss)
     → UsefulAcc P ((con c rs ∷ ps) ∷ pss)
 
-  step-∣ : {P : PatternMatrixStack ((α ∷ αs) ∷ αss)}
+  orStep : {P : PatternMatrixStack ((α ∷ αs) ∷ αss)}
     {p q : Pattern α} {ps : Patterns αs} {pss : PatternStack αss}
     → UsefulAcc P ((p ∷ ps) ∷ pss)
     → UsefulAcc P ((q ∷ ps) ∷ pss)
@@ -272,15 +272,15 @@ chooseOr-⊏ᵣ P r₁ r₂ ps pss =
   → UsefulAcc P pss
 ∀UsefulAcc' P [] (acc h) = done
 ∀UsefulAcc' P ([] ∷ pss) (acc h) =
-  step-tail (∀UsefulAcc' (map tailAll P) pss (h (tail-⊏ P pss)))
+  tailStep (∀UsefulAcc' (map tailAll P) pss (h (tail-⊏ P pss)))
 ∀UsefulAcc' {αss = (TyData d ∷ αs) ∷ αss} P ((— ∷ ps) ∷ pss) (acc h) =
-  step-wild
+  wildStep
     (∀UsefulAcc' (default_ P) (ps ∷ pss) (h (default-⊏ P ps pss)))
     (λ c m → ∀UsefulAcc' (specialize c P) (—* ∷ ps ∷ pss) (h (specializeWild-⊏ c P ps pss m)))
 ∀UsefulAcc' P ((con c rs ∷ ps) ∷ pss) (acc h) =
-  step-con (∀UsefulAcc' (specialize c P) (rs ∷ ps ∷ pss) (h (specializeCon-⊏ P c rs ps pss)))
+  conStep (∀UsefulAcc' (specialize c P) (rs ∷ ps ∷ pss) (h (specializeCon-⊏ P c rs ps pss)))
 ∀UsefulAcc' P ((r₁ ∣ r₂ ∷ ps) ∷ pss) (acc h) =
-  step-∣
+  orStep
     (∀UsefulAcc' P ((r₁ ∷ ps) ∷ pss) (h (chooseOr-⊏ₗ P r₁ r₂ ps pss)))
     (∀UsefulAcc' P ((r₂ ∷ ps) ∷ pss) (h (chooseOr-⊏ᵣ P r₁ r₂ ps pss)))
 
