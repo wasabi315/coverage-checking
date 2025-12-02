@@ -108,13 +108,13 @@ instance
   -- type unit = Unit
   unitDef : Dataty ⟨unit⟩
   unitDef .dataCons      = _
-  unitDef .fullDataCons  = refl
+  unitDef .isConScope    = refl
   unitDef .argsTy ⟨unit⟩ = []
 
   -- type list = Nil | One unit | Cons unit list
   listDef : Dataty ⟨list⟩
   listDef .dataCons      = _
-  listDef .fullDataCons  = refl
+  listDef .isConScope    = refl
   listDef .argsTy ⟨nil⟩  = []
   listDef .argsTy ⟨one⟩  = TyData ⟨unit⟩ ∷ []
   listDef .argsTy ⟨cons⟩ = TyData ⟨unit⟩ ∷ TyData ⟨list⟩ ∷ []

@@ -1,5 +1,11 @@
 module CoverageCheck.Prelude where
 
+{-# FOREIGN AGDA2HS
+import Data.Bifoldable (Bifoldable(..))
+import Data.Bifoldable1 (Bifoldable1(..))
+import Data.Bifunctor (Bifunctor(..))
+#-}
+
 infixr 5 _∷_
 
 --------------------------------------------------------------------------------

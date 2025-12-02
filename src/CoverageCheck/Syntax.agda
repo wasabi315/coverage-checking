@@ -60,7 +60,7 @@ record Dataty (@0 d : NameData) : Type where
   decPAnyNameCon : {p : @0 NameCon d → Type}
     → (∀ x → DecP (p x))
     → DecP (NonEmpty (Σ[ x ∈ NameCon d ] p x))
-  decPAnyNameCon f = decPAnyNameIn dataCons isConScope f
+  decPAnyNameCon = decPAnyNameIn dataCons isConScope
   {-# COMPILE AGDA2HS decPAnyNameCon inline #-}
 
 open Dataty public

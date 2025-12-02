@@ -117,51 +117,59 @@ anyNameIn : ∀ xs → (NameIn xs → Bool) → Bool
 anyNameIn xs f = anyNameIn' xs f id
 {-# COMPILE AGDA2HS anyNameIn inline #-}
 
-module _ where
-  private
-    lem1 : ∀ {x} {@0 xs h} {p : @0 NameIn (SCons x xs h) → Type}
-      → p (x ⟨ InHere ⟩)
-      → Σ[ y ∈ NameIn (SCons x xs h) ] p y
-    lem1 h = _ , h
-    {-# COMPILE AGDA2HS lem1 inline #-}
+module _ {@0 xs} {p : @0 NameIn xs → Type} where
 
-    lem2' : ∀ {@0 x xs h} {p : @0 NameIn (SCons x xs h) → Type}
-      → List (Σ[ y ∈ NameIn xs ] p (mapRefine InThere y))
-      → List (Σ[ y ∈ NameIn (SCons x xs h) ] p y)
-    lem2' []             = []
-    lem2' ((y , h) ∷ ys) = (mapRefine InThere y , h) ∷ lem2' ys
-    {-# COMPILE AGDA2HS lem2' transparent #-}
+  foundHere : ∀ {y} {@0 ys h}
+    → (@0 inj : ∀ {@0 x} → In x (SCons y ys h) → In x xs)
+    → p (y ⟨ inj InHere ⟩)
+    → NonEmpty (Σ[ x ∈ _ ] p (mapRefine inj x))
+  foundHere inj p = (_ , p) ∷ []
+  {-# COMPILE AGDA2HS foundHere inline #-}
 
-    lem2 : ∀ {@0 x xs h} {p : @0 NameIn (SCons x xs h) → Type}
-      → NonEmpty (Σ[ y ∈ NameIn xs ] p (mapRefine InThere y))
-      → NonEmpty (Σ[ y ∈ NameIn (SCons x xs h) ] p y)
-    lem2 ((y , h) ∷ ys) = (mapRefine InThere y , h) ∷ lem2' ys
-    {-# COMPILE AGDA2HS lem2 transparent #-}
+  foundThere' : ∀ {@0 y ys h}
+    → (@0 inj : ∀ {@0 x} → In x (SCons y ys h) → In x xs)
+    → List (Σ[ x ∈ _ ] p (mapRefine (inj ∘ InThere) x))
+    → List (Σ[ x ∈ _ ] p (mapRefine inj x))
+  foundThere' inj [] = []
+  foundThere' inj ((x , p) ∷ ps) =
+    (mapRefine InThere x , p) ∷ foundThere' inj ps
+  {-# COMPILE AGDA2HS foundThere' transparent #-}
 
-    @0 lem3 : ∀ {@0 x xs h} {p : @0 NameIn (SCons x xs h) → Type}
-      → Σ[ y ∈ NameIn (SCons x xs h) ] p y
-      → Either
-          (p (x ⟨ InHere ⟩))
-          (Σ[ y ∈ NameIn xs ] p (mapRefine InThere y))
-    lem3 ((y ⟨ InHere ⟩)    , h') = Left h'
-    lem3 ((y ⟨ InThere h ⟩) , h') = Right ((y ⟨ h ⟩) , h')
+  foundThere : ∀ {@0 y ys h}
+    → (@0 inj : ∀ {@0 x} → In x (SCons y ys h) → In x xs)
+    → NonEmpty (Σ[ x ∈ _ ] p (mapRefine (inj ∘ InThere) x))
+    → NonEmpty (Σ[ x ∈ _ ] p (mapRefine inj x))
+  foundThere inj ((x , p) ∷ ps) = (mapRefine InThere x , p) ∷ foundThere' inj ps
+  {-# COMPILE AGDA2HS foundThere transparent #-}
 
-    @0 lem4 : ∀ {@0 x xs h} {p : @0 NameIn (SCons x xs h) → Type}
-      → NonEmpty (Σ[ y ∈ NameIn (SCons x xs h) ] p y)
-      → These
-          (p (x ⟨ InHere ⟩))
-          (NonEmpty (Σ[ y ∈ NameIn xs ] p (mapRefine InThere y)))
-    lem4 = mapThese NonEmpty.head id ∘ partitionEithersNonEmpty ∘ fmap lem3
+  @0 foundInv : ∀ {@0 y ys h}
+    → (@0 inj : ∀ {@0 x} → In x (SCons y ys h) → In x xs)
+    → Σ[ x ∈ _ ] p (mapRefine inj x)
+    → These
+        (p (y ⟨ inj InHere ⟩))
+        (NonEmpty (Σ[ x ∈ _ ] p (mapRefine (inj ∘ InThere) x)))
+  foundInv inj (x ⟨ InHere    ⟩ , p) = This p
+  foundInv inj (x ⟨ InThere h ⟩ , p) = That ((x ⟨ h ⟩ , p) ∷ [])
 
-  decPAnyNameIn : ∀ xs {@0 ys}
-    → (@0 eq : xs ≡ ys)
-    → {p : @0 NameIn ys → Type}
-    → (∀ x → DecP (p x))
-    → DecP (NonEmpty (Σ[ x ∈ _ ] p x))
-  decPAnyNameIn []       refl f = No λ where (_ ∷ _) → undefined
-  decPAnyNameIn (x ∷# xs) refl f =
+  decPAnyNameIn' : ∀ ys
+    → (f : ∀ x → DecP (p x))
+    → (@0 inj : ∀ {@0 x} → In x ys → In x xs)
+    → DecP (NonEmpty (Σ[ x ∈ _ ] p (mapRefine inj x)))
+  decPAnyNameIn' [] f inj = No λ where (_ ∷ _) → undefined
+  decPAnyNameIn' (SCons y ys h) f inj =
     mapDecP
-      (these (λ h → lem1 h ∷ []) lem2 (λ h hs → lem1 h <| lem2 hs))
-      lem4
-      (theseDecP (f (x ⟨ InHere ⟩)) (decPAnyNameIn xs refl λ y → f (mapRefine InThere y)))
-  {-# COMPILE AGDA2HS decPAnyNameIn #-}
+      (bifoldMap1 (foundHere inj) (foundThere inj))
+      (foundInv inj ∘ NonEmpty.head)
+      (theseDecP
+        (f (y ⟨ inj InHere ⟩))
+        (decPAnyNameIn' ys f (inj ∘ InThere)))
+  {-# COMPILE AGDA2HS decPAnyNameIn' #-}
+
+
+decPAnyNameIn : ∀ xs {@0 ys}
+  → (@0 eq : xs ≡ ys)
+  → {p : @0 NameIn ys → Type}
+  → (∀ x → DecP (p x))
+  → DecP (NonEmpty (Σ[ x ∈ NameIn ys ] p x))
+decPAnyNameIn xs refl f = decPAnyNameIn' xs f id
+{-# COMPILE AGDA2HS decPAnyNameIn #-}

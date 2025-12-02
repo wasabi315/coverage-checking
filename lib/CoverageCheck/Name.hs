@@ -1,7 +1,9 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module CoverageCheck.Name where
 
-import CoverageCheck.Prelude (DecP(No), mapDecP, these, theseDecP)
-import Data.List.NonEmpty (NonEmpty((:|)), (<|))
+import CoverageCheck.Prelude (DecP(No), mapDecP, theseDecP)
+import Data.Bifoldable1 (Bifoldable1(bifoldMap1))
+import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.Set (Set)
 import qualified Data.Set (empty, insert)
 
@@ -18,10 +20,14 @@ anyNameIn' :: Scope -> (Name -> Bool) -> Bool
 anyNameIn' SNil f = False
 anyNameIn' (SCons x ys) f = f x || anyNameIn' ys f
 
+decPAnyNameIn' ::
+               forall p . Scope -> (Name -> DecP p) -> DecP (NonEmpty (Name, p))
+decPAnyNameIn' SNil f = No
+decPAnyNameIn' (SCons y ys) f
+  = mapDecP (bifoldMap1 (\ p -> (y, p) :| []) id)
+      (theseDecP (f y) (decPAnyNameIn' ys f))
+
 decPAnyNameIn ::
               Scope -> (Name -> DecP p) -> DecP (NonEmpty (Name, p))
-decPAnyNameIn SNil f = No
-decPAnyNameIn (SCons x xs) f
-  = mapDecP (these (\ h -> (x, h) :| []) id (\ h hs -> (x, h) <| hs))
-      (theseDecP (f x) (decPAnyNameIn xs (\ y -> f y)))
+decPAnyNameIn xs f = decPAnyNameIn' xs f
 

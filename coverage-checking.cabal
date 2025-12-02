@@ -31,7 +31,7 @@ library
                     , CoverageCheck.Usefulness.Algorithm.Raw
                     , CoverageCheck.Usefulness.Algorithm.MissingConstructors
                     , CoverageCheck.Exhaustiveness
-    build-depends:    base >=4.17 && <5
+    build-depends:    base >=4.21 && <5
                     , containers
     hs-source-dirs:   lib
     default-language: GHC2021
