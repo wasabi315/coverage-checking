@@ -10,38 +10,17 @@ Name : Type
 Name = String
 {-# COMPILE AGDA2HS Name #-}
 
-data In (x : Name) : (xs : List Name) → Type where
-  InHere  : ∀ {xs} →  In x (x ∷ xs)
-  InThere : ∀ {y xs} → In x xs → In x (y ∷ xs)
-
 NameIn : @0 List Name → Type
 NameIn xs = ∃[ x ∈ Name ] In x xs
 {-# COMPILE AGDA2HS NameIn inline #-}
 
-module _ where
-  private
-    @0 All≢⇒¬InHere : ∀ {x xs}
-      → All (λ y → @0 x ≡ y → ⊥) xs
-      → ¬ In x xs
-    All≢⇒¬InHere (h ∷ hs) InHere        = h refl
-    All≢⇒¬InHere (h ∷ hs) (InThere hs') = All≢⇒¬InHere hs hs'
-
-    @0 fresh⇒uniqueIn : (x : Name) (xs : List Name)
-      → Fresh xs
-      → (p q : In x xs)
-      → p ≡ q
-    fresh⇒uniqueIn x (y ∷ xs) (h ∷ h') InHere InHere = refl
-    fresh⇒uniqueIn x (y ∷ xs) (h ∷ h') (InThere p) (InThere q) = cong InThere (fresh⇒uniqueIn x xs h' p q)
-    fresh⇒uniqueIn x (y ∷ xs) (h ∷ h') InHere (InThere q) = explode (All≢⇒¬InHere h q)
-    fresh⇒uniqueIn x (y ∷ xs) (h ∷ h') (InThere p) InHere = explode (All≢⇒¬InHere h p)
-
-  @0 name-injective : ∀ {@0 xs} ⦃ @0 _ : Fresh xs ⦄ {x y : NameIn xs}
-    → value x ≡ value y
-    → x ≡ y
-  name-injective {xs} ⦃ h ⦄ {x ⟨ p ⟩} {y ⟨ q ⟩} refl
-    = cong (x ⟨_⟩) (fresh⇒uniqueIn x xs h p q)
-
 --------------------------------------------------------------------------------
+
+NameIn≡ : ∀ {@0 xs} ⦃ @0 _ : Fresh xs ⦄ {x y : NameIn xs}
+  → value x ≡ value y
+  → x ≡ y
+NameIn≡ {xs} ⦃ h ⦄ {x ⟨ p ⟩} {y ⟨ q ⟩} refl
+  = cong0 (x ⟨_⟩) (fresh⇒uniqueIn x xs h p q)
 
 instance
   -- import instances
@@ -52,9 +31,9 @@ instance
   iEqNameIn : {@0 xs : List Name} → Eq (NameIn xs)
   iEqNameIn ._==_ x y = value x == value y
 
-  @0 iLawfulEqNameIn : {@0 xs : List Name} ⦃ _ : Fresh xs ⦄ → IsLawfulEq (NameIn xs)
+  iLawfulEqNameIn : {@0 xs : List Name} ⦃ @0 _ : Fresh xs ⦄ → IsLawfulEq (NameIn xs)
   iLawfulEqNameIn .isEquality x y
-    = mapReflects name-injective (cong value) (isEquality (value x) (value y))
+    = mapReflects NameIn≡ (cong value) (isEquality (value x) (value y))
 
   iOrdFromLessThanNameIn : {@0 xs : List Name} → OrdFromLessThan (NameIn xs)
   iOrdFromLessThanNameIn .OrdFromLessThan._<_ x y = value x < value y

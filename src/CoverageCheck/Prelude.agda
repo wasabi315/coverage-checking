@@ -31,7 +31,7 @@ open import Haskell.Prim public
 open import Haskell.Prim.Eq public
   using (Eq; _==_)
 open import Haskell.Law.Eq public
-  using (IsLawfulEq; isEquality; eqReflexivity)
+  using (IsLawfulEq; isEquality; eqReflexivity; _≟_)
 
 open import Haskell.Prim.Foldable public
   using (iFoldableList; Foldable; any)
@@ -106,7 +106,15 @@ contraposition : {a b : Type} → (a → b) → (¬ b → ¬ a)
 contraposition f g = g ∘ f
 
 --------------------------------------------------------------------------------
--- Utils
+-- Equality
+
+cong0 : {@0 a : Type} {b : Type} {@0 x y : a} (f : @0 a → b)
+  → @0 x ≡ y
+  → f x ≡ f y
+cong0 f eq = subst0 (λ z → f _ ≡ f z) eq refl
+
+--------------------------------------------------------------------------------
+-- Utility
 
 mapListRefine : {a : Type} {@0 p q : a → Type}
   → (@0 f : ∀ {x} → p x → q x)
@@ -254,6 +262,25 @@ pattern _∷_ h hs = h :<> hs
 Fresh : {@0 a : Type} → @0 List a → Type
 Fresh = AllPair (λ x y → @0 x ≡ y → ⊥)
 
+data In {a : Type} (x : a) : (xs : List a) → Type where
+  InHere  : ∀ {xs} → In x (x ∷ xs)
+  InThere : ∀ {y xs} → In x xs → In x (y ∷ xs)
+
+All≢⇒¬In : {a : Type} {x : a} {@0 xs : List a}
+  → All (λ y → @0 x ≡ y → ⊥) xs
+  → ¬ In x xs
+All≢⇒¬In (h ∷ hs) InHere        = h refl
+All≢⇒¬In (h ∷ hs) (InThere hs') = All≢⇒¬In hs hs'
+
+fresh⇒uniqueIn : {a : Type} (x : a) (xs : List a)
+  → Fresh xs
+  → (p q : In x xs)
+  → p ≡ q
+fresh⇒uniqueIn x (y ∷ xs) (h ∷ h') InHere InHere = refl
+fresh⇒uniqueIn x (y ∷ xs) (h ∷ h') (InThere p) (InThere q) = cong InThere (fresh⇒uniqueIn x xs h' p q)
+fresh⇒uniqueIn x (y ∷ xs) (h ∷ h') InHere (InThere q) = explode (All≢⇒¬In h q)
+fresh⇒uniqueIn x (y ∷ xs) (h ∷ h') (InThere p) InHere = explode (All≢⇒¬In h p)
+
 --------------------------------------------------------------------------------
 -- These
 
@@ -316,10 +343,6 @@ partitionEithersNonEmpty {a} {b} (x ∷ xs) = go x xs
 
 --------------------------------------------------------------------------------
 -- Decidable relations
-
-_≟_ : {a : Type} ⦃ _ : Eq a ⦄ ⦃ @0 _ : IsLawfulEq a ⦄ → (x y : a) → Dec (x ≡ y)
-x ≟ y = (x == y) ⟨ isEquality x y ⟩
-{-# COMPILE AGDA2HS _≟_ inline #-}
 
 ifDec : {@0 a : Type} {b : Type} → Dec a → (@0 ⦃ a ⦄ → b) → (@0 ⦃ ¬ a ⦄ → b) → b
 ifDec (b ⟨ p ⟩) x y = if b then (λ where ⦃ refl ⦄ → x ⦃ p ⦄) else (λ where ⦃ refl ⦄ → y ⦃ p ⦄)
