@@ -43,45 +43,39 @@ instance
 
 --------------------------------------------------------------------------------
 
-universalNameInList' : (xs : List Name) {@0 ys : List Name}
+allNameIn' : (xs : List Name) {@0 ys : List Name}
   → (@0 inj : ∀ {@0 x} → In x xs → In x ys)
   → List (NameIn ys)
-universalNameInList' []       inj = []
-universalNameInList' (x ∷ xs) inj =
-  (x ⟨ inj InHere ⟩) ∷ universalNameInList' xs (inj ∘ InThere)
-{-# COMPILE AGDA2HS universalNameInList' transparent #-}
+allNameIn' []       inj = []
+allNameIn' (x ∷ xs) inj =
+  (x ⟨ inj InHere ⟩) ∷ allNameIn' xs (inj ∘ InThere)
+{-# COMPILE AGDA2HS allNameIn' transparent #-}
 
-universalNameInList : (xs : List Name) → List (NameIn xs)
-universalNameInList xs = universalNameInList' xs id
-{-# COMPILE AGDA2HS universalNameInList inline #-}
+allNameIn : (xs : List Name) → List (NameIn xs)
+allNameIn xs = allNameIn' xs id
+{-# COMPILE AGDA2HS allNameIn inline #-}
 
-@0 universalNameInListUniversal' : (xs : List Name) {@0 ys : List Name}
+@0 allNameIn-universal' : (xs : List Name) {@0 ys : List Name}
   → (@0 inj : ∀ {@0 x} → In x xs → In x ys)
   → ∀ ((y ⟨ h ⟩) : NameIn xs)
-  → elem (y ⟨ inj h ⟩) (universalNameInList' xs inj) ≡ True
-universalNameInListUniversal' (x ∷ xs) inj (y ⟨ InHere ⟩) rewrite eqReflexivity x = refl
-universalNameInListUniversal' (x ∷ xs) inj (y ⟨ InThere h ⟩) =
-  let ih = universalNameInListUniversal' xs (inj ∘ InThere) (y ⟨ h ⟩) in
+  → elem (y ⟨ inj h ⟩) (allNameIn' xs inj) ≡ True
+allNameIn-universal' (x ∷ xs) inj (y ⟨ InHere ⟩) rewrite eqReflexivity x = refl
+allNameIn-universal' (x ∷ xs) inj (y ⟨ InThere h ⟩) =
+  let ih = allNameIn-universal' xs (inj ∘ InThere) (y ⟨ h ⟩) in
   subst (λ b → (y == x || b) ≡ True) (sym ih) (prop-x-||-True (y == x))
 
-@0 universalNameInListUniversal : (xs : List Name)
-  → ∀ x → elem x (universalNameInList xs) ≡ True
-universalNameInListUniversal xs x = universalNameInListUniversal' xs id x
+@0 allNameIn-universal : (xs : List Name)
+  → ∀ x → elem x (allNameIn xs) ≡ True
+allNameIn-universal xs x = allNameIn-universal' xs id x
 
-universalNameInSet : (xs : List Name) → Set (NameIn xs)
-universalNameInSet xs = Set.fromList (universalNameInList xs)
-{-# COMPILE AGDA2HS universalNameInSet inline #-}
+allNameInSet : (xs : List Name) → Set (NameIn xs)
+allNameInSet xs = Set.fromList (allNameIn xs)
+{-# COMPILE AGDA2HS allNameInSet inline #-}
 
-@0 universalNameInSetUniversal : (xs : List Name)
-  → ∀ x → Set.member x (universalNameInSet xs) ≡ True
-universalNameInSetUniversal xs x rewrite prop-member-fromList x (universalNameInList xs)
-  = universalNameInListUniversal xs x
-
-@0 universalNameInSetUniversal' : {xs : List Name} (s : Set (NameIn xs))
-  → Set.null (Set.difference (universalNameInSet xs) s) ≡ True
-  → ∀ x → Set.member x s ≡ True
-universalNameInSetUniversal' {xs} s eq x =
-  prop-difference-empty (prop-null→empty _ eq) (universalNameInSetUniversal xs x)
+@0 allNameInSet-universal : (xs : List Name)
+  → ∀ x → Set.member x (allNameInSet xs) ≡ True
+allNameInSet-universal xs x rewrite prop-member-fromList x (allNameIn xs)
+  = allNameIn-universal xs x
 
 --------------------------------------------------------------------------------
 

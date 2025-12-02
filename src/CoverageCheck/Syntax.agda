@@ -43,21 +43,15 @@ record Dataty (@0 d : NameData) : Type where
     @0 fullDataCons : dataCons ≡ conScope d
     argsTy          : (c : NameCon d) → Tys
 
-  universalNameConSet : Set (NameCon d)
-  universalNameConSet =
-    subst0 (λ xs → Set (NameIn xs)) fullDataCons (universalNameInSet dataCons)
-  {-# COMPILE AGDA2HS universalNameConSet inline #-}
+  allNameCon : Set (NameCon d)
+  allNameCon =
+    subst0 (λ xs → Set (NameIn xs)) fullDataCons (allNameInSet dataCons)
+  {-# COMPILE AGDA2HS allNameCon inline #-}
 
-  @0 universalNameConSetUniversal : (c : NameCon d)
-    → Set.member c universalNameConSet ≡ True
-  universalNameConSetUniversal c rewrite fullDataCons =
-    universalNameInSetUniversal (conScope d) c
-
-  @0 universalNameConSetUniversal' : (s : Set (NameCon d))
-    → Set.null (Set.difference universalNameConSet s) ≡ True
-    → ∀ c → Set.member c s ≡ True
-  universalNameConSetUniversal' rewrite fullDataCons =
-    universalNameInSetUniversal'
+  @0 allNameCon-universal : (c : NameCon d)
+    → Set.member c allNameCon ≡ True
+  allNameCon-universal c rewrite fullDataCons =
+    allNameInSet-universal (conScope d) c
 
   anyNameCon : (NameCon d → Bool) → Bool
   anyNameCon f = anyNameIn dataCons λ x → f (subst0 NameIn fullDataCons x)
