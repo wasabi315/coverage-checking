@@ -4,6 +4,7 @@ module CoverageCheck.Name where
 import CoverageCheck.Prelude (DecP(No), mapDecP, theseDecP)
 import Data.Bifoldable1 (Bifoldable1(bifoldMap1))
 import Data.List.NonEmpty (NonEmpty((:|)))
+import qualified Data.List.NonEmpty (singleton)
 import Data.Set (Set)
 import qualified Data.Set (empty, insert)
 
@@ -24,7 +25,8 @@ decPAnyNameIn' ::
                forall p . Scope -> (Name -> DecP p) -> DecP (NonEmpty (Name, p))
 decPAnyNameIn' SNil f = No
 decPAnyNameIn' (SCons y ys) f
-  = mapDecP (bifoldMap1 (\ p -> (y, p) :| []) id)
+  = mapDecP
+      (bifoldMap1 (\ p -> Data.List.NonEmpty.singleton (y, p)) id)
       (theseDecP (f y) (decPAnyNameIn' ys f))
 
 decPAnyNameIn ::

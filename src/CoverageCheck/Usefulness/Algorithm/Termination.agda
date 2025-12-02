@@ -1,8 +1,8 @@
-open import Data.Nat.Base using (_≤_; _<_; s<s)
+open import Data.Nat.Base using (_≤_; _<_; s<s; z≤n)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Data.Nat.Properties using
   (+-identityʳ; +-assoc; ≤-refl; module ≤-Reasoning; +-mono-≤; n≤1+n;
-  n<1+n; 0<1+n; <⇒≤; +-mono-<-≤; +-mono-≤-<; m≤n⇒m<n∨m≡n; m≤m+n; m≤n+m)
+  n<1+n; 0<1+n; +-mono-<-≤; +-mono-≤-<; m≤n⇒m<n∨m≡n; m≤m+n; m≤n+m)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Product.Relation.Binary.Lex.Strict using (×-Lex; ×-wellFounded)
 open import Data.Sum using (inj₁; inj₂)
@@ -142,7 +142,7 @@ specialize'-≤ c ((con c' rs ∷ ps) ∷ pss) = lem (c ≟ c')
     lem : (eq : Dec (c ≡ c'))
       → patternMatrixStackSize (specializeConCase c rs ps pss eq)
       ≤ suc (patternStackSize (rs ∷ ps ∷ pss) 0)
-    lem (False ⟨ _    ⟩) = <⇒≤ 0<1+n
+    lem (False ⟨ _    ⟩) = z≤n
     lem (True  ⟨ refl ⟩)
       rewrite +-identityʳ (patternStackSize (rs ∷ ps ∷ pss) 0)
       = n≤1+n (patternStackSize (rs ∷ ps ∷ pss) 0)
@@ -212,7 +212,7 @@ default'-≤ : (pss : PatternStack ((TyData d ∷ αs) ∷ αss))
 default'-≤ ((— ∷ ps) ∷ pss)
   rewrite +-identityʳ (patternStackSize (ps ∷ pss) 0)
   = ≤-refl
-default'-≤ ((con _ _ ∷ ps) ∷ pss) = <⇒≤ 0<1+n
+default'-≤ ((con _ _ ∷ ps) ∷ pss) = z≤n
 default'-≤ ((r₁ ∣ r₂ ∷ ps) ∷ pss) =
   begin
     patternMatrixStackSize (default' ((r₁ ∷ ps) ∷ pss) ++ default' ((r₂ ∷ ps) ∷ pss))

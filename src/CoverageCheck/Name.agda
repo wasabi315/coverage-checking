@@ -123,7 +123,7 @@ module _ {@0 xs} {p : @0 NameIn xs → Type} where
     → (@0 inj : ∀ {@0 x} → In x (SCons y ys h) → In x xs)
     → p (y ⟨ inj InHere ⟩)
     → NonEmpty (Σ[ x ∈ _ ] p (mapRefine inj x))
-  foundHere inj p = (_ , p) ∷ []
+  foundHere inj p = NonEmpty.singleton (_ , p)
   {-# COMPILE AGDA2HS foundHere inline #-}
 
   foundThere' : ∀ {@0 y ys h}

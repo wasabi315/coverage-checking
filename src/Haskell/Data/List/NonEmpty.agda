@@ -31,6 +31,9 @@ x <| xs = x ∷ head xs List.∷ tail xs
 
 cons = _<|_
 
+singleton : {a : Type} → a → NonEmpty a
+singleton x = x ∷ []
+
 --------------------------------------------------------------------------------
 
 private
