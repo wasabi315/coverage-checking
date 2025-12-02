@@ -8,7 +8,7 @@ data Ty = TyData Name
 
 type Tys = [Ty]
 
-data Dataty = Dataty{dataCons :: Scope, argsTy :: Name -> Tys}
+data Dataty = Dataty{argsTy :: Name -> Tys, dataCons :: Scope}
 
 newtype Signature = Signature{dataDefs :: Name -> Dataty}
 

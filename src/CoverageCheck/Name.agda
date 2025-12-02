@@ -37,7 +37,7 @@ NameIn xs = ∃[ x ∈ Name ] In x xs
 {-# COMPILE AGDA2HS NameIn inline #-}
 
 --------------------------------------------------------------------------------
--- Properties
+-- Eq/Ord instances
 
 Fresh⇒¬In : ∀ {x} xs → Fresh x xs → ¬ In x xs
 Fresh⇒¬In (SCons x xs h) (p , ps) InHere rewrite eqReflexivity x = explode p
@@ -58,8 +58,8 @@ instance
   iEqNameIn ._==_ x y = value x == value y
 
   iLawfulEqNameIn : {@0 xs : Scope} → IsLawfulEq (NameIn xs)
-  iLawfulEqNameIn .isEquality x y
-    = mapReflects NameIn≡ (cong value) (isEquality (value x) (value y))
+  iLawfulEqNameIn .isEquality x y =
+    mapReflects NameIn≡ (cong value) (isEquality (value x) (value y))
 
   iOrdFromLessThanNameIn : {@0 xs : Scope} → OrdFromLessThan (NameIn xs)
   iOrdFromLessThanNameIn .OrdFromLessThan._<_ x y = value x < value y
@@ -68,53 +68,53 @@ instance
   iOrdNameIn = record {OrdFromLessThan iOrdFromLessThanNameIn}
 
 --------------------------------------------------------------------------------
+-- Universal set
 
-allNameInSet' : ∀ xs {@0 ys}
+nameInSet' : ∀ xs {@0 ys}
   → (@0 inj : ∀ {@0 x} → In x xs → In x ys)
   → Set (NameIn ys)
-allNameInSet' [] inj = Set.empty
-allNameInSet' (x ∷# xs) inj =
-  Set.insert (x ⟨ inj InHere ⟩) (allNameInSet' xs (inj ∘ InThere))
-{-# COMPILE AGDA2HS allNameInSet' #-}
+nameInSet' [] inj = Set.empty
+nameInSet' (x ∷# xs) inj =
+  Set.insert (x ⟨ inj InHere ⟩) (nameInSet' xs (inj ∘ InThere))
+{-# COMPILE AGDA2HS nameInSet' #-}
 
-allNameInSet : ∀ xs → Set (NameIn xs)
-allNameInSet xs = allNameInSet' xs id
-{-# COMPILE AGDA2HS allNameInSet inline #-}
+nameInSet : ∀ xs → Set (NameIn xs)
+nameInSet xs = nameInSet' xs id
+{-# COMPILE AGDA2HS nameInSet inline #-}
 
-@0 allNameInSet-universal' : ∀ xs {@0 ys}
+@0 nameInSet-universal' : ∀ xs {@0 ys}
   → (@0 inj : ∀ {@0 x} → In x xs → In x ys)
   → ((y ⟨ h ⟩) : NameIn xs)
-  → Set.member (y ⟨ inj h ⟩) (allNameInSet' xs inj) ≡ True
-allNameInSet-universal' (x ∷# xs) inj (x ⟨ InHere ⟩) =
+  → Set.member (y ⟨ inj h ⟩) (nameInSet' xs inj) ≡ True
+nameInSet-universal' (x ∷# xs) inj (x ⟨ InHere ⟩) =
   trans
     (prop-member-insert (x ⟨ inj InHere ⟩) (x ⟨ inj InHere ⟩) _)
     (cong (_|| Set.member (x ⟨ inj InHere ⟩)
-      (allNameInSet' xs (inj ∘ InThere))) (eqReflexivity x))
-allNameInSet-universal' (x ∷# xs) inj (y ⟨ InThere h ⟩) =
+      (nameInSet' xs (inj ∘ InThere))) (eqReflexivity x))
+nameInSet-universal' (x ∷# xs) inj (y ⟨ InThere h ⟩) =
   trans
     (prop-member-insert (y ⟨ inj (InThere h) ⟩) (x ⟨ inj InHere ⟩) _)
     (trans
-      (cong (y == x ||_) (allNameInSet-universal' xs (inj ∘ InThere) (y ⟨ h ⟩)))
+      (cong (y == x ||_) (nameInSet-universal' xs (inj ∘ InThere) (y ⟨ h ⟩)))
       (prop-x-||-True (y == x)))
 
-@0 allNameInSet-universal : ∀ xs x → Set.member x (allNameInSet xs) ≡ True
-allNameInSet-universal xs = allNameInSet-universal' xs id
+@0 nameInSet-universal : ∀ xs x → Set.member x (nameInSet xs) ≡ True
+nameInSet-universal xs = nameInSet-universal' xs id
 
 --------------------------------------------------------------------------------
+-- Properties
 
-module _ {@0 xs} (f : NameIn xs → Bool) where
-
-  anyNameIn' : ∀ ys
-    → (@0 inj : ∀ {@0 x} → In x ys → In x xs)
-    → Bool
-  anyNameIn' []        inj = False
-  anyNameIn' (x ∷# ys) inj =
-    f (x ⟨ inj InHere ⟩) || anyNameIn' ys (inj ∘ InThere)
-  {-# COMPILE AGDA2HS anyNameIn' #-}
-
+anyNameIn' : ∀ {@0 xs} ys
+  → (f : NameIn xs → Bool)
+  → (@0 inj : ∀ {@0 x} → In x ys → In x xs)
+  → Bool
+anyNameIn' [] f inj = False
+anyNameIn' (x ∷# ys) f inj =
+  f (x ⟨ inj InHere ⟩) || anyNameIn' ys f (inj ∘ InThere)
+{-# COMPILE AGDA2HS anyNameIn' #-}
 
 anyNameIn : ∀ xs → (NameIn xs → Bool) → Bool
-anyNameIn xs f = anyNameIn' f xs id
+anyNameIn xs f = anyNameIn' xs f id
 {-# COMPILE AGDA2HS anyNameIn inline #-}
 
 module _ where

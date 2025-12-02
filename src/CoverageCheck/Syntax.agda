@@ -39,28 +39,28 @@ private
 record Dataty (@0 d : NameData) : Type where
   no-eta-equality
   field
-    dataCons        : Scope
-    @0 fullDataCons : dataCons ≡ conScope d
-    argsTy          : (c : NameCon d) → Tys
+    argsTy : (c : NameCon d) → Tys
+    dataCons : Scope
+    @0 isConScope : dataCons ≡ conScope d
 
   allNameCon : Set (NameCon d)
   allNameCon =
-    subst0 (λ xs → Set (NameIn xs)) fullDataCons (allNameInSet dataCons)
+    subst0 (λ xs → Set (NameIn xs)) isConScope (nameInSet dataCons)
   {-# COMPILE AGDA2HS allNameCon inline #-}
 
   @0 allNameCon-universal : (c : NameCon d)
     → Set.member c allNameCon ≡ True
-  allNameCon-universal c rewrite fullDataCons =
-    allNameInSet-universal (conScope d) c
+  allNameCon-universal c rewrite isConScope =
+    nameInSet-universal (conScope d) c
 
   anyNameCon : (NameCon d → Bool) → Bool
-  anyNameCon f = anyNameIn dataCons λ x → f (subst0 NameIn fullDataCons x)
+  anyNameCon f = anyNameIn dataCons λ x → f (subst0 NameIn isConScope x)
   {-# COMPILE AGDA2HS anyNameCon inline #-}
 
   decPAnyNameCon : {p : @0 NameCon d → Type}
     → (∀ x → DecP (p x))
     → DecP (NonEmpty (Σ[ x ∈ NameCon d ] p x))
-  decPAnyNameCon f = decPAnyNameIn dataCons fullDataCons f
+  decPAnyNameCon f = decPAnyNameIn dataCons isConScope f
   {-# COMPILE AGDA2HS decPAnyNameCon inline #-}
 
 open Dataty public

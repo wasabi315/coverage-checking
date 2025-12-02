@@ -1,6 +1,6 @@
 module CoverageCheck.Usefulness.Algorithm.Raw where
 
-import CoverageCheck.Name (Name, allNameInSet', anyNameIn')
+import CoverageCheck.Name (Name, anyNameIn', nameInSet')
 import CoverageCheck.Prelude (All(Nil, (:>)), headAll, tailAll)
 import CoverageCheck.Syntax (Dataty(argsTy, dataCons), Pattern(PCon, POr, PWild), Patterns, Signature(dataDefs), Ty(TyData), Tys, headPattern, pWilds)
 import Data.Set (Set)
@@ -49,7 +49,7 @@ existMissCon sig d psss = not (Data.Set.null missConSet)
     conSet = rootConSet psss
     missConSet :: Set Name
     missConSet
-      = Data.Set.difference (allNameInSet' (dataCons (dataDefs sig d)))
+      = Data.Set.difference (nameInSet' (dataCons (dataDefs sig d)))
           conSet
 
 isUseful ::
@@ -61,12 +61,11 @@ isUseful sig ([] : αss) psss (_ :> pss)
 isUseful sig ((TyData d : αs) : αss) psss ((PWild :> ps) :> pss)
   = if existMissCon sig d psss then
       isUseful sig (αs : αss) (default_ psss) (ps :> pss) else
-      anyNameIn'
+      anyNameIn' (dataCons (dataDefs sig d))
         (\ x ->
            isUseful sig (argsTy (dataDefs sig d) x : (αs : αss))
              (specialize sig d x psss)
              (pWilds (argsTy (dataDefs sig d) x) :> (ps :> pss)))
-        (dataCons (dataDefs sig d))
 isUseful sig ((TyData d : αs) : αss) psss
   ((PCon c rs :> ps) :> pss)
   = isUseful sig (argsTy (dataDefs sig d) c : (αs : αss))

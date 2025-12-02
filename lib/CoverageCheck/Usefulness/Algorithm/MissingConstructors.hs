@@ -1,6 +1,6 @@
 module CoverageCheck.Usefulness.Algorithm.MissingConstructors where
 
-import CoverageCheck.Name (Name, allNameInSet')
+import CoverageCheck.Name (Name, nameInSet')
 import CoverageCheck.Prelude (All)
 import CoverageCheck.Syntax (Dataty(dataCons), Patterns, Signature(dataDefs))
 import CoverageCheck.Usefulness.Algorithm.Raw (rootConSet)
@@ -25,6 +25,6 @@ decExistMissCon sig d psss
     conSet = rootConSet psss
     missConSet :: Set Name
     missConSet
-      = Data.Set.difference (allNameInSet' (dataCons (dataDefs sig d)))
+      = Data.Set.difference (nameInSet' (dataCons (dataDefs sig d)))
           conSet
 
