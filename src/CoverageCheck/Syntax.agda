@@ -39,7 +39,7 @@ private
 record Dataty (@0 d : NameData) : Type where
   no-eta-equality
   field
-    dataCons        : List Name
+    dataCons        : Scope
     @0 fullDataCons : dataCons ≡ conScope d
     argsTy          : (c : NameCon d) → Tys
 

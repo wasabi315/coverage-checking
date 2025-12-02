@@ -1,6 +1,6 @@
 module CoverageCheck.Syntax where
 
-import CoverageCheck.Name (Name)
+import CoverageCheck.Name (Name, Scope)
 import CoverageCheck.Prelude (All(Nil, (:>)))
 
 data Ty = TyData Name
@@ -8,7 +8,7 @@ data Ty = TyData Name
 
 type Tys = [Ty]
 
-data Dataty = Dataty{dataCons :: [Name], argsTy :: Name -> Tys}
+data Dataty = Dataty{dataCons :: Scope, argsTy :: Name -> Tys}
 
 newtype Signature = Signature{dataDefs :: Name -> Dataty}
 

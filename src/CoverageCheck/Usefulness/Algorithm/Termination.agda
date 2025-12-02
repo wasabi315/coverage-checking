@@ -10,7 +10,7 @@ open import Function.Base using (_on_)
 open import Induction.WellFounded using (WellFounded; Acc; acc)
 open import Relation.Binary.Construct.On using () renaming (wellFounded to on-wellFounded)
 
-open import CoverageCheck.Prelude hiding (Σ-syntax; _×_; _,_)
+open import CoverageCheck.Prelude hiding (Σ-syntax; _×_; _,_; _<_)
 open import CoverageCheck.GlobalScope using (Globals)
 open import CoverageCheck.Instance
 open import CoverageCheck.Subsumption

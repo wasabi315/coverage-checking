@@ -5,138 +5,161 @@ open import Haskell.Data.List.NonEmpty as NonEmpty using (NonEmpty; _∷_; _<|_)
 module CoverageCheck.Name where
 
 --------------------------------------------------------------------------------
+-- Names and Scopes
 
 Name : Type
 Name = String
 {-# COMPILE AGDA2HS Name #-}
 
-NameIn : @0 List Name → Type
+-- Scope where names are unique
+data Scope : Type
+@0 Fresh : Name → Scope → Type
+
+data Scope where
+  SNil  : Scope
+  SCons : (x : Name) (xs : Scope) → @0 Fresh x xs → Scope
+
+pattern []        = SNil
+pattern _∷#_ x xs = SCons x xs _
+infixr 5 _∷#_
+
+Fresh x []        = ⊤
+Fresh x (y ∷# xs) = T (x /= y) × Fresh x xs
+
+{-# COMPILE AGDA2HS Scope #-}
+
+data In (x : Name) : Scope → Type where
+  InHere  : ∀ {xs h} → In x (SCons x xs h)
+  InThere : ∀ {y xs h} → In x xs → In x (SCons y xs h)
+
+NameIn : @0 Scope → Type
 NameIn xs = ∃[ x ∈ Name ] In x xs
 {-# COMPILE AGDA2HS NameIn inline #-}
 
 --------------------------------------------------------------------------------
+-- Properties
 
-NameIn≡ : ∀ {@0 xs} ⦃ @0 _ : Fresh xs ⦄ {x y : NameIn xs}
-  → value x ≡ value y
-  → x ≡ y
-NameIn≡ {xs} ⦃ h ⦄ {x ⟨ p ⟩} {y ⟨ q ⟩} refl
-  = cong0 (x ⟨_⟩) (fresh⇒unique-In x xs h p q)
+Fresh⇒¬In : ∀ {x} xs → Fresh x xs → ¬ In x xs
+Fresh⇒¬In (SCons x xs h) (p , ps) InHere rewrite eqReflexivity x = explode p
+Fresh⇒¬In (SCons x xs h) (p , ps) (InThere q) = Fresh⇒¬In xs ps q
+
+In-unique : ∀ {x xs} (p q : In x xs) → p ≡ q
+In-unique {xs = SCons _ _ _} InHere      InHere      = refl
+In-unique {xs = SCons _ _ _} (InThere p) (InThere q) = cong InThere (In-unique p q)
+In-unique {xs = SCons _ _ h} InHere      (InThere q) = explode (Fresh⇒¬In _ h q)
+In-unique {xs = SCons _ _ h} (InThere p) InHere      = explode (Fresh⇒¬In _ h p)
+
+NameIn≡ : ∀ {@0 xs} {x y : NameIn xs} → value x ≡ value y → x ≡ y
+NameIn≡ {x = x ⟨ p ⟩} {y = y ⟨ q ⟩} refl = cong0 (x ⟨_⟩) (In-unique p q)
 
 instance
-  -- import instances
-  open import Haskell.Prim.Eq using ()
-  open import Haskell.Law.Eq using ()
-  open import Haskell.Prim.Ord using (_<_)
 
-  iEqNameIn : {@0 xs : List Name} → Eq (NameIn xs)
+  iEqNameIn : {@0 xs : Scope} → Eq (NameIn xs)
   iEqNameIn ._==_ x y = value x == value y
 
-  iLawfulEqNameIn : {@0 xs : List Name} ⦃ @0 _ : Fresh xs ⦄ → IsLawfulEq (NameIn xs)
+  iLawfulEqNameIn : {@0 xs : Scope} → IsLawfulEq (NameIn xs)
   iLawfulEqNameIn .isEquality x y
     = mapReflects NameIn≡ (cong value) (isEquality (value x) (value y))
 
-  iOrdFromLessThanNameIn : {@0 xs : List Name} → OrdFromLessThan (NameIn xs)
+  iOrdFromLessThanNameIn : {@0 xs : Scope} → OrdFromLessThan (NameIn xs)
   iOrdFromLessThanNameIn .OrdFromLessThan._<_ x y = value x < value y
 
-  iOrdNameIn : {@0 xs : List Name} → Ord (NameIn xs)
+  iOrdNameIn : {@0 xs : Scope} → Ord (NameIn xs)
   iOrdNameIn = record {OrdFromLessThan iOrdFromLessThanNameIn}
 
 --------------------------------------------------------------------------------
 
-allNameIn' : (xs : List Name) {@0 ys : List Name}
+allNameInSet' : ∀ xs {@0 ys}
   → (@0 inj : ∀ {@0 x} → In x xs → In x ys)
-  → List (NameIn ys)
-allNameIn' []       inj = []
-allNameIn' (x ∷ xs) inj =
-  (x ⟨ inj InHere ⟩) ∷ allNameIn' xs (inj ∘ InThere)
-{-# COMPILE AGDA2HS allNameIn' transparent #-}
+  → Set (NameIn ys)
+allNameInSet' [] inj = Set.empty
+allNameInSet' (x ∷# xs) inj =
+  Set.insert (x ⟨ inj InHere ⟩) (allNameInSet' xs (inj ∘ InThere))
+{-# COMPILE AGDA2HS allNameInSet' #-}
 
-allNameIn : (xs : List Name) → List (NameIn xs)
-allNameIn xs = allNameIn' xs id
-{-# COMPILE AGDA2HS allNameIn inline #-}
-
-@0 allNameIn-universal' : (xs : List Name) {@0 ys : List Name}
-  → (@0 inj : ∀ {@0 x} → In x xs → In x ys)
-  → ∀ ((y ⟨ h ⟩) : NameIn xs)
-  → elem (y ⟨ inj h ⟩) (allNameIn' xs inj) ≡ True
-allNameIn-universal' (x ∷ xs) inj (y ⟨ InHere ⟩) rewrite eqReflexivity x = refl
-allNameIn-universal' (x ∷ xs) inj (y ⟨ InThere h ⟩) =
-  let ih = allNameIn-universal' xs (inj ∘ InThere) (y ⟨ h ⟩) in
-  subst (λ b → (y == x || b) ≡ True) (sym ih) (prop-x-||-True (y == x))
-
-@0 allNameIn-universal : (xs : List Name)
-  → ∀ x → elem x (allNameIn xs) ≡ True
-allNameIn-universal xs x = allNameIn-universal' xs id x
-
-allNameInSet : (xs : List Name) → Set (NameIn xs)
-allNameInSet xs = Set.fromList (allNameIn xs)
+allNameInSet : ∀ xs → Set (NameIn xs)
+allNameInSet xs = allNameInSet' xs id
 {-# COMPILE AGDA2HS allNameInSet inline #-}
 
-@0 allNameInSet-universal : (xs : List Name)
-  → ∀ x → Set.member x (allNameInSet xs) ≡ True
-allNameInSet-universal xs x rewrite prop-member-fromList x (allNameIn xs)
-  = allNameIn-universal xs x
+@0 allNameInSet-universal' : ∀ xs {@0 ys}
+  → (@0 inj : ∀ {@0 x} → In x xs → In x ys)
+  → ((y ⟨ h ⟩) : NameIn xs)
+  → Set.member (y ⟨ inj h ⟩) (allNameInSet' xs inj) ≡ True
+allNameInSet-universal' (x ∷# xs) inj (x ⟨ InHere ⟩) =
+  trans
+    (prop-member-insert (x ⟨ inj InHere ⟩) (x ⟨ inj InHere ⟩) _)
+    (cong (_|| Set.member (x ⟨ inj InHere ⟩)
+      (allNameInSet' xs (inj ∘ InThere))) (eqReflexivity x))
+allNameInSet-universal' (x ∷# xs) inj (y ⟨ InThere h ⟩) =
+  trans
+    (prop-member-insert (y ⟨ inj (InThere h) ⟩) (x ⟨ inj InHere ⟩) _)
+    (trans
+      (cong (y == x ||_) (allNameInSet-universal' xs (inj ∘ InThere) (y ⟨ h ⟩)))
+      (prop-x-||-True (y == x)))
+
+@0 allNameInSet-universal : ∀ xs x → Set.member x (allNameInSet xs) ≡ True
+allNameInSet-universal xs = allNameInSet-universal' xs id
 
 --------------------------------------------------------------------------------
 
 module _ {@0 xs} (f : NameIn xs → Bool) where
 
-  anyNameIn' : (ys : List Name)
+  anyNameIn' : ∀ ys
     → (@0 inj : ∀ {@0 x} → In x ys → In x xs)
     → Bool
-  anyNameIn' []       inj = False
-  anyNameIn' (x ∷ ys) inj =
+  anyNameIn' []        inj = False
+  anyNameIn' (x ∷# ys) inj =
     f (x ⟨ inj InHere ⟩) || anyNameIn' ys (inj ∘ InThere)
   {-# COMPILE AGDA2HS anyNameIn' #-}
 
 
-anyNameIn : (xs : List Name) → (NameIn xs → Bool) → Bool
+anyNameIn : ∀ xs → (NameIn xs → Bool) → Bool
 anyNameIn xs f = anyNameIn' f xs id
 {-# COMPILE AGDA2HS anyNameIn inline #-}
 
 module _ where
   private
-    lem1 : ∀ {x} {@0 xs} {p : @0 NameIn (x ∷ xs) → Type}
+    lem1 : ∀ {x} {@0 xs h} {p : @0 NameIn (SCons x xs h) → Type}
       → p (x ⟨ InHere ⟩)
-      → Σ[ y ∈ NameIn (x ∷ xs) ] p y
+      → Σ[ y ∈ NameIn (SCons x xs h) ] p y
     lem1 h = _ , h
     {-# COMPILE AGDA2HS lem1 inline #-}
 
-    lem2' : ∀ {@0 x xs} {p : @0 NameIn (x ∷ xs) → Type}
+    lem2' : ∀ {@0 x xs h} {p : @0 NameIn (SCons x xs h) → Type}
       → List (Σ[ y ∈ NameIn xs ] p (mapRefine InThere y))
-      → List (Σ[ y ∈ NameIn (x ∷ xs) ] p y)
+      → List (Σ[ y ∈ NameIn (SCons x xs h) ] p y)
     lem2' []             = []
     lem2' ((y , h) ∷ ys) = (mapRefine InThere y , h) ∷ lem2' ys
     {-# COMPILE AGDA2HS lem2' transparent #-}
 
-    lem2 : ∀ {@0 x xs} {p : @0 NameIn (x ∷ xs) → Type}
+    lem2 : ∀ {@0 x xs h} {p : @0 NameIn (SCons x xs h) → Type}
       → NonEmpty (Σ[ y ∈ NameIn xs ] p (mapRefine InThere y))
-      → NonEmpty (Σ[ y ∈ NameIn (x ∷ xs) ] p y)
+      → NonEmpty (Σ[ y ∈ NameIn (SCons x xs h) ] p y)
     lem2 ((y , h) ∷ ys) = (mapRefine InThere y , h) ∷ lem2' ys
     {-# COMPILE AGDA2HS lem2 transparent #-}
 
-    @0 lem3 : ∀ {@0 x xs} {p : @0 NameIn (x ∷ xs) → Type}
-      → Σ[ y ∈ NameIn (x ∷ xs) ] p y
+    @0 lem3 : ∀ {@0 x xs h} {p : @0 NameIn (SCons x xs h) → Type}
+      → Σ[ y ∈ NameIn (SCons x xs h) ] p y
       → Either
           (p (x ⟨ InHere ⟩))
           (Σ[ y ∈ NameIn xs ] p (mapRefine InThere y))
     lem3 ((y ⟨ InHere ⟩)    , h') = Left h'
     lem3 ((y ⟨ InThere h ⟩) , h') = Right ((y ⟨ h ⟩) , h')
 
-    @0 lem4 : ∀ {@0 x xs} {p : @0 NameIn (x ∷ xs) → Type}
-      → NonEmpty (Σ[ y ∈ NameIn (x ∷ xs) ] p y)
+    @0 lem4 : ∀ {@0 x xs h} {p : @0 NameIn (SCons x xs h) → Type}
+      → NonEmpty (Σ[ y ∈ NameIn (SCons x xs h) ] p y)
       → These
           (p (x ⟨ InHere ⟩))
           (NonEmpty (Σ[ y ∈ NameIn xs ] p (mapRefine InThere y)))
     lem4 = mapThese NonEmpty.head id ∘ partitionEithersNonEmpty ∘ fmap lem3
 
-  decPAnyNameIn : (xs : List Name)
-    → {@0 ys : List Name} (@0 eq : xs ≡ ys)
+  decPAnyNameIn : ∀ xs {@0 ys}
+    → (@0 eq : xs ≡ ys)
     → {p : @0 NameIn ys → Type}
     → (∀ x → DecP (p x))
     → DecP (NonEmpty (Σ[ x ∈ _ ] p x))
-  decPAnyNameIn []       refl f = No λ where (x ∷ _) → undefined
-  decPAnyNameIn (x ∷ xs) refl f =
+  decPAnyNameIn []       refl f = No λ where (_ ∷ _) → undefined
+  decPAnyNameIn (x ∷# xs) refl f =
     mapDecP
       (these (λ h → lem1 h ∷ []) lem2 (λ h hs → lem1 h <| lem2 hs))
       lem4

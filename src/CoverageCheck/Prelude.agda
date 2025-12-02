@@ -27,15 +27,15 @@ pattern _∷_ x xs = List._∷_ x xs
 
 open import Haskell.Prim public using (⊥; the; Level; exFalso)
 
-open import Haskell.Prim.Eq public using (Eq; _==_)
+open import Haskell.Prim.Eq public using (Eq; _==_; _/=_; iEqList; iEqChar)
 open import Haskell.Law.Eq public using
-  (IsLawfulEq; isEquality; eqReflexivity; _≟_)
+  (IsLawfulEq; isEquality; eqReflexivity; _≟_; iLawfulEqList; iLawfulEqChar)
 
 open import Haskell.Prim.Foldable public using (iFoldableList; Foldable; any)
 
 open import Haskell.Prim.Num public using (iNumNat)
 
-open import Haskell.Prim.Ord public using (Ord; OrdFromLessThan)
+open import Haskell.Prim.Ord public using (Ord; OrdFromLessThan; _<_; iOrdList; iOrdChar)
 
 open import Haskell.Law.Bool public using
   (prop-x-||-True; prop-x-||-False; not-involution; not-not)
@@ -232,36 +232,6 @@ module _ {@0 a b : Type} {p : @0 a → Type} {q : @0 b → Type} {f : a → List
   ... | Left q  = here (g q)
   ... | Right q = there (gconcatMapAny⁻ g q)
 
-
-data AllPair {@0 a : Type} (r : (@0 x y : a) → Type) : (@0 xs : List a) → Type where
-  PNil  : AllPair r []
-  _:<>_ : ∀ {@0 x xs} → All (r x) xs → AllPair r xs → AllPair r (x ∷ xs)
-
-pattern [] = PNil
-pattern _∷_ h hs = h :<> hs
-
-Fresh : {@0 a : Type} → @0 List a → Type
-Fresh = AllPair (λ x y → @0 x ≡ y → ⊥)
-
-data In {a : Type} (x : a) : (xs : List a) → Type where
-  InHere  : ∀ {xs} → In x (x ∷ xs)
-  InThere : ∀ {y xs} → In x xs → In x (y ∷ xs)
-
-All≢⇒¬In : {a : Type} {x : a} {@0 xs : List a}
-  → All (λ y → @0 x ≡ y → ⊥) xs
-  → ¬ In x xs
-All≢⇒¬In (h ∷ hs) InHere        = h refl
-All≢⇒¬In (h ∷ hs) (InThere hs') = All≢⇒¬In hs hs'
-
-fresh⇒unique-In : {a : Type} (x : a) (xs : List a)
-  → Fresh xs
-  → (p q : In x xs)
-  → p ≡ q
-fresh⇒unique-In x (y ∷ xs) (h ∷ h') InHere InHere = refl
-fresh⇒unique-In x (y ∷ xs) (h ∷ h') (InThere p) (InThere q) = cong InThere (fresh⇒unique-In x xs h' p q)
-fresh⇒unique-In x (y ∷ xs) (h ∷ h') InHere (InThere q) = explode (All≢⇒¬In h q)
-fresh⇒unique-In x (y ∷ xs) (h ∷ h') (InThere p) InHere = explode (All≢⇒¬In h p)
-
 --------------------------------------------------------------------------------
 -- These
 
@@ -330,6 +300,10 @@ eitherReflects : ∀ {ba bb a b} → Reflects a ba → Reflects b bb → Reflect
 eitherReflects {True}  {_}     a  _  = Left a
 eitherReflects {False} {True}  _  b  = Right b
 eitherReflects {False} {False} ¬a ¬b = either ¬a ¬b
+
+T : Bool → Type
+T True  = ⊤
+T False = ⊥
 
 --------------------------------------------------------------------------------
 -- Decidable relation that does not erase positive information

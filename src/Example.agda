@@ -101,41 +101,31 @@ pattern cons x xs = con ⟨cons⟩ (x ∷ xs ∷ [])
 
 instance
   globals : Globals
-  globals .dataScope                   = `unit ∷ `list ∷ []
-  globals .freshDataScope              = ((λ ()) ∷ []) ∷ [] ∷ []
-  globals .conScope      (`unit ⟨ _ ⟩) = `unit ∷ []
-  globals .conScope      (`list ⟨ _ ⟩) = `nil ∷ `one ∷ `cons ∷ []
-  globals .freshConScope {`unit ⟨ _ ⟩} = [] ∷ []
-  globals .freshConScope {`list ⟨ _ ⟩} = ((λ ()) ∷ (λ ()) ∷ []) ∷ ((λ ()) ∷ []) ∷ [] ∷ []
-  globals .conScope      (_ ⟨ InThere (InThere ()) ⟩)
-  globals .freshConScope {_ ⟨ InThere (InThere ()) ⟩}
+  globals .dataScope       = `unit ∷# `list ∷# []
+  globals .conScope ⟨unit⟩ = `unit ∷# []
+  globals .conScope ⟨list⟩ = `nil ∷# `one ∷# `cons ∷# []
 
   -- type unit = Unit
-  unitDef : {p : In `unit (dataScope globals)} → Dataty (`unit ⟨ p ⟩)
-  unitDef .dataCons             = _
-  unitDef .fullDataCons         = refl
-  unitDef .argsTy (`unit ⟨ _ ⟩) = []
-  unitDef .argsTy (_ ⟨ InThere () ⟩)
+  unitDef : Dataty ⟨unit⟩
+  unitDef .dataCons      = _
+  unitDef .fullDataCons  = refl
+  unitDef .argsTy ⟨unit⟩ = []
 
   -- type list = Nil | One unit | Cons unit list
-  listDef : {p : In `list (dataScope globals)} → Dataty (`list ⟨ p ⟩)
-  listDef .dataCons = _
-  listDef .fullDataCons = refl
-  listDef .argsTy (`nil ⟨ _ ⟩)  = []
-  listDef .argsTy (`one ⟨ _ ⟩)  = TyData ⟨unit⟩ ∷ []
-  listDef .argsTy (`cons ⟨ _ ⟩) = TyData ⟨unit⟩ ∷ TyData ⟨list⟩ ∷ []
-  listDef .argsTy (_ ⟨ InThere (InThere (InThere ())) ⟩)
+  listDef : Dataty ⟨list⟩
+  listDef .dataCons      = _
+  listDef .fullDataCons  = refl
+  listDef .argsTy ⟨nil⟩  = []
+  listDef .argsTy ⟨one⟩  = TyData ⟨unit⟩ ∷ []
+  listDef .argsTy ⟨cons⟩ = TyData ⟨unit⟩ ∷ TyData ⟨list⟩ ∷ []
 
   sig : Signature
-  sig .dataDefs (`unit ⟨ _ ⟩) = unitDef
-  sig .dataDefs (`list ⟨ _ ⟩) = listDef
-  sig .dataDefs (_ ⟨ InThere (InThere ()) ⟩)
+  sig .dataDefs ⟨unit⟩ = unitDef
+  sig .dataDefs ⟨list⟩ = listDef
 
   nonEmptyAxiom : {α : Ty} → Value α
-  nonEmptyAxiom {TyData (`unit ⟨ _ ⟩)} = con ⟨unit⟩ []
-  nonEmptyAxiom {TyData (`list ⟨ _ ⟩)} = con ⟨nil⟩ []
-  nonEmptyAxiom {TyData (_ ⟨ InThere (InThere ()) ⟩)}
-
+  nonEmptyAxiom {TyData ⟨unit⟩} = con ⟨unit⟩ []
+  nonEmptyAxiom {TyData ⟨list⟩} = con ⟨nil⟩ []
 
 P : PatternMatrix (TyData ⟨list⟩ ∷ TyData ⟨list⟩ ∷ [])
 P =

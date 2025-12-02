@@ -1,10 +1,10 @@
 module CoverageCheck.Usefulness.Algorithm.Raw where
 
-import CoverageCheck.Name (Name, anyNameIn')
+import CoverageCheck.Name (Name, allNameInSet', anyNameIn')
 import CoverageCheck.Prelude (All(Nil, (:>)), headAll, tailAll)
 import CoverageCheck.Syntax (Dataty(argsTy, dataCons), Pattern(PCon, POr, PWild), Patterns, Signature(dataDefs), Ty(TyData), Tys, headPattern, pWilds)
 import Data.Set (Set)
-import qualified Data.Set (difference, empty, fromList, null, singleton, union)
+import qualified Data.Set (difference, empty, null, singleton, union)
 
 specialize' ::
             Signature -> Name -> Name -> All Patterns -> [All Patterns]
@@ -49,8 +49,7 @@ existMissCon sig d psss = not (Data.Set.null missConSet)
     conSet = rootConSet psss
     missConSet :: Set Name
     missConSet
-      = Data.Set.difference
-          (Data.Set.fromList (dataCons (dataDefs sig d)))
+      = Data.Set.difference (allNameInSet' (dataCons (dataDefs sig d)))
           conSet
 
 isUseful ::
