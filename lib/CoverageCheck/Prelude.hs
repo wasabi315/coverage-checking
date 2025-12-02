@@ -7,27 +7,23 @@ data All p = Nil
            | (:>) p (All p)
                deriving (Eq, Show)
 
-headAll :: forall p . All p -> p
-headAll (h :> _) = h
+data Any p = Here p
+           | There (Any p)
+               deriving (Eq, Show)
 
-tailAll :: forall p . All p -> All p
-tailAll (_ :> hs) = hs
+data First p = FHere p
+             | FThere (First p)
+                 deriving (Eq, Show)
 
 data HPointwise r = HNil
                   | (:>>) r (HPointwise r)
                       deriving (Eq, Show)
 
-data Any p = Here p
-           | There (Any p)
-               deriving Show
+headAll :: forall p . All p -> p
+headAll (p :> _) = p
 
-data First p = FHere p
-             | FThere (First p)
-                 deriving Show
-
-firstToAny :: forall p . First p -> Any p
-firstToAny (FHere h) = Here h
-firstToAny (FThere h) = There (firstToAny h)
+tailAll :: forall p . All p -> All p
+tailAll (_ :> ps) = ps
 
 data These a b = This a
                | That b
@@ -43,13 +39,6 @@ mapThese :: (a -> b) -> (c -> d) -> These a c -> These b d
 mapThese f g (This x) = This (f x)
 mapThese f g (That x) = That (g x)
 mapThese f g (Both x y) = Both (f x) (g y)
-
-concatNonEmpty :: NonEmpty (NonEmpty a) -> NonEmpty a
-concatNonEmpty (xs :| xss) = go xs xss
-  where
-    go :: NonEmpty a -> [NonEmpty a] -> NonEmpty a
-    go xs [] = xs
-    go xs (ys : xss) = xs <> go ys xss
 
 data DecP a = Yes a
             | No
@@ -83,6 +72,6 @@ theseDecP No No = No
 firstDecP :: (a -> DecP p) -> [a] -> DecP (First p)
 firstDecP f [] = No
 firstDecP f (x : xs)
-  = ifDecP (f x) (\ h -> Yes (FHere h))
+  = ifDecP (f x) (\ p -> Yes (FHere p))
       (mapDecP FThere (firstDecP f xs))
 

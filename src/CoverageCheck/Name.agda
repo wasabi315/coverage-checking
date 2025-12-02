@@ -20,7 +20,7 @@ NameIn≡ : ∀ {@0 xs} ⦃ @0 _ : Fresh xs ⦄ {x y : NameIn xs}
   → value x ≡ value y
   → x ≡ y
 NameIn≡ {xs} ⦃ h ⦄ {x ⟨ p ⟩} {y ⟨ q ⟩} refl
-  = cong0 (x ⟨_⟩) (fresh⇒uniqueIn x xs h p q)
+  = cong0 (x ⟨_⟩) (fresh⇒unique-In x xs h p q)
 
 instance
   -- import instances

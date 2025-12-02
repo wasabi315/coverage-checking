@@ -52,10 +52,10 @@ data Subsumption where
 
 {-# COMPILE AGDA2HS Subsumption deriving Show #-}
 
-pattern —⊆      = SWild
-pattern con⊆ bs = SCon bs
-pattern ∣⊆ˡ s   = SOrL s
-pattern ∣⊆ʳ s   = SOrR s
+pattern —⊆        = SWild
+pattern con⊆ subs = SCon subs
+pattern ∣⊆ˡ sub   = SOrL sub
+pattern ∣⊆ʳ sub   = SOrR sub
 
 Subsumptions = HPointwise (λ p q → p ⊆ q)
 
