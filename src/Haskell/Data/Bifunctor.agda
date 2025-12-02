@@ -9,14 +9,12 @@ open import Haskell.Prim.Either using (Either; Left; Right)
 
 record Bifunctor (p : Type → Type → Type) : Type₁ where
   field
-    overlap ⦃ super ⦄ : ∀ {a} → Functor (p a)
     bimap : ∀ {a b c d} → (a → b) → (c → d) → p a c → p b d
     first : ∀ {a b c} → (a → b) → p a c → p b c
     second : ∀ {a b c} → (b → c) → p a b → p a c
 
 record BifunctorFromBimap (p : Type → Type → Type) : Type₁ where
   field
-    overlap ⦃ super ⦄ : ∀ {a} → Functor (p a)
     bimap : ∀ {a b c d} → (a → b) → (c → d) → p a c → p b d
 
   first : ∀ {a b c} → (a → b) → p a c → p b c
@@ -27,14 +25,13 @@ record BifunctorFromBimap (p : Type → Type → Type) : Type₁ where
 
 record BifunctorFromFirstSecond (p : Type → Type → Type) : Type₁ where
   field
-    overlap ⦃ super ⦄ : ∀ {a} → Functor (p a)
     first : ∀ {a b c} → (a → b) → p a c → p b c
     second : ∀ {a b c} → (b → c) → p a b → p a c
 
   bimap : ∀ {a b c d} → (a → b) → (c → d) → p a c → p b d
   bimap f g = first f ∘ second g
 
-open Bifunctor ⦃...⦄ public
+open Bifunctor ⦃ ... ⦄ public
 
 {-# COMPILE AGDA2HS Bifunctor existing-class #-}
 

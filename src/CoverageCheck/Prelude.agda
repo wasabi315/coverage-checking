@@ -70,8 +70,17 @@ open import Haskell.Extra.Sigma public using (Σ; Σ-syntax; _,_; fst; snd)
 -- Things in Haskell base but not provided by agda2hs-base
 
 open import Haskell.Data.Bifunctor public using
-  ( Bifunctor; bimap; first; second; BifunctorFromBimap; BifunctorFromFirstSecond;
+  ( Bifunctor; bimap; first; second;
+    BifunctorFromBimap; BifunctorFromFirstSecond;
     iBifunctorTuple; iBifunctorEither )
+
+open import Haskell.Data.Bifoldable public using
+  ( Bifoldable; bifoldMap; bifoldr; bifold;
+    BifoldableFromBifoldMap; BifoldableFromBifoldr;
+    iBifoldableTuple; iBifoldableEither )
+
+open import Haskell.Data.Bifoldable1 public using
+  (Bifoldable1; bifoldMap1; bifold1; iBifoldable1Tuple; iBifoldable1Either)
 
 --------------------------------------------------------------------------------
 -- Bottom and negation
@@ -248,11 +257,39 @@ these f g h (That x)   = g x
 these f g h (Both x y) = h x y
 {-# COMPILE AGDA2HS these #-}
 
-mapThese : {a b c d : Type} → (a → b) → (c → d) → These a c → These b d
-mapThese f g (This x)   = This (f x)
-mapThese f g (That x)   = That (g x)
-mapThese f g (Both x y) = Both (f x) (g y)
-{-# COMPILE AGDA2HS mapThese #-}
+instance
+  iDefaultFunctorThese : ∀ {a} → DefaultFunctor (These a)
+  iDefaultFunctorThese .DefaultFunctor.fmap f (This x) = This x
+  iDefaultFunctorThese .DefaultFunctor.fmap f (That y) = That (f y)
+  iDefaultFunctorThese .DefaultFunctor.fmap f (Both x y) = Both x (f y)
+
+  iFunctorThese : ∀ {a} → Functor (These a)
+  iFunctorThese = record {DefaultFunctor iDefaultFunctorThese}
+  {-# COMPILE AGDA2HS iFunctorThese #-}
+
+  iBifunctorFromBimapThese : BifunctorFromBimap These
+  iBifunctorFromBimapThese .BifunctorFromBimap.bimap f g (This x) = This (f x)
+  iBifunctorFromBimapThese .BifunctorFromBimap.bimap f g (That y) = That (g y)
+  iBifunctorFromBimapThese .BifunctorFromBimap.bimap f g (Both x y) = Both (f x) (g y)
+
+  iBifunctorThese : Bifunctor These
+  iBifunctorThese = record {BifunctorFromBimap iBifunctorFromBimapThese}
+  {-# COMPILE AGDA2HS iBifunctorThese #-}
+
+  iBifoldableFromBifoldMapThese : BifoldableFromBifoldMap These
+  iBifoldableFromBifoldMapThese .BifoldableFromBifoldMap.bifoldMap f g (This x) = f x
+  iBifoldableFromBifoldMapThese .BifoldableFromBifoldMap.bifoldMap f g (That y) = g y
+  iBifoldableFromBifoldMapThese .BifoldableFromBifoldMap.bifoldMap f g (Both x y) = f x <> g y
+
+  iBifoldableThese : Bifoldable These
+  iBifoldableThese = record {BifoldableFromBifoldMap iBifoldableFromBifoldMapThese}
+  {-# COMPILE AGDA2HS iBifoldableThese #-}
+
+  iBifoldable1These : Bifoldable1 These
+  iBifoldable1These .Bifoldable1.bifoldMap1 f g (This x) = f x
+  iBifoldable1These .Bifoldable1.bifoldMap1 f g (That y) = g y
+  iBifoldable1These .Bifoldable1.bifoldMap1 f g (Both x y) = f x <> g y
+  {-# COMPILE AGDA2HS iBifoldable1These #-}
 
 --------------------------------------------------------------------------------
 -- Non-empty lists
