@@ -43,14 +43,14 @@ record Dataty (@0 d : NameData) : Type where
     dataCons : Scope
     @0 isConScope : dataCons ≡ conScope d
 
-  allNameCon : Set (NameCon d)
-  allNameCon =
+  nameConSet : Set (NameCon d)
+  nameConSet =
     subst0 (λ xs → Set (NameIn xs)) isConScope (nameInSet dataCons)
-  {-# COMPILE AGDA2HS allNameCon inline #-}
+  {-# COMPILE AGDA2HS nameConSet inline #-}
 
-  @0 allNameCon-universal : (c : NameCon d)
-    → Set.member c allNameCon ≡ True
-  allNameCon-universal c rewrite isConScope =
+  @0 nameConSet-universal : (c : NameCon d)
+    → Set.member c nameConSet ≡ True
+  nameConSet-universal c rewrite isConScope =
     nameInSet-universal (conScope d) c
 
   anyNameCon : (NameCon d → Bool) → Bool

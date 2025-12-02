@@ -68,13 +68,13 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} (@0 c : NameCon d0) where
 module @0 _ ⦃ @0 sig : Signature ⦄
   {@0 d0} (@0 c : NameCon d0) (@0 psss : PatternMatrixStack ((TyData d0 ∷ αs0) ∷ αss0))
   (let conSet     = rootConSet psss
-       missConSet = Set.difference (allNameCon (dataDefs sig d0)) conSet)
+       missConSet = Set.difference (nameConSet (dataDefs sig d0)) conSet)
   where
 
   notMemberMissConSet : Reflects (c ∈** psss) (not (Set.member c missConSet))
   notMemberMissConSet
-    rewrite prop-member-difference c (allNameCon (dataDefs sig d0)) conSet
-    | allNameCon-universal (dataDefs sig d0) c
+    rewrite prop-member-difference c (nameConSet (dataDefs sig d0)) conSet
+    | nameConSet-universal (dataDefs sig d0) c
     | not-not (Set.member c conSet)
     = memberRootConSet c psss
 
@@ -133,5 +133,5 @@ module _ ⦃ sig : Signature ⦄ {d : NameData} where
     where
       conSet missConSet : Set (NameCon d)
       conSet     = rootConSet psss
-      missConSet = Set.difference (allNameCon (dataDefs sig d)) conSet
+      missConSet = Set.difference (nameConSet (dataDefs sig d)) conSet
   {-# COMPILE AGDA2HS decExistMissCon #-}

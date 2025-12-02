@@ -86,7 +86,7 @@ module _ ⦃ sig : Signature ⦄ where
     where
       conSet missConSet : Set (NameCon d)
       conSet     = rootConSet psss
-      missConSet = Set.difference (allNameCon (dataDefs sig d)) conSet
+      missConSet = Set.difference (nameConSet (dataDefs sig d)) conSet
   {-# COMPILE AGDA2HS existMissCon #-}
 
   -- The core usefulness checking algorithm in the paper
