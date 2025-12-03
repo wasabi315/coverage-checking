@@ -24,7 +24,7 @@ private
     @0 αss0 : TyStack
 
 module _ ⦃ @0 sig : Signature ⦄ where
-  infix 4 InstanceStack InstanceMatrixStack _⋠*ˢ_ _⋠**ˢ_
+  infix 4 InstanceStack InstanceMatrixStack _⋠ˢ_ _⋠ᵐˢ_
   infix 4 SubsumptionStack SubsumptionMatrixStack
 
   ValueStack : @0 TyStack → Type
@@ -40,23 +40,23 @@ module _ ⦃ @0 sig : Signature ⦄ where
   {-# COMPILE AGDA2HS PatternMatrixStack inline #-}
 
   InstanceStack : @0 PatternStack αss0 → @0 ValueStack αss0 → Type
-  syntax InstanceStack pss vss = pss ≼*ˢ vss
-  pss ≼*ˢ vss = HPointwise (λ ps vs → ps ≼* vs) pss vss
+  syntax InstanceStack pss vss = pss ≼ˢ vss
+  pss ≼ˢ vss = HPointwise (λ ps vs → ps ≼* vs) pss vss
   {-# COMPILE AGDA2HS InstanceStack inline #-}
 
   InstanceMatrixStack : @0 PatternMatrixStack αss0 → @0 ValueStack αss0 → Type
-  syntax InstanceMatrixStack psss vss = psss ≼**ˢ vss
-  psss ≼**ˢ vss = Any (λ pss → pss ≼*ˢ vss) psss
+  syntax InstanceMatrixStack psss vss = psss ≼ᵐˢ vss
+  psss ≼ᵐˢ vss = Any (λ pss → pss ≼ˢ vss) psss
   {-# COMPILE AGDA2HS InstanceMatrixStack inline #-}
 
-  _⋠*ˢ_ : @0 PatternStack αss0 → @0 ValueStack αss0 → Type
-  pss ⋠*ˢ vss = ¬ pss ≼*ˢ vss
+  _⋠ˢ_ : @0 PatternStack αss0 → @0 ValueStack αss0 → Type
+  pss ⋠ˢ vss = ¬ pss ≼ˢ vss
 
-  _⋠**ˢ_ : @0 PatternMatrixStack αss0 → @0 ValueStack αss0 → Type
-  psss ⋠**ˢ vss = ¬ psss ≼**ˢ vss
+  _⋠ᵐˢ_ : @0 PatternMatrixStack αss0 → @0 ValueStack αss0 → Type
+  psss ⋠ᵐˢ vss = ¬ psss ≼ᵐˢ vss
 
-  _#**_ : (@0 P : PatternMatrixStack αss0) (@0 qss : PatternStack αss0) → Type
-  P #** qss = ∀ {vss} → P ≼**ˢ vss → qss ≼*ˢ vss → ⊥
+  _#ᵐˢ_ : (@0 P : PatternMatrixStack αss0) (@0 qss : PatternStack αss0) → Type
+  P #ᵐˢ qss = ∀ {vss} → P ≼ᵐˢ vss → qss ≼ˢ vss → ⊥
 
   SubsumptionStack : @0 PatternStack αss0 → @0 PatternStack αss0 → Type
   syntax SubsumptionStack pss vss = pss ⊆*ˢ vss
@@ -74,7 +74,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
     constructor ⟪_,_,_⟫
     field
       qs       : PatternStack αss0
-      @0 P#qs  : P #** qs
+      @0 P#qs  : P #ᵐˢ qs
       @0 ps⊆qs : ps ⊆*ˢ qs
 
   {-# COMPILE AGDA2HS UsefulS unboxed #-}

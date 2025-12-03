@@ -22,7 +22,7 @@ module _ {@0 αs0} (@0 P : PatternMatrix αs0) (@0 ps : Patterns αs0) where
     constructor ⟪_,_,_⟫
     field
       qs       : Patterns αs0
-      @0 P#qs  : ∀ {vs} → P ≼** vs → qs ≼* vs → ⊥
+      @0 P#qs  : ∀ {vs} → P ≼ᵐ vs → qs ≼* vs → ⊥
       @0 ps⊆qs : ps ⊆* qs
 
   record Useful : Type where

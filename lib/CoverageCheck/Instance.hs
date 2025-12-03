@@ -21,14 +21,14 @@ iWilds [] = HNil
 iWilds (α : αs) = IWild :>> iWilds αs
 
 iOrInv :: Instance -> Either Instance Instance
-iOrInv (IOrL h) = Left h
-iOrInv (IOrR h) = Right h
+iOrInv (IOrL inst) = Left inst
+iOrInv (IOrR inst) = Right inst
 
 iConInv :: Instance -> Instances
-iConInv (ICon c is) = is
+iConInv (ICon c insts) = insts
 
 iUncons :: Instances -> (Instance, Instances)
-iUncons (i :>> is) = (i, is)
+iUncons (inst :>> insts) = (inst, insts)
 
 infix 4 `decInstance`
 decInstance :: Pattern -> Value -> DecP Instance
@@ -37,8 +37,8 @@ decInstance (POr p q) v
   = mapDecP (either IOrL IOrR)
       (eitherDecP (decInstance p v) (decInstance q v))
 decInstance (PCon c ps) (VCon c' vs)
-  = if c == c' then mapDecP (\ is -> ICon c is) (decInstances ps vs)
-      else No
+  = if c == c' then
+      mapDecP (\ insts -> ICon c insts) (decInstances ps vs) else No
 
 infix 4 `decInstances`
 decInstances :: Patterns -> Values -> DecP Instances
@@ -47,8 +47,8 @@ decInstances (p :> ps) (v :> vs)
   = mapDecP (uncurry (:>>))
       (tupleDecP (decInstance p v) (decInstances ps vs))
 
-type Match = First Instances
+type FirstMatch = First Instances
 
-decMatch :: [Patterns] -> Values -> DecP Match
-decMatch p vs = firstDecP (\ ps -> decInstances ps vs) p
+decFirstMatch :: [Patterns] -> Values -> DecP FirstMatch
+decFirstMatch pmat vs = firstDecP (\ ps -> decInstances ps vs) pmat
 
