@@ -41,57 +41,59 @@ private
 -- Specialized accessibility predicate for usefulness checking algorithm
 -- This method by Ana Bove allows separation of termination proof from the algorithm
 
-data UsefulAcc : (P : PatternStackMatrix αss) (ps : PatternStack αss) → Type where
-  done : {P : PatternStackMatrix []} → UsefulAcc P []
+data UsefulAcc : (psmat : PatternStackMatrix αss) (ps : PatternStack αss) → Type where
+  done : {psmat : PatternStackMatrix []} → UsefulAcc psmat []
 
-  tailStep : {P : PatternStackMatrix ([] ∷ αss)} {pss : PatternStack αss}
-    → UsefulAcc (map tailAll P) pss
-    → UsefulAcc P ([] ∷ pss)
+  tailStep : {psmat : PatternStackMatrix ([] ∷ αss)} {pss : PatternStack αss}
+    → UsefulAcc (map tailAll psmat) pss
+    → UsefulAcc psmat ([] ∷ pss)
 
-  wildStep : {P : PatternStackMatrix ((TyData d ∷ αs) ∷ αss)}
+  wildStep : {psmat : PatternStackMatrix ((TyData d ∷ αs) ∷ αss)}
     → {ps : Patterns αs} {pss : PatternStack αss}
-    → UsefulAcc (default_ P) (ps ∷ pss)
-    → (∀ c → c ∈ˢᵐ P → UsefulAcc (specialize c P) (—* ∷ ps ∷ pss))
-    → UsefulAcc P ((— ∷ ps) ∷ pss)
+    → UsefulAcc (default_ psmat) (ps ∷ pss)
+    → (∀ c → c ∈ˢᵐ psmat → UsefulAcc (specialize c psmat) (—* ∷ ps ∷ pss))
+    → UsefulAcc psmat ((— ∷ ps) ∷ pss)
 
-  conStep : {P : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)} {c : NameCon d}
+  conStep : {psmat : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)} {c : NameCon d}
     → (let αs = argsTy (dataDefs sig d) c)
     → {rs : Patterns αs} {ps : Patterns βs} {pss : PatternStack αss}
-    → UsefulAcc (specialize c P) (rs ∷ ps ∷ pss)
-    → UsefulAcc P ((con c rs ∷ ps) ∷ pss)
+    → UsefulAcc (specialize c psmat) (rs ∷ ps ∷ pss)
+    → UsefulAcc psmat ((con c rs ∷ ps) ∷ pss)
 
-  orStep : {P : PatternStackMatrix ((α ∷ αs) ∷ αss)}
+  orStep : {psmat : PatternStackMatrix ((α ∷ αs) ∷ αss)}
     → {p q : Pattern α} {ps : Patterns αs} {pss : PatternStack αss}
-    → UsefulAcc P ((p ∷ ps) ∷ pss)
-    → UsefulAcc P ((q ∷ ps) ∷ pss)
-    → UsefulAcc P ((p ∣ q ∷ ps) ∷ pss)
+    → UsefulAcc psmat ((p ∷ ps) ∷ pss)
+    → UsefulAcc psmat ((q ∷ ps) ∷ pss)
+    → UsefulAcc psmat ((p ∣ q ∷ ps) ∷ pss)
 
 --------------------------------------------------------------------------------
 -- Termination measures
 
-patternsSize : Patterns αs → Nat → Nat
-patternsSize []              n = n
-patternsSize (—        ∷ ps) n = patternsSize ps n
-patternsSize (con c rs ∷ ps) n = suc (patternsSize rs (patternsSize ps n))
-patternsSize (r₁ ∣ r₂  ∷ ps) n = suc (patternsSize (r₁ ∷ ps) n + patternsSize (r₂ ∷ ps) n)
+∥_∥ : Patterns αs → Nat → Nat
+∥ [] ∥ n = n
+∥ — ∷ ps ∥ n = ∥ ps ∥ n
+∥ con c rs ∷ ps ∥ n = suc (∥ rs ∥ (∥ ps ∥ n))
+∥ r₁ ∣ r₂ ∷ ps ∥ n = suc (∥ r₁ ∷ ps ∥ n + ∥ r₂ ∷ ps ∥ n)
 
-patternStackSize : PatternStack αss → Nat → Nat
-patternStackSize []         n = n
-patternStackSize (ps ∷ pss) n = patternsSize ps (patternStackSize pss n)
+∥_∥ˢ' : PatternStack αss → Nat → Nat
+∥ [] ∥ˢ' n = n
+∥ ps ∷ pss ∥ˢ' n = ∥ ps ∥ (∥ pss ∥ˢ' n)
 
-patternMatrixStackSize : PatternStackMatrix αss → Nat
-patternMatrixStackSize P = sum (map (flip patternStackSize 0) P)
+∥_∥ˢ : PatternStack αss → Nat
+∥ pss ∥ˢ = ∥ pss ∥ˢ' 0
 
-tyStackLength : TyStack → Nat
-tyStackLength [] = 0
-tyStackLength (αs ∷ αss) = suc (lengthNat αs + tyStackLength αss)
+∥_∥ˢᵐ : PatternStackMatrix αss → Nat
+∥ psmat ∥ˢᵐ = sum (map ∥_∥ˢ psmat)
+
+∥_∥ᵗ : TyStack → Nat
+∥ [] ∥ᵗ = 0
+∥ αs ∷ αss ∥ᵗ = suc (lengthNat αs + ∥ αss ∥ᵗ)
 
 Input : Type
 Input = Σ[ αss ∈ _ ] PatternStackMatrix αss × PatternStack αss
 
 inputSize : Input → Nat × Nat × Nat
-inputSize (αss , P , ps) =
-  patternMatrixStackSize P , patternStackSize ps 0 , tyStackLength αss
+inputSize (αss , psmat , ps) = ∥ psmat ∥ˢᵐ , ∥ ps ∥ˢ , ∥ αss ∥ᵗ
 
 -- Lexicographic ordering on Inputs
 _⊏_ : Input → Input → Type
@@ -110,188 +112,193 @@ pattern ↓₂ ∣P∣≡∣Q∣ ∣ps∣≡∣qs∣ ∣αss∣<∣βss∣ = inj
 
 --------------------------------------------------------------------------------
 
-patternsSize—* : ∀ αs n → patternsSize {αs} —* n ≡ n
-patternsSize—* []       n = refl
-patternsSize—* (α ∷ αs) n = patternsSize—* αs n
+∥—*∥ : ∀ αs n → ∥ —* {αs} ∥ n ≡ n
+∥—*∥ []       n = refl
+∥—*∥ (α ∷ αs) n = ∥—*∥ αs n
 
 sum-++ : (xs ys : List Nat) → sum (xs ++ ys) ≡ sum xs + sum ys
 sum-++ []       ys = refl
 sum-++ (x ∷ xs) ys rewrite sum-++ xs ys = sym (+-assoc x (sum xs) (sum ys))
 
-patternMatrixStackSize-++ : (P Q : PatternStackMatrix αss)
-  → patternMatrixStackSize (P ++ Q)
-      ≡ patternMatrixStackSize P + patternMatrixStackSize Q
-patternMatrixStackSize-++ P Q
-  rewrite map-++ (flip patternStackSize 0) P Q
-  | sum-++ (map (flip patternStackSize 0) P) (map (flip patternStackSize 0) Q)
+∥∥-++ : (psmat psmat' : PatternStackMatrix αss)
+  → ∥ psmat ++ psmat' ∥ˢᵐ ≡ ∥ psmat ∥ˢᵐ + ∥ psmat' ∥ˢᵐ
+∥∥-++ psmat psmat'
+  rewrite map-++ ∥_∥ˢ psmat psmat' | sum-++ (map ∥_∥ˢ psmat) (map ∥_∥ˢ psmat')
   = refl
 
-tail-≡ : (P : PatternStackMatrix ([] ∷ αss))
-  → patternMatrixStackSize (map tailAll P) ≡ patternMatrixStackSize P
-tail-≡ []               = refl
-tail-≡ (([] ∷ pss) ∷ P) = cong (_ +_) (tail-≡ P)
+∥∥-tail : (psmat : PatternStackMatrix ([] ∷ αss))
+  → ∥ map tailAll psmat ∥ˢᵐ ≡ ∥ psmat ∥ˢᵐ
+∥∥-tail [] = refl
+∥∥-tail (([] ∷ pss) ∷ psmat) = cong (_ +_) (∥∥-tail psmat)
 
 specialize'-≤ : (c : NameCon d) (pss : PatternStack ((TyData d ∷ αs) ∷ αss))
-  → patternMatrixStackSize (specialize' c pss) ≤ patternStackSize pss 0
+  → ∥ specialize' c pss ∥ˢᵐ ≤ ∥ pss ∥ˢ
 specialize'-≤ {d0} c ((— ∷ ps) ∷ pss)
-  rewrite patternsSize—* (argsTy (dataDefs sig d0) c) (patternStackSize (ps ∷ pss) 0)
-  | +-identityʳ (patternStackSize (ps ∷ pss) 0)
+  rewrite ∥—*∥ (argsTy (dataDefs sig d0) c) ∥ ps ∷ pss ∥ˢ
+  | +-identityʳ ∥ ps ∷ pss ∥ˢ
   = ≤-refl
 specialize'-≤ c ((con c' rs ∷ ps) ∷ pss) = lem (c ≟ c')
   where
     lem : (eq : Dec (c ≡ c'))
-      → patternMatrixStackSize (specializeConCase c rs ps pss eq)
-      ≤ suc (patternStackSize (rs ∷ ps ∷ pss) 0)
+      → ∥ specializeConCase c rs ps pss eq ∥ˢᵐ
+      ≤ suc ∥ rs ∷ ps ∷ pss ∥ˢ
     lem (False ⟨ _    ⟩) = z≤n
     lem (True  ⟨ refl ⟩)
-      rewrite +-identityʳ (patternStackSize (rs ∷ ps ∷ pss) 0)
-      = n≤1+n (patternStackSize (rs ∷ ps ∷ pss) 0)
+      rewrite +-identityʳ ∥ rs ∷ ps ∷ pss ∥ˢ
+      = n≤1+n ∥ rs ∷ ps ∷ pss ∥ˢ
 specialize'-≤ c ((r₁ ∣ r₂ ∷ ps) ∷ pss) =
   begin
-    patternMatrixStackSize (specialize' c ((r₁ ∷ ps) ∷ pss) ++ specialize' c ((r₂ ∷ ps) ∷ pss))
-  ≡⟨ patternMatrixStackSize-++ (specialize' c ((r₁ ∷ ps) ∷ pss)) (specialize' c ((r₂ ∷ ps) ∷ pss)) ⟩
-    patternMatrixStackSize (specialize' c ((r₁ ∷ ps) ∷ pss)) + patternMatrixStackSize (specialize' c ((r₂ ∷ ps) ∷ pss))
+    ∥ specialize' c ((r₁ ∷ ps) ∷ pss) ++ specialize' c ((r₂ ∷ ps) ∷ pss) ∥ˢᵐ
+  ≡⟨ ∥∥-++ (specialize' c ((r₁ ∷ ps) ∷ pss)) (specialize' c ((r₂ ∷ ps) ∷ pss)) ⟩
+    ∥ specialize' c ((r₁ ∷ ps) ∷ pss) ∥ˢᵐ + ∥ specialize' c ((r₂ ∷ ps) ∷ pss) ∥ˢᵐ
   ≤⟨ +-mono-≤ (specialize'-≤ c ((r₁ ∷ ps) ∷ pss)) (specialize'-≤ c ((r₂ ∷ ps) ∷ pss)) ⟩
-    patternStackSize ((r₁ ∷ ps) ∷ pss) 0 + patternStackSize ((r₂ ∷ ps) ∷ pss) 0
+    ∥ (r₁ ∷ ps) ∷ pss ∥ˢ + ∥ (r₂ ∷ ps) ∷ pss ∥ˢ
   <⟨ n<1+n _ ⟩
-    suc (patternStackSize ((r₁ ∷ ps) ∷ pss) 0 + patternStackSize ((r₂ ∷ ps) ∷ pss) 0)
+    suc (∥ (r₁ ∷ ps) ∷ pss ∥ˢ + ∥ (r₂ ∷ ps) ∷ pss ∥ˢ)
   ∎
   where open ≤-Reasoning
 
 -- specialize does not increase the pattern matrix size
-specialize-≤ : (c : NameCon d) (P : PatternStackMatrix ((TyData d ∷ αs) ∷ αss))
-  → patternMatrixStackSize (specialize c P) ≤ patternMatrixStackSize P
-specialize-≤ c []       = ≤-refl
-specialize-≤ c (ps ∷ P) rewrite patternMatrixStackSize-++ (specialize' c ps) (specialize c P)
-  = +-mono-≤ (specialize'-≤ c ps) (specialize-≤ c P)
+specialize-≤
+  : (c : NameCon d) (psmat : PatternStackMatrix ((TyData d ∷ αs) ∷ αss))
+  → ∥ specialize c psmat ∥ˢᵐ ≤ ∥ psmat ∥ˢᵐ
+specialize-≤ c [] = ≤-refl
+specialize-≤ c (ps ∷ psmat) rewrite ∥∥-++ (specialize' c ps) (specialize c psmat)
+  = +-mono-≤ (specialize'-≤ c ps) (specialize-≤ c psmat)
 
 specialize'-< : (c : NameCon d) (pss : PatternStack ((TyData d ∷ αs) ∷ αss))
   → c ∈ˢ pss
-  → patternMatrixStackSize (specialize' c pss) < patternStackSize pss 0
+  → ∥ specialize' c pss ∥ˢᵐ < ∥ pss ∥ˢ
 specialize'-< c ((con c' rs ∷ ps) ∷ pss) c≡c' = lem (c ≟ c')
   where
     lem : (eq : Dec (c ≡ c'))
-      → patternMatrixStackSize (specializeConCase c rs ps pss eq)
-      < suc (patternStackSize (rs ∷ ps ∷ pss) 0)
+      → ∥ specializeConCase c rs ps pss eq ∥ˢᵐ
+      < suc ∥ rs ∷ ps ∷ pss ∥ˢ
     lem (False ⟨ c≢c' ⟩) = contradiction c≡c' c≢c'
     lem (True  ⟨ refl ⟩)
-      rewrite +-identityʳ (patternStackSize (rs ∷ ps ∷ pss) 0)
+      rewrite +-identityʳ ∥ rs ∷ ps ∷ pss ∥ˢ
       = ≤-refl
 specialize'-< c ((r₁ ∣ r₂ ∷ ps) ∷ pss) (Left h) =
   begin
-    suc (patternMatrixStackSize (specialize' c ((r₁ ∷ ps) ∷ pss) ++ specialize' c ((r₂ ∷ ps) ∷ pss)))
-  ≡⟨ cong suc (patternMatrixStackSize-++ (specialize' c ((r₁ ∷ ps) ∷ pss)) (specialize' c ((r₂ ∷ ps) ∷ pss))) ⟩
-    suc (patternMatrixStackSize (specialize' c ((r₁ ∷ ps) ∷ pss)) + patternMatrixStackSize (specialize' c ((r₂ ∷ ps) ∷ pss)))
+    suc ∥ specialize' c ((r₁ ∷ ps) ∷ pss) ++ specialize' c ((r₂ ∷ ps) ∷ pss) ∥ˢᵐ
+  ≡⟨ cong suc (∥∥-++ (specialize' c ((r₁ ∷ ps) ∷ pss)) (specialize' c ((r₂ ∷ ps) ∷ pss))) ⟩
+    suc (∥ specialize' c ((r₁ ∷ ps) ∷ pss) ∥ˢᵐ + ∥ specialize' c ((r₂ ∷ ps) ∷ pss) ∥ˢᵐ)
   <⟨ s<s (+-mono-<-≤ (specialize'-< c ((r₁ ∷ ps) ∷ pss) h) (specialize'-≤ c ((r₂ ∷ ps) ∷ pss))) ⟩
-    suc (patternStackSize ((r₁ ∷ ps) ∷ pss) 0 + patternStackSize ((r₂ ∷ ps) ∷ pss) 0)
+    suc (∥ (r₁ ∷ ps) ∷ pss ∥ˢ + ∥ (r₂ ∷ ps) ∷ pss ∥ˢ)
   ∎
   where open ≤-Reasoning
 specialize'-< c ((r₁ ∣ r₂ ∷ ps) ∷ pss) (Right h) =
   begin
-    suc (patternMatrixStackSize (specialize' c ((r₁ ∷ ps) ∷ pss) ++ specialize' c ((r₂ ∷ ps) ∷ pss)))
-  ≡⟨ cong suc (patternMatrixStackSize-++ (specialize' c ((r₁ ∷ ps) ∷ pss)) (specialize' c ((r₂ ∷ ps) ∷ pss))) ⟩
-    suc (patternMatrixStackSize (specialize' c ((r₁ ∷ ps) ∷ pss)) + patternMatrixStackSize (specialize' c ((r₂ ∷ ps) ∷ pss)))
+    suc ∥ specialize' c ((r₁ ∷ ps) ∷ pss) ++ specialize' c ((r₂ ∷ ps) ∷ pss) ∥ˢᵐ
+  ≡⟨ cong suc (∥∥-++ (specialize' c ((r₁ ∷ ps) ∷ pss)) (specialize' c ((r₂ ∷ ps) ∷ pss))) ⟩
+    suc (∥ specialize' c ((r₁ ∷ ps) ∷ pss) ∥ˢᵐ + ∥ specialize' c ((r₂ ∷ ps) ∷ pss) ∥ˢᵐ)
   <⟨ s<s (+-mono-≤-< (specialize'-≤ c ((r₁ ∷ ps) ∷ pss)) (specialize'-< c ((r₂ ∷ ps) ∷ pss) h)) ⟩
-    suc (patternStackSize ((r₁ ∷ ps) ∷ pss) 0 + patternStackSize ((r₂ ∷ ps) ∷ pss) 0)
+    suc (∥ (r₁ ∷ ps) ∷ pss ∥ˢ + ∥ (r₂ ∷ ps) ∷ pss ∥ˢ)
   ∎
   where open ≤-Reasoning
 
 -- specialize strictly reduces the pattern matrix size if the constructor is in the first column of the matrix
-specialize-< : (c : NameCon d) (P : PatternStackMatrix ((TyData d ∷ αs) ∷ αss))
-  → c ∈ˢᵐ P
-  → patternMatrixStackSize (specialize c P) < patternMatrixStackSize P
-specialize-< c (pss ∷ P) (here h)
-  rewrite patternMatrixStackSize-++ (specialize' c pss) (specialize c P)
-  = +-mono-<-≤ (specialize'-< c pss h) (specialize-≤ c P)
-specialize-< c (pss ∷ P) (there h)
-  rewrite patternMatrixStackSize-++ (specialize' c pss) (specialize c P)
-  = +-mono-≤-< (specialize'-≤ c pss) (specialize-< c P h)
+specialize-< : (c : NameCon d) (psmat : PatternStackMatrix ((TyData d ∷ αs) ∷ αss))
+  → c ∈ˢᵐ psmat
+  → ∥ specialize c psmat ∥ˢᵐ < ∥ psmat ∥ˢᵐ
+specialize-< c (pss ∷ psmat) (here h)
+  rewrite ∥∥-++ (specialize' c pss) (specialize c psmat)
+  = +-mono-<-≤ (specialize'-< c pss h) (specialize-≤ c psmat)
+specialize-< c (pss ∷ psmat) (there h)
+  rewrite ∥∥-++ (specialize' c pss) (specialize c psmat)
+  = +-mono-≤-< (specialize'-≤ c pss) (specialize-< c psmat h)
 
 default'-≤ : (pss : PatternStack ((TyData d ∷ αs) ∷ αss))
-  → patternMatrixStackSize (default' pss) ≤ patternStackSize pss 0
+  → ∥ default' pss ∥ˢᵐ ≤ ∥ pss ∥ˢ
 default'-≤ ((— ∷ ps) ∷ pss)
-  rewrite +-identityʳ (patternStackSize (ps ∷ pss) 0)
+  rewrite +-identityʳ ∥ ps ∷ pss ∥ˢ
   = ≤-refl
 default'-≤ ((con _ _ ∷ ps) ∷ pss) = z≤n
 default'-≤ ((r₁ ∣ r₂ ∷ ps) ∷ pss) =
   begin
-    patternMatrixStackSize (default' ((r₁ ∷ ps) ∷ pss) ++ default' ((r₂ ∷ ps) ∷ pss))
-  ≡⟨ patternMatrixStackSize-++ (default' ((r₁ ∷ ps) ∷ pss)) (default' ((r₂ ∷ ps) ∷ pss)) ⟩
-    patternMatrixStackSize (default' ((r₁ ∷ ps) ∷ pss)) + patternMatrixStackSize (default' ((r₂ ∷ ps) ∷ pss))
+    ∥ default' ((r₁ ∷ ps) ∷ pss) ++ default' ((r₂ ∷ ps) ∷ pss) ∥ˢᵐ
+  ≡⟨ ∥∥-++ (default' ((r₁ ∷ ps) ∷ pss)) (default' ((r₂ ∷ ps) ∷ pss)) ⟩
+    ∥ default' ((r₁ ∷ ps) ∷ pss) ∥ˢᵐ + ∥ default' ((r₂ ∷ ps) ∷ pss) ∥ˢᵐ
   ≤⟨ +-mono-≤ (default'-≤ ((r₁ ∷ ps) ∷ pss)) (default'-≤ ((r₂ ∷ ps) ∷ pss)) ⟩
-    patternStackSize ((r₁ ∷ ps) ∷ pss) 0 + patternStackSize ((r₂ ∷ ps) ∷ pss) 0
+    ∥ (r₁ ∷ ps) ∷ pss ∥ˢ + ∥ (r₂ ∷ ps) ∷ pss ∥ˢ
   <⟨ n<1+n _ ⟩
-    suc (patternStackSize ((r₁ ∷ ps) ∷ pss) 0 + patternStackSize ((r₂ ∷ ps) ∷ pss) 0)
+    suc (∥ (r₁ ∷ ps) ∷ pss ∥ˢ + ∥ (r₂ ∷ ps) ∷ pss ∥ˢ)
   ∎
   where open ≤-Reasoning
 
 -- default does not increase the pattern matrix size
-default-≤ : (P : PatternStackMatrix ((TyData d ∷ αs) ∷ αss))
-  → patternMatrixStackSize (default_ P) ≤ patternMatrixStackSize P
+default-≤ : (psmat : PatternStackMatrix ((TyData d ∷ αs) ∷ αss))
+  → ∥ default_ psmat ∥ˢᵐ ≤ ∥ psmat ∥ˢᵐ
 default-≤ [] = ≤-refl
-default-≤ (ps ∷ P) rewrite patternMatrixStackSize-++ (default' ps) (default_ P)
-  = +-mono-≤ (default'-≤ ps) (default-≤ P)
+default-≤ (ps ∷ psmat) rewrite ∥∥-++ (default' ps) (default_ psmat)
+  = +-mono-≤ (default'-≤ ps) (default-≤ psmat)
 
-tail-⊏ : (P : PatternStackMatrix ([] ∷ αss)) (pss : PatternStack αss)
-  → (_ , map tailAll P , pss) ⊏ (_ , P , [] ∷ pss)
-tail-⊏ P pss = ↓₂ (tail-≡ P) refl (n<1+n _)
+tail-⊏ : (psmat : PatternStackMatrix ([] ∷ αss)) (pss : PatternStack αss)
+  → (_ , map tailAll psmat , pss) ⊏ (_ , psmat , [] ∷ pss)
+tail-⊏ psmat pss = ↓₂ (∥∥-tail psmat) refl (n<1+n _)
 
 -- specialize strictly reduces the problem size
-specializeCon-⊏ : (P : PatternStackMatrix ((TyData d ∷ αs) ∷ αss))
+specializeCon-⊏ : (psmat : PatternStackMatrix ((TyData d ∷ αs) ∷ αss))
   → (c : NameCon d) (rs : Patterns (argsTy (dataDefs sig d) c))
   → (ps : Patterns αs) (pss : PatternStack αss)
-  → (_ , specialize c P , rs ∷ ps ∷ pss) ⊏ (_ , P , (con c rs ∷ ps) ∷ pss)
-specializeCon-⊏ P c rs ps pss with m≤n⇒m<n∨m≡n (specialize-≤ c P)
-... | inj₁ ∣specP∣<∣P∣ = ↓₀ ∣specP∣<∣P∣
-... | inj₂ ∣specP∣≡∣P∣ = ↓₁ ∣specP∣≡∣P∣ (n<1+n _)
+  → (_ , specialize c psmat , rs ∷ ps ∷ pss) ⊏ (_ , psmat , (con c rs ∷ ps) ∷ pss)
+specializeCon-⊏ psmat c rs ps pss with m≤n⇒m<n∨m≡n (specialize-≤ c psmat)
+... | inj₁ ∣specPsmat∣<∣psmat∣ = ↓₀ ∣specPsmat∣<∣psmat∣
+... | inj₂ ∣specPsmat∣≡∣psmat∣ = ↓₁ ∣specPsmat∣≡∣psmat∣ (n<1+n _)
 
 -- default strictly reduces the problem size
-default-⊏ : (P : PatternStackMatrix ((TyData d ∷ αs) ∷ αss))
+default-⊏ : (psmat : PatternStackMatrix ((TyData d ∷ αs) ∷ αss))
   → (qs : Patterns αs) (pss : PatternStack αss)
-  → (_ , default_ P , qs ∷ pss) ⊏ (_ , P , (— ∷ qs) ∷ pss)
-default-⊏ P qs pss with m≤n⇒m<n∨m≡n (default-≤ P)
-... | inj₁ ∣defP∣<∣P∣ = ↓₀ ∣defP∣<∣P∣
-... | inj₂ |defP∣≡∣P∣ = ↓₂ |defP∣≡∣P∣ refl (n<1+n _)
+  → (_ , default_ psmat , qs ∷ pss) ⊏ (_ , psmat , (— ∷ qs) ∷ pss)
+default-⊏ psmat qs pss with m≤n⇒m<n∨m≡n (default-≤ psmat)
+... | inj₁ ∣defPsmat∣<∣psmat∣ = ↓₀ ∣defPsmat∣<∣psmat∣
+... | inj₂ ∣defPsmat∣≡∣psmat∣ = ↓₂ ∣defPsmat∣≡∣psmat∣ refl (n<1+n _)
 
 -- specialize strictly reduces the problem size if the constructor is in the first column of the matrix
-specializeWild-⊏ : (c : NameCon d) (P : PatternStackMatrix ((TyData d ∷ αs) ∷ αss))
+specializeWild-⊏
+  : (c : NameCon d) (psmat : PatternStackMatrix ((TyData d ∷ αs) ∷ αss))
   → (qs : Patterns αs) (pss : PatternStack αss)
-  → c ∈ˢᵐ P
-  → (_ , specialize c P , —* ∷ qs ∷ pss) ⊏ (_ , P , (— ∷ qs) ∷ pss)
-specializeWild-⊏ {d0} c P qs pss h
-  rewrite patternsSize—* (argsTy (dataDefs sig d0) c) (patternStackSize (qs ∷ pss) 0)
-  = ↓₀ (specialize-< c P h)
+  → c ∈ˢᵐ psmat
+  → (_ , specialize c psmat , —* ∷ qs ∷ pss) ⊏ (_ , psmat , (— ∷ qs) ∷ pss)
+specializeWild-⊏ {d0} c psmat qs pss h
+  rewrite ∥—*∥ (argsTy (dataDefs sig d0) c) ∥ qs ∷ pss ∥ˢ
+  = ↓₀ (specialize-< c psmat h)
 
 -- Choosing the left pattern strictly reduces the problem size
-chooseOr-⊏ₗ : (P : PatternStackMatrix ((α ∷ αs) ∷ αss))
+or-⊏ₗ : (psmat : PatternStackMatrix ((α ∷ αs) ∷ αss))
   → (r₁ r₂ : Pattern α) (ps : Patterns αs) (pss : PatternStack αss)
-  → (_ , P , (r₁ ∷ ps) ∷ pss) ⊏ (_ , P , ((r₁ ∣ r₂) ∷ ps) ∷ pss)
-chooseOr-⊏ₗ P r₁ r₂ ps pss =
-  ↓₁ refl (m≤m+n _ (patternStackSize ((r₂ ∷ ps) ∷ pss) 0))
+  → (_ , psmat , (r₁ ∷ ps) ∷ pss) ⊏ (_ , psmat , ((r₁ ∣ r₂) ∷ ps) ∷ pss)
+or-⊏ₗ psmat r₁ r₂ ps pss =
+  ↓₁ refl (m≤m+n _ ∥ (r₂ ∷ ps) ∷ pss ∥ˢ)
 
 -- Choosing the right pattern strictly reduces the problem size
-chooseOr-⊏ᵣ : (P : PatternStackMatrix ((α ∷ αs) ∷ αss))
+or-⊏ᵣ : (psmat : PatternStackMatrix ((α ∷ αs) ∷ αss))
   → (r₁ r₂ : Pattern α) (ps : Patterns αs) (pss : PatternStack αss)
-  → (_ , P , (r₂ ∷ ps) ∷ pss) ⊏ (_ , P , ((r₁ ∣ r₂) ∷ ps) ∷ pss)
-chooseOr-⊏ᵣ P r₁ r₂ ps pss =
-  ↓₁ refl (s<s (m≤n+m _ (patternStackSize ((r₁ ∷ ps) ∷ pss) 0)))
+  → (_ , psmat , (r₂ ∷ ps) ∷ pss) ⊏ (_ , psmat , ((r₁ ∣ r₂) ∷ ps) ∷ pss)
+or-⊏ᵣ psmat r₁ r₂ ps pss =
+  ↓₁ refl (s<s (m≤n+m _ ∥ (r₁ ∷ ps) ∷ pss ∥ˢ))
 
-∀UsefulAcc' : (P : PatternStackMatrix αss) (pss : PatternStack αss)
-  → Acc _⊏_ (_ , P , pss)
-  → UsefulAcc P pss
-∀UsefulAcc' P [] (acc _) = done
-∀UsefulAcc' P ([] ∷ pss) (acc rec) =
-  tailStep (∀UsefulAcc' (map tailAll P) pss (rec (tail-⊏ P pss)))
-∀UsefulAcc' {αss = (TyData d ∷ αs) ∷ αss} P ((— ∷ ps) ∷ pss) (acc rec) =
+--------------------------------------------------------------------------------
+-- Termination proof
+
+∀UsefulAcc' : (psmat : PatternStackMatrix αss) (pss : PatternStack αss)
+  → Acc _⊏_ (_ , psmat , pss)
+  → UsefulAcc psmat pss
+∀UsefulAcc' psmat [] (acc _) = done
+∀UsefulAcc' psmat ([] ∷ pss) (acc rec) =
+  tailStep (∀UsefulAcc' (map tailAll psmat) pss (rec (tail-⊏ psmat pss)))
+∀UsefulAcc' {αss = (TyData d ∷ αs) ∷ αss} psmat ((— ∷ ps) ∷ pss) (acc rec) =
   wildStep
-    (∀UsefulAcc' (default_ P) (ps ∷ pss) (rec (default-⊏ P ps pss)))
-    (λ c m → ∀UsefulAcc' (specialize c P) (—* ∷ ps ∷ pss) (rec (specializeWild-⊏ c P ps pss m)))
-∀UsefulAcc' P ((con c rs ∷ ps) ∷ pss) (acc rec) =
-  conStep (∀UsefulAcc' (specialize c P) (rs ∷ ps ∷ pss) (rec (specializeCon-⊏ P c rs ps pss)))
-∀UsefulAcc' P ((r₁ ∣ r₂ ∷ ps) ∷ pss) (acc rec) =
+    (∀UsefulAcc' (default_ psmat) (ps ∷ pss) (rec (default-⊏ psmat ps pss)))
+    (λ c m → ∀UsefulAcc' (specialize c psmat) (—* ∷ ps ∷ pss) (rec (specializeWild-⊏ c psmat ps pss m)))
+∀UsefulAcc' psmat ((con c rs ∷ ps) ∷ pss) (acc rec) =
+  conStep (∀UsefulAcc' (specialize c psmat) (rs ∷ ps ∷ pss) (rec (specializeCon-⊏ psmat c rs ps pss)))
+∀UsefulAcc' psmat ((r₁ ∣ r₂ ∷ ps) ∷ pss) (acc rec) =
   orStep
-    (∀UsefulAcc' P ((r₁ ∷ ps) ∷ pss) (rec (chooseOr-⊏ₗ P r₁ r₂ ps pss)))
-    (∀UsefulAcc' P ((r₂ ∷ ps) ∷ pss) (rec (chooseOr-⊏ᵣ P r₁ r₂ ps pss)))
+    (∀UsefulAcc' psmat ((r₁ ∷ ps) ∷ pss) (rec (or-⊏ₗ psmat r₁ r₂ ps pss)))
+    (∀UsefulAcc' psmat ((r₂ ∷ ps) ∷ pss) (rec (or-⊏ᵣ psmat r₁ r₂ ps pss)))
 
-∀UsefulAcc : (P : PatternStackMatrix αss) (ps : PatternStack αss) → UsefulAcc P ps
-∀UsefulAcc P ps = ∀UsefulAcc' P ps (⊏-wellFounded _)
+-- UsefulAcc can be constructed for any input
+∀UsefulAcc : (psmat : PatternStackMatrix αss) (ps : PatternStack αss)
+  → UsefulAcc psmat ps
+∀UsefulAcc psmat ps = ∀UsefulAcc' psmat ps (⊏-wellFounded _)
