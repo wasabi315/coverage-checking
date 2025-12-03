@@ -192,7 +192,7 @@ module @0 _ ⦃ @0 sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α
 
   default-preserves-#** : P #** ((p ∷ ps) ∷ pss) → default_ P #** (ps ∷ pss)
   default-preserves-#** disj isss (is ∷ iss) =
-    disj (default-preserves-≼⁻ isss) ((inst≼ _ ∷ is) ∷ iss)
+    disj (default-preserves-≼⁻ isss) ((exampleFor≼ _ ∷ is) ∷ iss)
 
 
 module @0 _ ⦃ @0 sig : Signature ⦄ {c : NameCon d}

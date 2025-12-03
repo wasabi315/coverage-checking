@@ -28,29 +28,34 @@ Fresh x (y ∷# xs) = T (x /= y) × Fresh x xs
 
 {-# COMPILE AGDA2HS Scope #-}
 
+-- x is in scope
 data In (x : Name) : Scope → Type where
   InHere  : ∀ {xs h} → In x (SCons x xs h)
   InThere : ∀ {y xs h} → In x xs → In x (SCons y xs h)
 
+-- Name in scope
 NameIn : @0 Scope → Type
 NameIn xs = ∃[ x ∈ Name ] In x xs
 {-# COMPILE AGDA2HS NameIn inline #-}
 
 --------------------------------------------------------------------------------
--- Eq/Ord instances
+-- Eq/Ord instances for NameIn
 
+-- x is fresh in xs implies x is not in xs
 Fresh⇒¬In : ∀ {x} xs → Fresh x xs → ¬ In x xs
 Fresh⇒¬In (SCons x xs h) (p , ps) InHere rewrite eqReflexivity x = explode p
 Fresh⇒¬In (SCons x xs h) (p , ps) (InThere q) = Fresh⇒¬In xs ps q
 
+-- Ins of the same type are always equal
 In-unique : ∀ {x xs} (p q : In x xs) → p ≡ q
 In-unique {xs = SCons _ _ _} InHere      InHere      = refl
 In-unique {xs = SCons _ _ _} (InThere p) (InThere q) = cong InThere (In-unique p q)
 In-unique {xs = SCons _ _ h} InHere      (InThere q) = explode (Fresh⇒¬In _ h q)
 In-unique {xs = SCons _ _ h} (InThere p) InHere      = explode (Fresh⇒¬In _ h p)
 
+-- Equality on the name parts enough to show that two NameIns are equal
 NameIn≡ : ∀ {@0 xs} {x y : NameIn xs} → value x ≡ value y → x ≡ y
-NameIn≡ {x = x ⟨ p ⟩} {y = y ⟨ q ⟩} refl = cong0 (x ⟨_⟩) (In-unique p q)
+NameIn≡ {x = x ⟨ p ⟩} {y = x ⟨ q ⟩} refl = cong0 (x ⟨_⟩) (In-unique p q)
 
 instance
 
@@ -68,7 +73,7 @@ instance
   iOrdNameIn = record {OrdFromLessThan iOrdFromLessThanNameIn}
 
 --------------------------------------------------------------------------------
--- Universal set
+-- Universal set of names in scope
 
 nameInSet' : ∀ xs {@0 ys}
   → (@0 inj : ∀ {@0 x} → In x xs → In x ys)
@@ -81,6 +86,8 @@ nameInSet' (x ∷# xs) inj =
 nameInSet : ∀ xs → Set (NameIn xs)
 nameInSet xs = nameInSet' xs id
 {-# COMPILE AGDA2HS nameInSet inline #-}
+
+-- nameInSet is indeed universal
 
 @0 nameInSet-universal' : ∀ xs {@0 ys}
   → (@0 inj : ∀ {@0 x} → In x xs → In x ys)
@@ -102,7 +109,9 @@ nameInSet-universal' (x ∷# xs) inj (y ⟨ InThere h ⟩) =
 nameInSet-universal xs = nameInSet-universal' xs id
 
 --------------------------------------------------------------------------------
--- Properties
+-- Any names in scope satisfy a given predicate?
+
+-- Bool-returning version
 
 anyNameIn' : ∀ {@0 xs} ys
   → (f : NameIn xs → Bool)
@@ -116,6 +125,8 @@ anyNameIn' (x ∷# ys) f inj =
 anyNameIn : ∀ xs → (NameIn xs → Bool) → Bool
 anyNameIn xs f = anyNameIn' xs f id
 {-# COMPILE AGDA2HS anyNameIn inline #-}
+
+-- Evidence-producing version
 
 module _ {@0 xs} {p : @0 NameIn xs → Type} where
 
@@ -165,7 +176,9 @@ module _ {@0 xs} {p : @0 NameIn xs → Type} where
         (decPAnyNameIn' ys f (inj ∘ InThere)))
   {-# COMPILE AGDA2HS decPAnyNameIn' #-}
 
-
+-- Decides whether any names in scope satisfy a given predicate
+-- If yes, this function returns a non-empty list of NameIn
+-- together with the proof that the predicate is indeed satisfied
 decPAnyNameIn : ∀ xs {@0 ys}
   → (@0 eq : xs ≡ ys)
   → {p : @0 NameIn ys → Type}

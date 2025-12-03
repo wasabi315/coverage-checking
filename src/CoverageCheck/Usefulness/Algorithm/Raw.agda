@@ -60,7 +60,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
   {-# COMPILE AGDA2HS rootConSet' #-}
 
   rootConSet : (P : PatternMatrixStack ((TyData d0 ∷ αs0) ∷ αss0)) → Set (NameCon d0)
-  rootConSet psss = foldr (λ pss → Set.union (rootConSet' (headPattern (headAll pss)))) Set.empty psss
+  rootConSet psss = foldr (λ pss → Set.union (rootConSet' (headAll (headAll pss)))) Set.empty psss
   {-# COMPILE AGDA2HS rootConSet #-}
 
 

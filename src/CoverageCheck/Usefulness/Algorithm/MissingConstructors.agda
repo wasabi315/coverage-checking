@@ -36,8 +36,8 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} where
   c ∉ p = ¬ c ∈ p
 
   _∈*_ _∉*_ : NameCon d0 → PatternStack ((TyData d0 ∷ αs0) ∷ αss0) → Type
-  c ∈* pss = c ∈ headPattern (headAll pss)
-  c ∉* pss = c ∉ headPattern (headAll pss)
+  c ∈* pss = c ∈ headAll (headAll pss)
+  c ∉* pss = c ∉ headAll (headAll pss)
 
   _∈**_ _∉**_ : NameCon d0 → PatternMatrixStack ((TyData d0 ∷ αs0) ∷ αss0) → Type
   c ∈** psss = Any (c ∈*_) psss
@@ -58,11 +58,11 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} (@0 c : NameCon d0) where
     → Reflects (c ∈** psss) (Set.member c (rootConSet psss))
   memberRootConSet [] rewrite prop-member-empty c = λ ()
   memberRootConSet (pss ∷ psss)
-    rewrite prop-member-union c (rootConSet' (headPattern (headAll pss))) (rootConSet psss)
+    rewrite prop-member-union c (rootConSet' (headAll (headAll pss))) (rootConSet psss)
     = mapReflects
         (either here there)
         (λ where (here h) → Left h; (there h) → Right h)
-        (eitherReflects (memberRootConSet' (headPattern (headAll pss))) (memberRootConSet psss))
+        (eitherReflects (memberRootConSet' (headAll (headAll pss))) (memberRootConSet psss))
 
 
 module @0 _ ⦃ @0 sig : Signature ⦄
@@ -108,13 +108,13 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} where
     rewrite prop-null-empty {NameCon d0} ⦃ iOrdNameIn ⦄
     = λ c → []
   nullRootConSet (pss ∷ psss)
-    rewrite prop-null-union (rootConSet' (headPattern (headAll pss))) (rootConSet psss)
+    rewrite prop-null-union (rootConSet' (headAll (headAll pss))) (rootConSet psss)
     = mapReflects
         {a = (∀ c → c ∉* pss) × (∀ c → c ∉** psss)}
         {b = (∀ c → c ∉** (pss ∷ psss))}
         (λ (h , h') c → h c ∷ h' c)
         (λ h → (λ c → headAll (h c)) , (λ c → tailAll (h c)))
-        (tupleReflects (nullRootConSet' (headPattern (headAll pss))) (nullRootConSet psss))
+        (tupleReflects (nullRootConSet' (headAll (headAll pss))) (nullRootConSet psss))
 
 --------------------------------------------------------------------------------
 

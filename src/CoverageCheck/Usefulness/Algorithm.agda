@@ -213,7 +213,7 @@ module _ ⦃ @0 sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α
     → ((— ∷ ps) ∷ pss) ⊆*ˢ qss
     → Σ[ c ∈ NameCon d0 ] UsefulS (specialize c P) (—* ∷ ps ∷ pss)
   usefulWildCompCaseInv' ((— ∷ qs) ∷ qss) disj ((s ∷ ss) ∷ sss) =
-    inhabCon ,
+    exampleCon ,
     ⟪ —* ∷ qs ∷ qss , specialize-preserves-#**-wild disj , —⊆* ∷ ss ∷ sss ⟫
   usefulWildCompCaseInv' ((con c qs' ∷ qs) ∷ qss) disj ((s ∷ ss) ∷ sss) =
     c ,

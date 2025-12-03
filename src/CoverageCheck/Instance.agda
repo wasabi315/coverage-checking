@@ -129,34 +129,33 @@ module _ {c c' : NameCon d0}
   c≼c'⇒c≡c' (con≼ h) = refl
 
 
+only≼  : (v : Value α0) → only v ≼ v
+onlys≼ : (vs : Values αs0) → onlys vs ≼* vs
+
+only≼ (con c vs) = con≼ (onlys≼ vs)
+
+onlys≼ []       = []
+onlys≼ (v ∷ vs) = only≼ v ∷ onlys≼ vs
+
+only≼⇒≡  : {v v' : Value α0} → only v ≼ v' → v ≡ v'
+onlys≼⇒≡ : {vs vs' : Values αs0} → onlys vs ≼* vs' → vs ≡ vs'
+
+only≼⇒≡ {v = con c vs} {con c vs'} (con≼ is) = cong (con c) (onlys≼⇒≡ is)
+
+onlys≼⇒≡ {vs = []}     {[]}       []       = refl
+onlys≼⇒≡ {vs = v ∷ vs} {v' ∷ vs'} (i ∷ is) = cong₂ _∷_  (only≼⇒≡ i) (onlys≼⇒≡ is)
+
 module _ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄ where
 
-  inst≼  : (p : Pattern α0) → p ≼ inst p
-  inst≼* : (ps : Patterns αs0) → ps ≼* insts ps
+  exampleFor≼  : (p : Pattern α0) → p ≼ exampleFor p
+  examplesFor≼ : (ps : Patterns αs0) → ps ≼* examplesFor ps
 
-  inst≼ —          = —≼
-  inst≼ (con c ps) = con≼ (inst≼* ps)
-  inst≼ (p ∣ _)    = ∣≼ˡ (inst≼ p)
+  exampleFor≼ —          = —≼
+  exampleFor≼ (con c ps) = con≼ (examplesFor≼ ps)
+  exampleFor≼ (p ∣ _)    = ∣≼ˡ (exampleFor≼ p)
 
-  inst≼* []       = []
-  inst≼* (p ∷ ps) = inst≼ p ∷ inst≼* ps
-
-
-only≼ : (v : Value α0) → only v ≼ v
-only≼* : (vs : Values αs0) → onlys vs ≼* vs
-
-only≼ (con c vs) = con≼ (only≼* vs)
-
-only≼* []       = []
-only≼* (v ∷ vs) = only≼ v ∷ only≼* vs
-
-only≼⇒≡ : {v v' : Value α0} → only v ≼ v' → v ≡ v'
-only≼*⇒≡ : {vs vs' : Values αs0} → onlys vs ≼* vs' → vs ≡ vs'
-
-only≼⇒≡ {v = con c vs} {con .c vs₁} (con≼ is) = cong (con c) (only≼*⇒≡ is)
-
-only≼*⇒≡ {vs = []}     {[]}       []       = refl
-only≼*⇒≡ {vs = v ∷ vs} {v' ∷ vs'} (i ∷ is) = cong₂ _∷_  (only≼⇒≡ i) (only≼*⇒≡ is)
+  examplesFor≼ []       = []
+  examplesFor≼ (p ∷ ps) = exampleFor≼ p ∷ examplesFor≼ ps
 
 --------------------------------------------------------------------------------
 -- Pattern matching

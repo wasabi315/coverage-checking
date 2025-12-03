@@ -78,7 +78,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
       → ExhaustiveU P
     exhaustiveToExhaustiveU h u
       using ⟪ qs , disj , _ ⟫ ∷ _ ← u .witnesses
-      = contradiction (First⇒Any (h (insts qs))) (flip disj (inst≼* qs))
+      = contradiction (First⇒Any (h (examplesFor qs))) (flip disj (examplesFor≼ qs))
 
 
   module @0 _ {P : PatternMatrix αs0} where
@@ -94,7 +94,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
                   ⟪ onlys vs
                   , (λ iss is →
                       ¬First⇒¬Any h'
-                        (subst (λ vs → P ≼** vs) (sym (only≼*⇒≡ is)) iss))
+                        (subst (λ vs → P ≼** vs) (sym (onlys≼⇒≡ is)) iss))
                   , —⊆* ⟫ ∷ []
               })
             h

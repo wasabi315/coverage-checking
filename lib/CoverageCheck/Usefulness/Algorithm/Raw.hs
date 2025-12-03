@@ -2,7 +2,7 @@ module CoverageCheck.Usefulness.Algorithm.Raw where
 
 import CoverageCheck.Name (Name, anyNameIn', nameInSet')
 import CoverageCheck.Prelude (All(Nil, (:>)), headAll, tailAll)
-import CoverageCheck.Syntax (Dataty(argsTy, dataCons), Pattern(PCon, POr, PWild), Patterns, Signature(dataDefs), Ty(TyData), Tys, headPattern, pWilds)
+import CoverageCheck.Syntax (Dataty(argsTy, dataCons), Pattern(PCon, POr, PWild), Patterns, Signature(dataDefs), Ty(TyData), Tys, pWilds)
 import Data.Set (Set)
 import qualified Data.Set (difference, empty, null, singleton, union)
 
@@ -29,7 +29,7 @@ rootConSet' (POr p q)
 rootConSet :: [All Patterns] -> Set Name
 rootConSet psss
   = foldr
-      (\ pss -> Data.Set.union (rootConSet' (headPattern (headAll pss))))
+      (\ pss -> Data.Set.union (rootConSet' (headAll (headAll pss))))
       Data.Set.empty
       psss
 
