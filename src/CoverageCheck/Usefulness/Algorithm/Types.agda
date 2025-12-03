@@ -62,14 +62,14 @@ module _ ⦃ @0 sig : Signature ⦄ where
   pss ⊆ˢ vss = HPointwise (λ ps vs → ps ⊆* vs) pss vss
   {-# COMPILE AGDA2HS SubsumptionStack inline #-}
 
-  record UsefulS (@0 P : PatternMatrixStack αss0) (@0 ps : PatternStack αss0) : Type where
+  record UsefulS (@0 pmat : PatternMatrixStack αss0) (@0 ps : PatternStack αss0) : Type where
     no-eta-equality
     pattern
     constructor ⟪_,_,_⟫
     field
-      qs       : PatternStack αss0
-      @0 P#qs  : P #ᵐˢ qs
-      @0 ps⊆qs : ps ⊆ˢ qs
+      witness : PatternStack αss0
+      @0 pmat#witness : pmat #ᵐˢ witness
+      @0 ps⊆witness : ps ⊆ˢ witness
 
   {-# COMPILE AGDA2HS UsefulS unboxed #-}
 

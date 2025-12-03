@@ -14,16 +14,18 @@ private open module @0 G = Globals globals
 
 --------------------------------------------------------------------------------
 
-module _ {@0 αs0} (@0 P : PatternMatrix αs0) (@0 ps : Patterns αs0) where
+module _ {@0 αs0} (@0 pmat : PatternMatrix αs0) (@0 ps : Patterns αs0) where
 
   record Useful' : Type where
     no-eta-equality
     pattern
     constructor ⟪_,_,_⟫
     field
-      qs       : Patterns αs0
-      @0 P#qs  : ∀ {vs} → P ≼ᵐ vs → qs ≼* vs → ⊥
-      @0 ps⊆qs : ps ⊆* qs
+      witness : Patterns αs0
+      -- pmat and witness are disjoint, i.e. they have no common instances
+      @0 pmat#witness : ∀ {vs} → pmat ≼ᵐ vs → witness ≼* vs → ⊥
+      -- ps subsumes witness
+      @0 ps⊆witness : ps ⊆* witness
 
   record Useful : Type where
     no-eta-equality
