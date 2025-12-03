@@ -35,18 +35,18 @@ module _ ⦃ sig : Signature ⦄ {d : NameData} (c : NameCon d)
          αs' = argsTy (dataDefs sig d) c')
     (rs : Patterns αs') (ps : Patterns βs0) (pss : PatternStack βss0)
     (eq : Dec (c ≡ c'))
-    → PatternMatrixStack (αs ∷ βs0 ∷ βss0)
+    → PatternStackMatrix (αs ∷ βs0 ∷ βss0)
   specializeConCase rs ps pss eq =
     ifDec eq (λ where ⦃ refl ⦄ → (rs ∷ ps ∷ pss) ∷ []) []
   {-# COMPILE AGDA2HS specializeConCase inline #-}
 
-  specialize' : PatternStack ((TyData d ∷ βs0) ∷ βss0) → PatternMatrixStack (αs ∷ βs0 ∷ βss0)
+  specialize' : PatternStack ((TyData d ∷ βs0) ∷ βss0) → PatternStackMatrix (αs ∷ βs0 ∷ βss0)
   specialize' ((—         ∷ ps) ∷ pss) = (—* ∷ ps ∷ pss) ∷ []
   specialize' ((con c' rs ∷ ps) ∷ pss) = specializeConCase rs ps pss (c ≟ c')
   specialize' ((r₁ ∣ r₂   ∷ ps) ∷ pss) = specialize' ((r₁ ∷ ps) ∷ pss) ++ specialize' ((r₂ ∷ ps) ∷ pss)
   {-# COMPILE AGDA2HS specialize' #-}
 
-  specialize : PatternMatrixStack ((TyData d ∷ βs0) ∷ βss0) → PatternMatrixStack (αs ∷ βs0 ∷ βss0)
+  specialize : PatternStackMatrix ((TyData d ∷ βs0) ∷ βss0) → PatternStackMatrix (αs ∷ βs0 ∷ βss0)
   specialize = concatMap specialize'
   {-# COMPILE AGDA2HS specialize #-}
 
@@ -59,7 +59,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
   rootConSet' (p ∣ q)   = Set.union (rootConSet' p) (rootConSet' q)
   {-# COMPILE AGDA2HS rootConSet' #-}
 
-  rootConSet : (P : PatternMatrixStack ((TyData d0 ∷ αs0) ∷ αss0)) → Set (NameCon d0)
+  rootConSet : (P : PatternStackMatrix ((TyData d0 ∷ αs0) ∷ αss0)) → Set (NameCon d0)
   rootConSet psss = foldr (λ pss → Set.union (rootConSet' (headAll (headAll pss)))) Set.empty psss
   {-# COMPILE AGDA2HS rootConSet #-}
 
@@ -67,13 +67,13 @@ module _ ⦃ @0 sig : Signature ⦄ where
 module _ ⦃ @0 sig : Signature ⦄ where
 
   -- Default matrix: filters out clauses whose first pattern is a constructor pattern
-  default' : PatternStack ((α0 ∷ αs0) ∷ αss0) → PatternMatrixStack (αs0 ∷ αss0)
+  default' : PatternStack ((α0 ∷ αs0) ∷ αss0) → PatternStackMatrix (αs0 ∷ αss0)
   default' ((—        ∷ ps) ∷ pss) = (ps ∷ pss) ∷ []
   default' ((con c rs ∷ ps) ∷ pss) = []
   default' ((r₁ ∣ r₂  ∷ ps) ∷ pss) = default' ((r₁ ∷ ps) ∷ pss) ++ default' ((r₂ ∷ ps) ∷ pss)
   {-# COMPILE AGDA2HS default' #-}
 
-  default_ : PatternMatrixStack ((α0 ∷ αs0) ∷ αss0) → PatternMatrixStack (αs0 ∷ αss0)
+  default_ : PatternStackMatrix ((α0 ∷ αs0) ∷ αss0) → PatternStackMatrix (αs0 ∷ αss0)
   default_ = concatMap default'
   {-# COMPILE AGDA2HS default_ #-}
 
@@ -81,7 +81,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
 module _ ⦃ sig : Signature ⦄ where
 
   -- Is there a constructor that does not appear in the first column of P?
-  existMissCon : (P : PatternMatrixStack ((TyData d ∷ αs0) ∷ αss0)) → Bool
+  existMissCon : (P : PatternStackMatrix ((TyData d ∷ αs0) ∷ αss0)) → Bool
   existMissCon {d = d} psss = not (Set.null missConSet)
     where
       conSet missConSet : Set (NameCon d)
@@ -91,7 +91,7 @@ module _ ⦃ sig : Signature ⦄ where
 
   -- The core usefulness checking algorithm in the paper
   {-# TERMINATING #-}
-  isUseful : (P : PatternMatrixStack αss) (pss : PatternStack αss) → Bool
+  isUseful : (P : PatternStackMatrix αss) (pss : PatternStack αss) → Bool
   isUseful {[]} []      [] = True
   isUseful {[]} (_ ∷ _) [] = False
   isUseful {[] ∷ αss} psss (_ ∷ pss) = isUseful {αss} (map tailAll psss) pss

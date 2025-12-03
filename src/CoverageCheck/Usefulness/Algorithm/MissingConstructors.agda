@@ -39,7 +39,7 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} where
   c ∈* pss = c ∈ headAll (headAll pss)
   c ∉* pss = c ∉ headAll (headAll pss)
 
-  _∈**_ _∉**_ : NameCon d0 → PatternMatrixStack ((TyData d0 ∷ αs0) ∷ αss0) → Type
+  _∈**_ _∉**_ : NameCon d0 → PatternStackMatrix ((TyData d0 ∷ αs0) ∷ αss0) → Type
   c ∈** psss = Any (c ∈*_) psss
   c ∉** psss = All (c ∉*_) psss
 
@@ -54,7 +54,7 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} (@0 c : NameCon d0) where
     rewrite prop-member-union c (rootConSet' p) (rootConSet' q)
     = eitherReflects (memberRootConSet' p) (memberRootConSet' q)
 
-  memberRootConSet : (psss : PatternMatrixStack ((TyData d0 ∷ αs0) ∷ αss0))
+  memberRootConSet : (psss : PatternStackMatrix ((TyData d0 ∷ αs0) ∷ αss0))
     → Reflects (c ∈** psss) (Set.member c (rootConSet psss))
   memberRootConSet [] rewrite prop-member-empty c = λ ()
   memberRootConSet (pss ∷ psss)
@@ -66,7 +66,7 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} (@0 c : NameCon d0) where
 
 
 module @0 _ ⦃ @0 sig : Signature ⦄
-  {@0 d0} (@0 c : NameCon d0) (@0 psss : PatternMatrixStack ((TyData d0 ∷ αs0) ∷ αss0))
+  {@0 d0} (@0 c : NameCon d0) (@0 psss : PatternStackMatrix ((TyData d0 ∷ αs0) ∷ αss0))
   (let conSet     = rootConSet psss
        missConSet = Set.difference (nameConSet (dataDefs sig d0)) conSet)
   where
@@ -102,7 +102,7 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} where
         (λ h → (λ c → h c ∘ Left) , (λ c → h c ∘ Right))
         (tupleReflects (nullRootConSet' p) (nullRootConSet' q))
 
-  nullRootConSet : (psss : PatternMatrixStack ((TyData d0 ∷ αs0) ∷ αss0))
+  nullRootConSet : (psss : PatternStackMatrix ((TyData d0 ∷ αs0) ∷ αss0))
     → Reflects (∀ c → c ∉** psss) (Set.null (rootConSet psss))
   nullRootConSet []
     rewrite prop-null-empty {NameCon d0} ⦃ iOrdNameIn ⦄
@@ -121,7 +121,7 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} where
 module _ ⦃ sig : Signature ⦄ {d : NameData} where
 
   -- Are there constructors that does not appear in the first column of P?
-  decExistMissCon : (P : PatternMatrixStack ((TyData d ∷ αs0) ∷ αss0))
+  decExistMissCon : (P : PatternStackMatrix ((TyData d ∷ αs0) ∷ αss0))
     → Either (Erase (∀ c → c ∈** P))
         (Either (Erase (∀ c → c ∉** P)) (NonEmpty (∃[ c ∈ NameCon d ] c ∉** P)))
   decExistMissCon psss = case toAscNonEmptyW missConSet of λ where

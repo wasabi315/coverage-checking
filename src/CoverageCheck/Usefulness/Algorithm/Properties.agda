@@ -49,7 +49,7 @@ module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}
     ++Any⁺ʳ (specialize'-preserves-≼ ((i ∷ is) ∷ iss))
 
   -- specialize preserves ≼
-  specialize-preserves-≼ : {P : PatternMatrixStack ((TyData d ∷ βs) ∷ αss)}
+  specialize-preserves-≼ : {P : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)}
     → P ≼ᵐˢ ((con c us ∷ vs) ∷ vss)
     → specialize c P ≼ᵐˢ (us ∷ vs ∷ vss)
   specialize-preserves-≼ = gconcatMapAny⁺ specialize'-preserves-≼
@@ -75,7 +75,7 @@ module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}
     ∘ ++Any⁻ _
 
   -- Unspecialisation preserves ≼
-  specialize-preserves-≼⁻ : {P : PatternMatrixStack ((TyData d ∷ βs) ∷ αss)}
+  specialize-preserves-≼⁻ : {P : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)}
     → specialize c P ≼ᵐˢ (us ∷ vs ∷ vss)
     → P ≼ᵐˢ ((con c us ∷ vs) ∷ vss)
   specialize-preserves-≼⁻ = gconcatMapAny⁻ specialize'-preserves-≼⁻
@@ -99,7 +99,7 @@ module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}
     ++Any⁺ʳ (default'-preserves-≼ (h ∘ Right) ((i ∷ is) ∷ iss))
 
   -- If c does not appear in the first column of P, default preserves ≼
-  default-preserves-≼ : {P : PatternMatrixStack ((TyData d ∷ βs) ∷ αss)}
+  default-preserves-≼ : {P : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)}
     → c ∉** P
     → P ≼ᵐˢ (con c us ∷ vs) ∷ vss
     → default_ P ≼ᵐˢ vs ∷ vss
@@ -125,7 +125,7 @@ module @0 _ ⦃ sig : Signature ⦄ {v : Value (TyData d)} {vs : Values αs} {vs
         (default'-preserves-≼⁻ {pss = (r₂ ∷ ps) ∷ pss})
     ∘ ++Any⁻ _
 
-  default-preserves-≼⁻ : {P : PatternMatrixStack ((TyData d ∷ αs) ∷ αss)}
+  default-preserves-≼⁻ : {P : PatternStackMatrix ((TyData d ∷ αs) ∷ αss)}
     → default_ P ≼ᵐˢ vs ∷ vss
     → P ≼ᵐˢ (v ∷ vs) ∷ vss
   default-preserves-≼⁻ = gconcatMapAny⁻ default'-preserves-≼⁻
@@ -134,7 +134,7 @@ module @0 _ ⦃ sig : Signature ⦄ {v : Value (TyData d)} {vs : Values αs} {vs
 -- Properties of disjointness
 
 module @0 _ ⦃ sig : Signature ⦄
-  {P : PatternMatrixStack ([] ∷ αss0)} {pss : PatternStack αss0}
+  {P : PatternStackMatrix ([] ∷ αss0)} {pss : PatternStack αss0}
   where
 
   #ᵐˢ-tail : P #ᵐˢ ([] ∷ pss) → map tailAll P #ᵐˢ pss
@@ -145,7 +145,7 @@ module @0 _ ⦃ sig : Signature ⦄
 
 
 module _ ⦃ @0 sig : Signature ⦄
-  {@0 P : PatternMatrixStack ((α0 ∷ αs0) ∷ αss0)}
+  {@0 P : PatternStackMatrix ((α0 ∷ αs0) ∷ αss0)}
   {@0 p q : Pattern α0} {@0 ps : Patterns αs0} {@0 pss : PatternStack αss0}
   where
 
@@ -158,7 +158,7 @@ module _ ⦃ @0 sig : Signature ⦄
 
 module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}
   (let αs = argsTy (dataDefs sig d) c)
-  {P : PatternMatrixStack ((TyData d ∷ βs) ∷ αss)}
+  {P : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)}
   {rs₁ : Patterns αs} {rs₂ : Patterns βs} {pss : PatternStack αss}
   where
 
@@ -175,7 +175,7 @@ module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}
 
 module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}
   (let αs = argsTy (dataDefs sig d) c)
-  {P : PatternMatrixStack ((TyData d ∷ βs) ∷ αss)}
+  {P : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)}
   {rs : Patterns βs} {pss : PatternStack αss}
   where
 
@@ -186,7 +186,7 @@ module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}
 
 
 module @0 _ ⦃ @0 sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
-  {P : PatternMatrixStack ((TyData d ∷ αs) ∷ αss)}
+  {P : PatternStackMatrix ((TyData d ∷ αs) ∷ αss)}
   {p : Pattern (TyData d)} {ps : Patterns αs} {pss : PatternStack αss}
   where
 
@@ -196,7 +196,7 @@ module @0 _ ⦃ @0 sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α
 
 
 module @0 _ ⦃ @0 sig : Signature ⦄ {c : NameCon d}
-  {P : PatternMatrixStack ((TyData d ∷ βs) ∷ αss)}
+  {P : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)}
   {qs : Patterns (argsTy (dataDefs sig d) c)} {rs : Patterns βs} {pss : PatternStack αss}
   where
 
@@ -209,7 +209,7 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {c : NameCon d}
 
 
 module @0 _ ⦃ @0 sig : Signature ⦄
-  {P : PatternMatrixStack ((TyData d ∷ βs) ∷ αss)}
+  {P : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)}
   {qs : Patterns βs} {pss : PatternStack αss}
   where
 
