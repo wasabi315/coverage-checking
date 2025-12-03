@@ -34,7 +34,7 @@ Q =
   (—        ∷ cons — — ∷ []) ∷ []
 
 -- Q is exhaustive, so we get a total matching function of type `∀ vs → Match Q vs`
-_ : decExhaustive Q ≡ Right (Erased (the (∀ vs → Match Q vs) _))
+_ : decExhaustive Q ≡ Right (Erased (the (∀ vs → FirstMatch Q vs) _))
 _ = refl
 ```
 

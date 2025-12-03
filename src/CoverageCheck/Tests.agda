@@ -1,6 +1,6 @@
 {-# OPTIONS --rewriting #-}
 
-module @0 Example where
+module @0 CoverageCheck.Test where
 
 open import CoverageCheck
 open import Data.Set as Set using (Set)
@@ -10,8 +10,9 @@ open import Haskell.Data.List.NonEmpty using (_∷_)
 -- Rewrite rules for Set operations
 -- Set and its operations from agda2hs are postulated entities, so we need rewrite
 -- rules to enable actual computation in working examples.
--- These rewrite rules in turn cause the primEraseEquality calls in the Prelude to
--- reduce to refl, which is what we want.
+-- These rewrite rules may in turn cause the primEraseEquality calls in Prelude to
+-- reduce to refl when the sides are definitionally equal, unblocks computation
+-- stuck at rewrite clauses.
 
 open import Agda.Builtin.Equality.Rewrite
 
@@ -150,6 +151,6 @@ Q =
   (cons — — ∷ —        ∷ []) ∷
   (—        ∷ cons — — ∷ []) ∷ []
 
--- Q is exhaustive, so we get a total matching function of type `∀ vs → Match Q vs`
-_ : decExhaustive Q ≡ Right (Erased (the (∀ vs → Match Q vs) _))
+-- Q is exhaustive, so we get a total matching function of type `∀ vs → FirstMatch Q vs`
+_ : decExhaustive Q ≡ Right (Erased (the (∀ vs → FirstMatch Q vs) _))
 _ = refl
