@@ -210,7 +210,7 @@ module _ ⦃ @0 sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α
 
   @0 usefulWildCompCaseInv' : ∀ qss
     → P #ᵐˢ qss
-    → ((— ∷ ps) ∷ pss) ⊆*ˢ qss
+    → ((— ∷ ps) ∷ pss) ⊆ˢ qss
     → Σ[ c ∈ NameCon d0 ] UsefulS (specialize c P) (—* ∷ ps ∷ pss)
   usefulWildCompCaseInv' ((— ∷ qs) ∷ qss) disj ((s ∷ ss) ∷ sss) =
     exampleCon ,

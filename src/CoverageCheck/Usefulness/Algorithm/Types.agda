@@ -24,8 +24,7 @@ private
     @0 αss0 : TyStack
 
 module _ ⦃ @0 sig : Signature ⦄ where
-  infix 4 InstanceStack InstanceMatrixStack _⋠ˢ_ _⋠ᵐˢ_
-  infix 4 SubsumptionStack SubsumptionMatrixStack
+  infix 4 InstanceStack InstanceMatrixStack _⋠ˢ_ _⋠ᵐˢ_ SubsumptionStack
 
   ValueStack : @0 TyStack → Type
   ValueStack αss = All Values αss
@@ -59,14 +58,9 @@ module _ ⦃ @0 sig : Signature ⦄ where
   P #ᵐˢ qss = ∀ {vss} → P ≼ᵐˢ vss → qss ≼ˢ vss → ⊥
 
   SubsumptionStack : @0 PatternStack αss0 → @0 PatternStack αss0 → Type
-  syntax SubsumptionStack pss vss = pss ⊆*ˢ vss
-  pss ⊆*ˢ vss = HPointwise (λ ps vs → ps ⊆* vs) pss vss
+  syntax SubsumptionStack pss vss = pss ⊆ˢ vss
+  pss ⊆ˢ vss = HPointwise (λ ps vs → ps ⊆* vs) pss vss
   {-# COMPILE AGDA2HS SubsumptionStack inline #-}
-
-  SubsumptionMatrixStack : @0 PatternMatrixStack αss0 → @0 PatternStack αss0 → Type
-  syntax SubsumptionMatrixStack psss vss = psss ⊆**ˢ vss
-  psss ⊆**ˢ vss = Any (λ pss → pss ⊆*ˢ vss) psss
-  {-# COMPILE AGDA2HS SubsumptionMatrixStack inline #-}
 
   record UsefulS (@0 P : PatternMatrixStack αss0) (@0 ps : PatternStack αss0) : Type where
     no-eta-equality
@@ -75,7 +69,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
     field
       qs       : PatternStack αss0
       @0 P#qs  : P #ᵐˢ qs
-      @0 ps⊆qs : ps ⊆*ˢ qs
+      @0 ps⊆qs : ps ⊆ˢ qs
 
   {-# COMPILE AGDA2HS UsefulS unboxed #-}
 

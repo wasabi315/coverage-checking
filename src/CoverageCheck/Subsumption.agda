@@ -11,7 +11,7 @@ module CoverageCheck.Subsumption
 
 private open module @0 G = Globals globals
 
-infix  4 Subsumption Subsumptions _⊈_ _⊈*_
+infix 4 Subsumption Subsumptions _⊈_ _⊈*_
 
 private
   variable
@@ -31,23 +31,25 @@ Subsumptions : (@0 ps qs : Patterns αs0) → Type
 syntax Subsumption  p  q  = p ⊆ q
 syntax Subsumptions ps qs = ps ⊆* qs
 
--- p ⊆ q : p is a subsumption of q
+-- p ⊆ q : p subsumes q
+-- Not "complete" e.g. (true ∣ false) ⊆ — is not derivable
+-- Probably better named BranchSelection
 data Subsumption where
   SWild : {@0 q : Pattern α0} → — ⊆ q
 
   SCon : {c : NameCon d0}
-    (let @0 αs : Tys
-         αs = argsTy (dataDefs sig d0) c)
-    {@0 ps qs : Patterns αs}
-    → (ss : ps ⊆* qs)
+    → (let @0 αs : Tys
+           αs = argsTy (dataDefs sig d0) c)
+    → {@0 ps qs : Patterns αs}
+    → (subs : ps ⊆* qs)
     → con c ps ⊆ con c qs
 
   SOrL : {@0 p q r : Pattern α0}
-    → (s : p ⊆ r)
+    → (sub : p ⊆ r)
     → (p ∣ q) ⊆ r
 
   SOrR : {@0 p q r : Pattern α0}
-    → (s : q ⊆ r)
+    → (sub : q ⊆ r)
     → (p ∣ q) ⊆ r
 
 {-# COMPILE AGDA2HS Subsumption deriving Show #-}
@@ -70,6 +72,7 @@ qs ⊈* ps = ¬ ps ⊆* qs
 --------------------------------------------------------------------------------
 -- Properties of the subsumption relation
 
+-- List of wildcards subsumes any list of patterns
 sWilds : {@0 qs : Patterns αs} → Subsumptions {αs} —* qs
 sWilds {[]}     {[]}    = []
 sWilds {α ∷ αs} {_ ∷ _} = —⊆ ∷ sWilds
@@ -78,9 +81,10 @@ syntax sWilds = —⊆*
 
 module _ {@0 p q r : Pattern α0} where
 
+  -- Inversion lemma for ∣⊆ˡ and ∣⊆ʳ
   sOrInv : (p ∣ q ⊆ r) → Either (p ⊆ r) (q ⊆ r)
-  sOrInv (∣⊆ˡ s) = Left s
-  sOrInv (∣⊆ʳ s) = Right s
+  sOrInv (∣⊆ˡ sub) = Left sub
+  sOrInv (∣⊆ʳ sub) = Right sub
   {-# COMPILE AGDA2HS sOrInv #-}
   syntax sOrInv = ∣⊆⁻
 
@@ -91,35 +95,24 @@ module _ {@0 c : NameCon d0}
   {@0 ps qs : Patterns αs}
   where
 
+  -- Inversion lemma for con⊆
   sConInv : (con c ps ⊆ con c qs) → ps ⊆* qs
-  sConInv (con⊆ ss) = ss
+  sConInv (con⊆ subs) = subs
   {-# COMPILE AGDA2HS sConInv #-}
   syntax sConInv = con⊆⁻
 
-
-subsume : {@0 p q : Pattern α0} {@0 v : Value α0}
+-- ⊆ implies the "semantic" version of subsumption relation
+subsume : {p q : Pattern α0} {v : Value α0}
   → p ⊆ q
-  → q ≼ v
-  → p ≼ v
-subsumeConCase : {@0 c : NameCon d0} {@0 ps qs : Patterns (argsTy (dataDefs sig d0) c)} {@0 v : Value (TyData d0)}
+  → (q ≼ v → p ≼ v)
+subsumes : {ps qs : Patterns αs0} {vs : Values αs0}
   → ps ⊆* qs
-  → con c qs ≼ v
-  → con c ps ≼ v
-subsumes : {@0 ps qs : Patterns αs0} {@0 vs : Values αs0}
-  → ps ⊆* qs
-  → qs ≼* vs
-  → ps ≼* vs
+  → (qs ≼* vs → ps ≼* vs)
 
-subsume —⊆         i = —≼
-subsume (con⊆ ss)  i = subsumeConCase ss i
-subsume (∣⊆ˡ s)    i = ∣≼ˡ (subsume s i)
-subsume (∣⊆ʳ s)    i = ∣≼ʳ (subsume s i)
+subsume —⊆ inst = —≼
+subsume (con⊆ subs) (con≼ insts) = con≼ (subsumes subs insts)
+subsume (∣⊆ˡ sub) inst = ∣≼ˡ (subsume sub inst)
+subsume (∣⊆ʳ sub) inst = ∣≼ʳ (subsume sub inst)
 
-subsumeConCase ss (con≼ is) = con≼ (subsumes ss is)
-
-subsumes []       []       = []
-subsumes (s ∷ ss) (i ∷ is) = subsume s i ∷ subsumes ss is
-
-{-# COMPILE AGDA2HS subsume        #-}
-{-# COMPILE AGDA2HS subsumeConCase #-}
-{-# COMPILE AGDA2HS subsumes       #-}
+subsumes [] [] = []
+subsumes (sub ∷ subs) (inst ∷ insts) = subsume sub inst ∷ subsumes subs insts

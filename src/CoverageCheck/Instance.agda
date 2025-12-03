@@ -88,7 +88,7 @@ syntax iWilds = —*≼
 
 module _ {@0 p q : Pattern α0} {@0 v : Value α0} where
 
-  -- Or-pattern matches if either sub-pattern matches
+  -- Inversion lemma for ∣≼ˡ and ∣≼ʳ
   iOrInv : (p ∣ q ≼ v) → Either (p ≼ v) (q ≼ v)
   iOrInv (∣≼ˡ inst) = Left inst
   iOrInv (∣≼ʳ inst) = Right inst
@@ -102,7 +102,7 @@ module _ {@0 c : NameCon d0}
   {@0 ps : Patterns αs} {@0 vs : Values αs}
   where
 
-  -- Constructor pattern matches if the sub-patterns match the corresponding values
+  -- Inversion lemma for con≼
   iConInv : (con c ps ≼ con c vs) → ps ≼* vs
   iConInv (con≼ insts) = insts
   syntax iConInv = con≼⁻
@@ -111,7 +111,7 @@ module _ {@0 c : NameCon d0}
 
 module _ {@0 p : Pattern α0} {@0 v : Value α0} {@0 ps : Patterns αs0} {@0 vs : Values αs0} where
 
-  -- Uncons for instance relation
+  -- Inversion lemma for ∷
   iUncons : (p ∷ ps ≼* v ∷ vs) → (p ≼ v) × (ps ≼* vs)
   iUncons (inst ∷ insts) = inst , insts
   syntax iUncons = ∷ⁱ⁻
