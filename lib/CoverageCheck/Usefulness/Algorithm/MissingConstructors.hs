@@ -11,7 +11,7 @@ import qualified Data.Set (difference, null, toAscList)
 decExistMissCon ::
                 Signature ->
                   Name -> [All Patterns] -> Either () (Either () (NonEmpty Name))
-decExistMissCon sig d psss
+decExistMissCon sig d psmat
   = case
       case Data.Set.toAscList missConSet of
           [] -> Left ()
@@ -22,7 +22,7 @@ decExistMissCon sig d psss
                           (if Data.Set.null conSet then Left () else Right misses)
   where
     conSet :: Set Name
-    conSet = rootConSet psss
+    conSet = rootConSet psmat
     missConSet :: Set Name
     missConSet
       = Data.Set.difference (nameInSet' (dataCons (dataDefs sig d)))

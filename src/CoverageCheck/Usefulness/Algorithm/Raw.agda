@@ -95,10 +95,9 @@ module _ ⦃ sig : Signature ⦄ where
 
   -- Is there a constructor that does not appear in root constructor set?
   existMissCon : PatternStackMatrix ((TyData d ∷ αs0) ∷ αss0) → Bool
-  existMissCon pmats = not (Set.null missConSet)
+  existMissCon psmat = not (Set.null missConSet)
     where
-      conSet missConSet : Set (NameCon _)
-      conSet     = rootConSet pmats
+      conSet     = rootConSet psmat
       missConSet = Set.difference (nameConSet (dataDefs sig _)) conSet
   {-# COMPILE AGDA2HS existMissCon #-}
 
@@ -107,14 +106,14 @@ module _ ⦃ sig : Signature ⦄ where
   isUseful : PatternStackMatrix αss → PatternStack αss → Bool
   isUseful {[]} [] [] = True
   isUseful {[]} (_ ∷ _) [] = False
-  isUseful {[] ∷ αss} pmats (_ ∷ pss) = isUseful {αss} (map tailAll pmats) pss
-  isUseful {(TyData d ∷ αs) ∷ αss} pmats ((— ∷ ps) ∷ pss) =
-    if existMissCon pmats
-      then isUseful (default_ pmats) (ps ∷ pss)
+  isUseful {[] ∷ αss} psmat (_ ∷ pss) = isUseful {αss} (map tailAll psmat) pss
+  isUseful {(TyData d ∷ αs) ∷ αss} psmat ((— ∷ ps) ∷ pss) =
+    if existMissCon psmat
+      then isUseful (default_ psmat) (ps ∷ pss)
       else anyNameCon (dataDefs sig d) λ c →
-            isUseful (specialize c pmats) (—* ∷ ps ∷ pss)
-  isUseful {(TyData d ∷ αs) ∷ αss} pmats ((con c rs ∷ ps) ∷ pss) =
-    isUseful (specialize c pmats) (rs ∷ ps ∷ pss)
-  isUseful {(TyData d ∷ αs) ∷ αss} pmats ((r₁ ∣ r₂  ∷ ps) ∷ pss) =
-    isUseful pmats ((r₁ ∷ ps) ∷ pss) || isUseful pmats ((r₂ ∷ ps) ∷ pss)
+            isUseful (specialize c psmat) (—* ∷ ps ∷ pss)
+  isUseful {(TyData d ∷ αs) ∷ αss} psmat ((con c rs ∷ ps) ∷ pss) =
+    isUseful (specialize c psmat) (rs ∷ ps ∷ pss)
+  isUseful {(TyData d ∷ αs) ∷ αss} psmat ((r₁ ∣ r₂  ∷ ps) ∷ pss) =
+    isUseful psmat ((r₁ ∷ ps) ∷ pss) || isUseful psmat ((r₂ ∷ ps) ∷ pss)
   {-# COMPILE AGDA2HS isUseful #-}

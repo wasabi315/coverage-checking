@@ -39,10 +39,10 @@ default_ :: [All Patterns] -> [All Patterns]
 default_ = concatMap default'
 
 existMissCon :: Signature -> Name -> [All Patterns] -> Bool
-existMissCon sig d pmats = not (Data.Set.null missConSet)
+existMissCon sig d psmat = not (Data.Set.null missConSet)
   where
     conSet :: Set Name
-    conSet = rootConSet pmats
+    conSet = rootConSet psmat
     missConSet :: Set Name
     missConSet
       = Data.Set.difference (nameInSet' (dataCons (dataDefs sig d)))
@@ -52,23 +52,23 @@ isUseful ::
          Signature -> [Tys] -> [All Patterns] -> All Patterns -> Bool
 isUseful sig [] [] Nil = True
 isUseful sig [] (_ : _) Nil = False
-isUseful sig ([] : αss) pmats (_ :> pss)
-  = isUseful sig αss (map tailAll pmats) pss
-isUseful sig ((TyData d : αs) : αss) pmats ((PWild :> ps) :> pss)
-  = if existMissCon sig d pmats then
-      isUseful sig (αs : αss) (default_ pmats) (ps :> pss) else
+isUseful sig ([] : αss) psmat (_ :> pss)
+  = isUseful sig αss (map tailAll psmat) pss
+isUseful sig ((TyData d : αs) : αss) psmat ((PWild :> ps) :> pss)
+  = if existMissCon sig d psmat then
+      isUseful sig (αs : αss) (default_ psmat) (ps :> pss) else
       anyNameIn' (dataCons (dataDefs sig d))
         (\ x ->
            isUseful sig (argsTy (dataDefs sig d) x : (αs : αss))
-             (specialize sig d x pmats)
+             (specialize sig d x psmat)
              (pWilds (argsTy (dataDefs sig d) x) :> (ps :> pss)))
-isUseful sig ((TyData d : αs) : αss) pmats
+isUseful sig ((TyData d : αs) : αss) psmat
   ((PCon c rs :> ps) :> pss)
   = isUseful sig (argsTy (dataDefs sig d) c : (αs : αss))
-      (specialize sig d c pmats)
+      (specialize sig d c psmat)
       (rs :> (ps :> pss))
-isUseful sig ((TyData d : αs) : αss) pmats
+isUseful sig ((TyData d : αs) : αss) psmat
   ((POr r₁ r₂ :> ps) :> pss)
-  = isUseful sig ((TyData d : αs) : αss) pmats ((r₁ :> ps) :> pss) ||
-      isUseful sig ((TyData d : αs) : αss) pmats ((r₂ :> ps) :> pss)
+  = isUseful sig ((TyData d : αs) : αss) psmat ((r₁ :> ps) :> pss) ||
+      isUseful sig ((TyData d : αs) : αss) psmat ((r₂ :> ps) :> pss)
 

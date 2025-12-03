@@ -51,7 +51,7 @@ data UsefulAcc : (P : PatternStackMatrix αss) (ps : PatternStack αss) → Type
   wildStep : {P : PatternStackMatrix ((TyData d ∷ αs) ∷ αss)}
     → {ps : Patterns αs} {pss : PatternStack αss}
     → UsefulAcc (default_ P) (ps ∷ pss)
-    → (∀ c → c ∈** P → UsefulAcc (specialize c P) (—* ∷ ps ∷ pss))
+    → (∀ c → c ∈ˢᵐ P → UsefulAcc (specialize c P) (—* ∷ ps ∷ pss))
     → UsefulAcc P ((— ∷ ps) ∷ pss)
 
   conStep : {P : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)} {c : NameCon d}
@@ -166,7 +166,7 @@ specialize-≤ c (ps ∷ P) rewrite patternMatrixStackSize-++ (specialize' c ps)
   = +-mono-≤ (specialize'-≤ c ps) (specialize-≤ c P)
 
 specialize'-< : (c : NameCon d) (pss : PatternStack ((TyData d ∷ αs) ∷ αss))
-  → c ∈* pss
+  → c ∈ˢ pss
   → patternMatrixStackSize (specialize' c pss) < patternStackSize pss 0
 specialize'-< c ((con c' rs ∷ ps) ∷ pss) c≡c' = lem (c ≟ c')
   where
@@ -198,7 +198,7 @@ specialize'-< c ((r₁ ∣ r₂ ∷ ps) ∷ pss) (Right h) =
 
 -- specialize strictly reduces the pattern matrix size if the constructor is in the first column of the matrix
 specialize-< : (c : NameCon d) (P : PatternStackMatrix ((TyData d ∷ αs) ∷ αss))
-  → c ∈** P
+  → c ∈ˢᵐ P
   → patternMatrixStackSize (specialize c P) < patternMatrixStackSize P
 specialize-< c (pss ∷ P) (here h)
   rewrite patternMatrixStackSize-++ (specialize' c pss) (specialize c P)
@@ -256,7 +256,7 @@ default-⊏ P qs pss with m≤n⇒m<n∨m≡n (default-≤ P)
 -- specialize strictly reduces the problem size if the constructor is in the first column of the matrix
 specializeWild-⊏ : (c : NameCon d) (P : PatternStackMatrix ((TyData d ∷ αs) ∷ αss))
   → (qs : Patterns αs) (pss : PatternStack αss)
-  → c ∈** P
+  → c ∈ˢᵐ P
   → (_ , specialize c P , —* ∷ qs ∷ pss) ⊏ (_ , P , (— ∷ qs) ∷ pss)
 specializeWild-⊏ {d0} c P qs pss h
   rewrite patternsSize—* (argsTy (dataDefs sig d0) c) (patternStackSize (qs ∷ pss) 0)

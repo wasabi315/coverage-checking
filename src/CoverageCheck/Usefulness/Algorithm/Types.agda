@@ -31,7 +31,7 @@ private
     @0 αss0 : TyStack
 
 module _ ⦃ @0 sig : Signature ⦄ where
-  infix 4 InstanceStack InstanceMatrixStack _⋠ˢ_ _⋠ᵐˢ_ SubsumptionStack
+  infix 4 InstanceStack InstanceMatrixStack _⋠ˢ_ _⋠ˢᵐ_ SubsumptionStack
 
   ValueStack : @0 TyStack → Type
   ValueStack αss = All Values αss
@@ -53,18 +53,18 @@ module _ ⦃ @0 sig : Signature ⦄ where
   {-# COMPILE AGDA2HS InstanceStack inline #-}
 
   InstanceMatrixStack : @0 PatternStackMatrix αss0 → @0 ValueStack αss0 → Type
-  syntax InstanceMatrixStack psss vss = psss ≼ᵐˢ vss
-  pmats ≼ᵐˢ vss = Any (λ pss → pss ≼ˢ vss) pmats
+  syntax InstanceMatrixStack psss vss = psss ≼ˢᵐ vss
+  psmat ≼ˢᵐ vss = Any (λ pss → pss ≼ˢ vss) psmat
   {-# COMPILE AGDA2HS InstanceMatrixStack inline #-}
 
   _⋠ˢ_ : @0 PatternStack αss0 → @0 ValueStack αss0 → Type
   pss ⋠ˢ vss = ¬ pss ≼ˢ vss
 
-  _⋠ᵐˢ_ : @0 PatternStackMatrix αss0 → @0 ValueStack αss0 → Type
-  pmats ⋠ᵐˢ vss = ¬ pmats ≼ᵐˢ vss
+  _⋠ˢᵐ_ : @0 PatternStackMatrix αss0 → @0 ValueStack αss0 → Type
+  psmat ⋠ˢᵐ vss = ¬ psmat ≼ˢᵐ vss
 
-  _#ᵐˢ_ : @0 PatternStackMatrix αss0 → @0 PatternStack αss0 → Type
-  pmats #ᵐˢ qss = ∀ {vss} → pmats ≼ᵐˢ vss → qss ≼ˢ vss → ⊥
+  _#ˢᵐ_ : @0 PatternStackMatrix αss0 → @0 PatternStack αss0 → Type
+  psmat #ˢᵐ qss = ∀ {vss} → psmat ≼ˢᵐ vss → qss ≼ˢ vss → ⊥
 
   SubsumptionStack : @0 PatternStack αss0 → @0 PatternStack αss0 → Type
   syntax SubsumptionStack pss vss = pss ⊆ˢ vss
@@ -73,18 +73,18 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
   -- Usefulness relation for doubly-nested things
 
-  record UsefulS' (@0 pmats : PatternStackMatrix αss0) (@0 pss : PatternStack αss0) : Type where
+  record UsefulS' (@0 psmat : PatternStackMatrix αss0) (@0 pss : PatternStack αss0) : Type where
     no-eta-equality
     pattern
     constructor ⟪_,_,_⟫
     field
       witness : PatternStack αss0
-      @0 pmats#witness : pmats #ᵐˢ witness
+      @0 psmat#witness : psmat #ˢᵐ witness
       @0 pss⊆witness : pss ⊆ˢ witness
 
   -- Type synonym rather than record to eliminate wrapping/unwrapping in algorithm
   UsefulS : @0 PatternStackMatrix αss0 → @0 PatternStack αss0 → Type
-  UsefulS pmats pss = NonEmpty (UsefulS' pmats pss)
+  UsefulS psmat pss = NonEmpty (UsefulS' psmat pss)
 
   {-# COMPILE AGDA2HS UsefulS' unboxed #-}
   {-# COMPILE AGDA2HS UsefulS inline #-}
@@ -99,8 +99,10 @@ module _ ⦃ @0 sig : Signature ⦄
 
   UsefulS'→Useful' : UsefulS' (map (_∷ []) pmat) (ps ∷ []) → Useful' pmat ps
   UsefulS'→Useful' = λ where
-    ⟪ qs ∷ [] , disj , ss ∷ [] ⟫ →
-      ⟪ qs , (λ i1 i2 → disj (gmapAny⁺ (_∷ []) i1) (i2 ∷ [])) , ss ⟫
+    ⟪ qs ∷ [] , disj , subs ∷ [] ⟫ →
+      ⟪ qs
+      , (λ instsmat insts → disj (gmapAny⁺ (_∷ []) instsmat) (insts ∷ []))
+      , subs ⟫
   {-# COMPILE AGDA2HS UsefulS'→Useful' inline #-}
 
   UsefulS→Useful : UsefulS (map (_∷ []) pmat) (ps ∷ []) → Useful pmat ps
@@ -108,11 +110,12 @@ module _ ⦃ @0 sig : Signature ⦄
   {-# COMPILE AGDA2HS UsefulS→Useful inline #-}
 
   @0 Useful'→UsefulS' : Useful' pmat ps → UsefulS' (map (_∷ []) pmat) (ps ∷ [])
-  Useful'→UsefulS' ⟪ qs , disj , ss ⟫ =
+  Useful'→UsefulS' ⟪ qs , disj , subs ⟫ =
     ⟪ qs ∷ []
     , (λ where
-        {_ ∷ []} i1 (i2 ∷ []) → disj (gmapAny⁻ (λ where (i1 ∷ []) → i1) i1) i2)
-    , ss ∷ [] ⟫
+        {_ ∷ []} instsmat (insts ∷ []) →
+          disj (gmapAny⁻ (λ where (insts' ∷ []) → insts') instsmat) insts)
+    , subs ∷ [] ⟫
 
   @0 Useful→UsefulS : Useful pmat ps → UsefulS (map (_∷ []) pmat) (ps ∷ [])
   Useful→UsefulS = fmap Useful'→UsefulS' ∘ witnesses

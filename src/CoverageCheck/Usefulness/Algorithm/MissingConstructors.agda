@@ -24,7 +24,7 @@ private
 
 module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} where
 
-  infix 4 _∈_ _∉_ _∈*_ _∉*_ _∈**_ _∉**_
+  infix 4 _∈_ _∉_ _∈ˢ_ _∉ˢ_ _∈ˢᵐ_ _∉ˢᵐ_
 
   -- Does c appear in the set of root constructors of p?
   _∈_ : NameCon d0 → Pattern (TyData d0) → Type
@@ -35,50 +35,56 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} where
   _∉_ : NameCon d0 → Pattern (TyData d0) → Type
   c ∉ p = ¬ c ∈ p
 
-  _∈*_ _∉*_ : NameCon d0 → PatternStack ((TyData d0 ∷ αs0) ∷ αss0) → Type
-  c ∈* pss = c ∈ headAll (headAll pss)
-  c ∉* pss = c ∉ headAll (headAll pss)
+  _∈ˢ_ _∉ˢ_ : NameCon d0 → PatternStack ((TyData d0 ∷ αs0) ∷ αss0) → Type
+  c ∈ˢ pss = c ∈ headAll (headAll pss)
+  c ∉ˢ pss = c ∉ headAll (headAll pss)
 
-  _∈**_ _∉**_ : NameCon d0 → PatternStackMatrix ((TyData d0 ∷ αs0) ∷ αss0) → Type
-  c ∈** psss = Any (c ∈*_) psss
-  c ∉** psss = All (c ∉*_) psss
+  _∈ˢᵐ_ _∉ˢᵐ_ : NameCon d0 → PatternStackMatrix ((TyData d0 ∷ αs0) ∷ αss0) → Type
+  c ∈ˢᵐ psmat = Any (c ∈ˢ_) psmat
+  c ∉ˢᵐ psmat = All (c ∉ˢ_) psmat
 
+-- Relation between _∈_ and operations on rootConSet
 
 module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} (@0 c : NameCon d0) where
 
   memberRootConSet' : (p : Pattern (TyData d0))
     → Reflects (c ∈ p) (Set.member c (rootConSet' p))
   memberRootConSet' — rewrite prop-member-empty c = id
-  memberRootConSet' (con c' _) rewrite prop-member-singleton c c' = isEquality c c'
+  memberRootConSet' (con c' _)
+    rewrite prop-member-singleton c c'
+    = isEquality c c'
   memberRootConSet' (p ∣ q)
     rewrite prop-member-union c (rootConSet' p) (rootConSet' q)
     = eitherReflects (memberRootConSet' p) (memberRootConSet' q)
 
-  memberRootConSet : (psss : PatternStackMatrix ((TyData d0 ∷ αs0) ∷ αss0))
-    → Reflects (c ∈** psss) (Set.member c (rootConSet psss))
+  memberRootConSet : (psmat : PatternStackMatrix ((TyData d0 ∷ αs0) ∷ αss0))
+    → Reflects (c ∈ˢᵐ psmat) (Set.member c (rootConSet psmat))
   memberRootConSet [] rewrite prop-member-empty c = λ ()
   memberRootConSet (pss ∷ psss)
     rewrite prop-member-union c (rootConSet' (headAll (headAll pss))) (rootConSet psss)
     = mapReflects
         (either here there)
         (λ where (here h) → Left h; (there h) → Right h)
-        (eitherReflects (memberRootConSet' (headAll (headAll pss))) (memberRootConSet psss))
+        (eitherReflects
+          (memberRootConSet' (headAll (headAll pss)))
+          (memberRootConSet psss))
 
 
 module @0 _ ⦃ @0 sig : Signature ⦄
-  {@0 d0} (@0 c : NameCon d0) (@0 psss : PatternStackMatrix ((TyData d0 ∷ αs0) ∷ αss0))
-  (let conSet     = rootConSet psss
+  {@0 d0} (@0 c : NameCon d0)
+  (@0 psmat : PatternStackMatrix ((TyData d0 ∷ αs0) ∷ αss0))
+  (let conSet     = rootConSet psmat
        missConSet = Set.difference (nameConSet (dataDefs sig d0)) conSet)
   where
 
-  notMemberMissConSet : Reflects (c ∈** psss) (not (Set.member c missConSet))
+  notMemberMissConSet : Reflects (c ∈ˢᵐ psmat) (not (Set.member c missConSet))
   notMemberMissConSet
     rewrite prop-member-difference c (nameConSet (dataDefs sig d0)) conSet
     | nameConSet-universal (dataDefs sig d0) c
     | not-not (Set.member c conSet)
-    = memberRootConSet c psss
+    = memberRootConSet c psmat
 
-  memberMissConSet : Reflects (c ∉** psss) (Set.member c missConSet)
+  memberMissConSet : Reflects (c ∉ˢᵐ psmat) (Set.member c missConSet)
   memberMissConSet rewrite sym (not-not (Set.member c missConSet)) =
     mapReflects (¬Any⇒All¬ _) All¬⇒¬Any (negReflects notMemberMissConSet)
 
@@ -102,36 +108,48 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} where
         (λ h → (λ c → h c ∘ Left) , (λ c → h c ∘ Right))
         (tupleReflects (nullRootConSet' p) (nullRootConSet' q))
 
-  nullRootConSet : (psss : PatternStackMatrix ((TyData d0 ∷ αs0) ∷ αss0))
-    → Reflects (∀ c → c ∉** psss) (Set.null (rootConSet psss))
+  nullRootConSet
+    : (psmat : PatternStackMatrix ((TyData d0 ∷ αs0) ∷ αss0))
+    → Reflects (∀ c → c ∉ˢᵐ psmat) (Set.null (rootConSet psmat))
   nullRootConSet []
     rewrite prop-null-empty {NameCon d0} ⦃ iOrdNameIn ⦄
-    = λ c → []
-  nullRootConSet (pss ∷ psss)
-    rewrite prop-null-union (rootConSet' (headAll (headAll pss))) (rootConSet psss)
+    = λ _ → []
+  nullRootConSet (pss ∷ psmat)
+    rewrite prop-null-union (rootConSet' (headAll (headAll pss))) (rootConSet psmat)
     = mapReflects
-        {a = (∀ c → c ∉* pss) × (∀ c → c ∉** psss)}
-        {b = (∀ c → c ∉** (pss ∷ psss))}
+        {a = (∀ c → c ∉ˢ pss) × (∀ c → c ∉ˢᵐ psmat)}
+        {b = (∀ c → c ∉ˢᵐ (pss ∷ psmat))}
         (λ (h , h') c → h c ∷ h' c)
         (λ h → (λ c → headAll (h c)) , (λ c → tailAll (h c)))
-        (tupleReflects (nullRootConSet' (headAll (headAll pss))) (nullRootConSet psss))
+        (tupleReflects
+          (nullRootConSet' (headAll (headAll pss)))
+          (nullRootConSet psmat))
 
 --------------------------------------------------------------------------------
 
 module _ ⦃ sig : Signature ⦄ {d : NameData} where
 
-  -- Are there constructors that does not appear in the first column of P?
-  decExistMissCon : (P : PatternStackMatrix ((TyData d ∷ αs0) ∷ αss0))
-    → Either (Erase (∀ c → c ∈** P))
-        (Either (Erase (∀ c → c ∉** P)) (NonEmpty (∃[ c ∈ NameCon d ] c ∉** P)))
-  decExistMissCon psss = case toAscNonEmptyW missConSet of λ where
+  -- Evidence-producing version of existMissCon
+  -- The result is either:
+  --   1. No missing constructors (complete root constructor set)
+  --   2. All constructors are missing (empty root constructor set)
+  --   3. Some constructors are missing
+  decExistMissCon
+    : (psmat : PatternStackMatrix ((TyData d ∷ αs0) ∷ αss0))
+    → Either (Erase (∀ c → c ∈ˢᵐ psmat))
+        (Either
+          (Erase (∀ c → c ∉ˢᵐ psmat))
+          (NonEmpty (∃[ c ∈ NameCon d ] c ∉ˢᵐ psmat)))
+  decExistMissCon psmat = case toAscNonEmptyW missConSet of λ where
       (Left (Erased empty)) →
-        Left (Erased λ c → extractTrue ⦃ cong not (empty c) ⦄ (notMemberMissConSet c psss))
-      (Right misses) → Right (if Set.null conSet
-        then Left (Erased (extractTrue (nullRootConSet psss)))
-        else Right (mapNonEmptyRefine (λ miss → extractTrue ⦃ miss ⦄ (memberMissConSet _ psss)) misses))
+        Left (Erased λ c →
+          extractTrue ⦃ cong not (empty c) ⦄ (notMemberMissConSet c psmat))
+      (Right misses) →
+        Right (if Set.null conSet
+          then Left (Erased (extractTrue (nullRootConSet psmat)))
+          else Right (mapNonEmptyRefine (λ miss →
+                extractTrue ⦃ miss ⦄ (memberMissConSet _ psmat)) misses))
     where
-      conSet missConSet : Set (NameCon d)
-      conSet     = rootConSet psss
+      conSet     = rootConSet psmat
       missConSet = Set.difference (nameConSet (dataDefs sig d)) conSet
   {-# COMPILE AGDA2HS decExistMissCon #-}
