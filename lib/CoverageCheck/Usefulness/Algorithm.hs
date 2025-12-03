@@ -11,86 +11,85 @@ import Data.List.NonEmpty (NonEmpty((:|)))
 
 import CoverageCheck.Usefulness.Definition (Useful(..))
 
-usefulNilOkCase :: NonEmpty (All Patterns)
-usefulNilOkCase = Nil :| []
+nilOkCase :: NonEmpty (All Patterns)
+nilOkCase = Nil :| []
 
-usefulTailCase' :: All Patterns -> All Patterns
-usefulTailCase' qss = Nil :> qss
+tailCase' :: All Patterns -> All Patterns
+tailCase' qss = Nil :> qss
 
-usefulOrCase ::
-             These (NonEmpty (All Patterns)) (NonEmpty (All Patterns)) ->
-               NonEmpty (All Patterns)
-usefulOrCase (This hs) = hs
-usefulOrCase (That hs) = hs
-usefulOrCase (Both hs1 hs2) = hs1 <> hs2
+orCase ::
+       These (NonEmpty (All Patterns)) (NonEmpty (All Patterns)) ->
+         NonEmpty (All Patterns)
+orCase (This hs) = hs
+orCase (That hs) = hs
+orCase (Both hs1 hs2) = hs1 <> hs2
 
-usefulConCase' :: Name -> All Patterns -> All Patterns
-usefulConCase' c (qs' :> (qs :> qss)) = (PCon c qs' :> qs) :> qss
+conCase' :: Name -> All Patterns -> All Patterns
+conCase' c (qs' :> (qs :> qss)) = (PCon c qs' :> qs) :> qss
 
-usefulWildCompCase' :: Name -> All Patterns -> All Patterns
-usefulWildCompCase' c (qs' :> (qs :> qss))
-  = (PCon c qs' :> qs) :> qss
+wildCompCase' :: Name -> All Patterns -> All Patterns
+wildCompCase' c (qs' :> (qs :> qss)) = (PCon c qs' :> qs) :> qss
 
-usefulWildCompCase ::
-                   NonEmpty (Name, NonEmpty (All Patterns)) -> NonEmpty (All Patterns)
-usefulWildCompCase hs
+wildCompCase ::
+             NonEmpty (Name, NonEmpty (All Patterns)) -> NonEmpty (All Patterns)
+wildCompCase hs
   = do (c, hs') <- hs
-       fmap (usefulWildCompCase' c) hs'
+       fmap (wildCompCase' c) hs'
 
-usefulWildMissCase' ::
-                    Signature ->
-                      Name ->
-                        Either () (NonEmpty Name) ->
-                          All Patterns -> NonEmpty (All Patterns)
-usefulWildMissCase' sig d (Left ()) (qs :> qss)
+wildMissCase' ::
+              Signature ->
+                Name ->
+                  Either () (NonEmpty Name) ->
+                    All Patterns -> NonEmpty (All Patterns)
+wildMissCase' sig d (Left ()) (qs :> qss)
   = ((PWild :> qs) :> qss) :| []
-usefulWildMissCase' sig d (Right hs) (qs :> qss)
+wildMissCase' sig d (Right hs) (qs :> qss)
   = fmap
       (\ c -> (PCon c (pWilds (argsTy (dataDefs sig d) c)) :> qs) :> qss)
       hs
 
-usefulWildMissCase ::
-                   Signature ->
-                     Name ->
-                       Either () (NonEmpty Name) ->
-                         NonEmpty (All Patterns) -> NonEmpty (All Patterns)
-usefulWildMissCase sig d h hs = hs >>= usefulWildMissCase' sig d h
+wildMissCase ::
+             Signature ->
+               Name ->
+                 Either () (NonEmpty Name) ->
+                   NonEmpty (All Patterns) -> NonEmpty (All Patterns)
+wildMissCase sig d h hs = hs >>= wildMissCase' sig d h
 
 decUseful' ::
            Signature ->
              [Tys] ->
                [All Patterns] -> All Patterns -> DecP (NonEmpty (All Patterns))
-decUseful' sig [] [] Nil = Yes usefulNilOkCase
+decUseful' sig [] [] Nil = Yes nilOkCase
 decUseful' sig [] (_ : _) Nil = No
-decUseful' sig ([] : αss) psss (Nil :> pss)
-  = mapDecP (fmap usefulTailCase')
-      (decUseful' sig αss (map tailAll psss) pss)
-decUseful' sig ((TyData d : αs) : αss) psss ((PWild :> ps) :> pss)
-  = case decExistMissCon sig d psss of
-        Right miss -> mapDecP (usefulWildMissCase sig d miss)
-                        (decUseful' sig (αs : αss) (default_ psss) (ps :> pss))
-        Left () -> mapDecP usefulWildCompCase
+decUseful' sig ([] : αss) psmat (Nil :> pss)
+  = mapDecP (fmap tailCase')
+      (decUseful' sig αss (map tailAll psmat) pss)
+decUseful' sig ((TyData d : αs) : αss) psmat ((PWild :> ps) :> pss)
+  = case decExistMissCon sig d psmat of
+        Right miss -> mapDecP (wildMissCase sig d miss)
+                        (decUseful' sig (αs : αss) (default_ psmat) (ps :> pss))
+        Left () -> mapDecP wildCompCase
                      (decPAnyNameIn (dataCons (dataDefs sig d))
                         (\ c ->
                            decUseful' sig (argsTy (dataDefs sig d) c : (αs : αss))
-                             (specialize sig d c psss)
+                             (specialize sig d c psmat)
                              (pWilds (argsTy (dataDefs sig d) c) :> (ps :> pss))))
-decUseful' sig ((TyData d : αs) : αss) psss
+decUseful' sig ((TyData d : αs) : αss) psmat
   ((PCon c rs :> ps) :> pss)
-  = mapDecP (fmap (usefulConCase' c))
+  = mapDecP (fmap (conCase' c))
       (decUseful' sig (argsTy (dataDefs sig d) c : (αs : αss))
-         (specialize sig d c psss)
+         (specialize sig d c psmat)
          (rs :> (ps :> pss)))
-decUseful' sig ((TyData d : αs) : αss) psss
+decUseful' sig ((TyData d : αs) : αss) psmat
   ((POr r₁ r₂ :> ps) :> pss)
-  = mapDecP usefulOrCase
+  = mapDecP orCase
       (theseDecP
-         (decUseful' sig ((TyData d : αs) : αss) psss ((r₁ :> ps) :> pss))
-         (decUseful' sig ((TyData d : αs) : αss) psss ((r₂ :> ps) :> pss)))
+         (decUseful' sig ((TyData d : αs) : αss) psmat ((r₁ :> ps) :> pss))
+         (decUseful' sig ((TyData d : αs) : αss) psmat ((r₂ :> ps) :> pss)))
 
 decUseful ::
           Signature -> Tys -> [Patterns] -> Patterns -> DecP Useful
-decUseful sig αs pss ps
+decUseful sig αs pmat ps
   = mapDecP
       (\ h ->
          Useful
@@ -98,5 +97,5 @@ decUseful sig αs pss ps
               (\case
                    qs :> Nil -> qs)
               h))
-      (decUseful' sig [αs] (map (:> Nil) pss) (ps :> Nil))
+      (decUseful' sig [αs] (map (:> Nil) pmat) (ps :> Nil))
 
