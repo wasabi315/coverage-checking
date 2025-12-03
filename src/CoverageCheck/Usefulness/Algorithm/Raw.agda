@@ -28,45 +28,58 @@ module _ ⦃ sig : Signature ⦄ {d : NameData} (c : NameCon d)
   (let αs = argsTy (dataDefs sig d) c)
   where
 
-  -- Specialization: filters out clauses whose first pattern does not match a value of the form `con c -`.
+  -- Specialization (𝒮): filters out clauses whose first pattern does not match a value of the form `con c ⋯`.
 
   specializeConCase : {c' : NameCon d}
-    (let @0 αs' : Tys
-         αs' = argsTy (dataDefs sig d) c')
-    (rs : Patterns αs') (ps : Patterns βs0) (pss : PatternStack βss0)
-    (eq : Dec (c ≡ c'))
+    → (let @0 αs' : Tys
+           αs' = argsTy (dataDefs sig d) c')
+    → (rs : Patterns αs') (ps : Patterns βs0) (pss : PatternStack βss0)
+    → (eq : Dec (c ≡ c'))
     → PatternStackMatrix (αs ∷ βs0 ∷ βss0)
   specializeConCase rs ps pss eq =
     ifDec eq (λ where ⦃ refl ⦄ → (rs ∷ ps ∷ pss) ∷ []) []
   {-# COMPILE AGDA2HS specializeConCase inline #-}
 
-  specialize' : PatternStack ((TyData d ∷ βs0) ∷ βss0) → PatternStackMatrix (αs ∷ βs0 ∷ βss0)
-  specialize' ((—         ∷ ps) ∷ pss) = (—* ∷ ps ∷ pss) ∷ []
+  specialize'
+    : PatternStack ((TyData d ∷ βs0) ∷ βss0)
+    → PatternStackMatrix (αs ∷ βs0 ∷ βss0)
+  specialize' ((— ∷ ps) ∷ pss) = (—* ∷ ps ∷ pss) ∷ []
   specialize' ((con c' rs ∷ ps) ∷ pss) = specializeConCase rs ps pss (c ≟ c')
-  specialize' ((r₁ ∣ r₂   ∷ ps) ∷ pss) = specialize' ((r₁ ∷ ps) ∷ pss) ++ specialize' ((r₂ ∷ ps) ∷ pss)
+  specialize' ((r₁ ∣ r₂ ∷ ps) ∷ pss) =
+    specialize' ((r₁ ∷ ps) ∷ pss) ++ specialize' ((r₂ ∷ ps) ∷ pss)
   {-# COMPILE AGDA2HS specialize' #-}
 
-  specialize : PatternStackMatrix ((TyData d ∷ βs0) ∷ βss0) → PatternStackMatrix (αs ∷ βs0 ∷ βss0)
+  specialize
+    : PatternStackMatrix ((TyData d ∷ βs0) ∷ βss0)
+    → PatternStackMatrix (αs ∷ βs0 ∷ βss0)
   specialize = concatMap specialize'
   {-# COMPILE AGDA2HS specialize #-}
 
 
 module _ ⦃ @0 sig : Signature ⦄ where
 
-  rootConSet' : (p : Pattern (TyData d0)) → Set (NameCon d0)
+  -- Root constructor set: the set of constructors that appear as the outermost constructor pattern in the first column of the pattern matrix.
+  -- e.g. The root constructor set is {nil, cons} for the following pattern matrix:
+  --
+  --   [ [ (nil ∣ cons — nil) , ─ ]
+  --   , [ cons — (one —)     , — ] ]
+  --
+
+  rootConSet' : Pattern (TyData d0) → Set (NameCon d0)
   rootConSet' —         = Set.empty
   rootConSet' (con c _) = Set.singleton c
   rootConSet' (p ∣ q)   = Set.union (rootConSet' p) (rootConSet' q)
   {-# COMPILE AGDA2HS rootConSet' #-}
 
-  rootConSet : (P : PatternStackMatrix ((TyData d0 ∷ αs0) ∷ αss0)) → Set (NameCon d0)
-  rootConSet psss = foldr (λ pss → Set.union (rootConSet' (headAll (headAll pss)))) Set.empty psss
+  rootConSet : PatternStackMatrix ((TyData d0 ∷ αs0) ∷ αss0) → Set (NameCon d0)
+  rootConSet = foldMap (rootConSet' ∘ headAll ∘ headAll)
   {-# COMPILE AGDA2HS rootConSet #-}
 
 
 module _ ⦃ @0 sig : Signature ⦄ where
 
-  -- Default matrix: filters out clauses whose first pattern is a constructor pattern
+  -- Default matrix (𝒟): filters out clauses whose first pattern is a constructor pattern
+
   default' : PatternStack ((α0 ∷ αs0) ∷ αss0) → PatternStackMatrix (αs0 ∷ αss0)
   default' ((—        ∷ ps) ∷ pss) = (ps ∷ pss) ∷ []
   default' ((con c rs ∷ ps) ∷ pss) = []
@@ -80,27 +93,28 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
 module _ ⦃ sig : Signature ⦄ where
 
-  -- Is there a constructor that does not appear in the first column of P?
-  existMissCon : (P : PatternStackMatrix ((TyData d ∷ αs0) ∷ αss0)) → Bool
-  existMissCon {d = d} psss = not (Set.null missConSet)
+  -- Is there a constructor that does not appear in root constructor set?
+  existMissCon : PatternStackMatrix ((TyData d ∷ αs0) ∷ αss0) → Bool
+  existMissCon pmats = not (Set.null missConSet)
     where
-      conSet missConSet : Set (NameCon d)
-      conSet     = rootConSet psss
-      missConSet = Set.difference (nameConSet (dataDefs sig d)) conSet
+      conSet missConSet : Set (NameCon _)
+      conSet     = rootConSet pmats
+      missConSet = Set.difference (nameConSet (dataDefs sig _)) conSet
   {-# COMPILE AGDA2HS existMissCon #-}
 
-  -- The core usefulness checking algorithm in the paper
+  -- The core usefulness checking algorithm 𝒰ʳᵉᶜ
   {-# TERMINATING #-}
-  isUseful : (P : PatternStackMatrix αss) (pss : PatternStack αss) → Bool
-  isUseful {[]} []      [] = True
+  isUseful : PatternStackMatrix αss → PatternStack αss → Bool
+  isUseful {[]} [] [] = True
   isUseful {[]} (_ ∷ _) [] = False
-  isUseful {[] ∷ αss} psss (_ ∷ pss) = isUseful {αss} (map tailAll psss) pss
-  isUseful {(TyData d ∷ αs) ∷ αss} psss ((— ∷ ps) ∷ pss) =
-    if existMissCon psss
-      then isUseful (default_ psss) (ps ∷ pss)
-      else anyNameCon (dataDefs sig d) λ c → isUseful (specialize c psss) (—* ∷ ps ∷ pss)
-  isUseful {(TyData d ∷ αs) ∷ αss} psss ((con c rs ∷ ps) ∷ pss) =
-    isUseful (specialize c psss) (rs ∷ ps ∷ pss)
-  isUseful {(TyData d ∷ αs) ∷ αss} psss ((r₁ ∣ r₂  ∷ ps) ∷ pss) =
-    isUseful psss ((r₁ ∷ ps) ∷ pss) || isUseful psss ((r₂ ∷ ps) ∷ pss)
+  isUseful {[] ∷ αss} pmats (_ ∷ pss) = isUseful {αss} (map tailAll pmats) pss
+  isUseful {(TyData d ∷ αs) ∷ αss} pmats ((— ∷ ps) ∷ pss) =
+    if existMissCon pmats
+      then isUseful (default_ pmats) (ps ∷ pss)
+      else anyNameCon (dataDefs sig d) λ c →
+            isUseful (specialize c pmats) (—* ∷ ps ∷ pss)
+  isUseful {(TyData d ∷ αs) ∷ αss} pmats ((con c rs ∷ ps) ∷ pss) =
+    isUseful (specialize c pmats) (rs ∷ ps ∷ pss)
+  isUseful {(TyData d ∷ αs) ∷ αss} pmats ((r₁ ∣ r₂  ∷ ps) ∷ pss) =
+    isUseful pmats ((r₁ ∷ ps) ∷ pss) || isUseful pmats ((r₂ ∷ ps) ∷ pss)
   {-# COMPILE AGDA2HS isUseful #-}

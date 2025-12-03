@@ -16,7 +16,7 @@ open import Haskell.Prelude public using
     ⊤; tt;
     Bool; True; False; not; _&&_; _||_; if_then_else_;
     Nat; zero; suc; _+_;
-    List; _++_; map; foldr; elem; sum; concat; concatMap; lengthNat; null; iMonadList;
+    List; _++_; map; foldr; foldMap; elem; sum; concat; concatMap; lengthNat; null; iMonadList;
     String;
     _×_; _,_; fst; snd; uncurry;
     Maybe; Just; Nothing; maybe;

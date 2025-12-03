@@ -27,11 +27,7 @@ rootConSet' (POr p q)
   = Data.Set.union (rootConSet' p) (rootConSet' q)
 
 rootConSet :: [All Patterns] -> Set Name
-rootConSet psss
-  = foldr
-      (\ pss -> Data.Set.union (rootConSet' (headAll (headAll pss))))
-      Data.Set.empty
-      psss
+rootConSet = foldMap (rootConSet' . headAll . headAll)
 
 default' :: All Patterns -> [All Patterns]
 default' ((PWild :> ps) :> pss) = [ps :> pss]
@@ -43,10 +39,10 @@ default_ :: [All Patterns] -> [All Patterns]
 default_ = concatMap default'
 
 existMissCon :: Signature -> Name -> [All Patterns] -> Bool
-existMissCon sig d psss = not (Data.Set.null missConSet)
+existMissCon sig d pmats = not (Data.Set.null missConSet)
   where
     conSet :: Set Name
-    conSet = rootConSet psss
+    conSet = rootConSet pmats
     missConSet :: Set Name
     missConSet
       = Data.Set.difference (nameInSet' (dataCons (dataDefs sig d)))
@@ -56,23 +52,23 @@ isUseful ::
          Signature -> [Tys] -> [All Patterns] -> All Patterns -> Bool
 isUseful sig [] [] Nil = True
 isUseful sig [] (_ : _) Nil = False
-isUseful sig ([] : αss) psss (_ :> pss)
-  = isUseful sig αss (map tailAll psss) pss
-isUseful sig ((TyData d : αs) : αss) psss ((PWild :> ps) :> pss)
-  = if existMissCon sig d psss then
-      isUseful sig (αs : αss) (default_ psss) (ps :> pss) else
+isUseful sig ([] : αss) pmats (_ :> pss)
+  = isUseful sig αss (map tailAll pmats) pss
+isUseful sig ((TyData d : αs) : αss) pmats ((PWild :> ps) :> pss)
+  = if existMissCon sig d pmats then
+      isUseful sig (αs : αss) (default_ pmats) (ps :> pss) else
       anyNameIn' (dataCons (dataDefs sig d))
         (\ x ->
            isUseful sig (argsTy (dataDefs sig d) x : (αs : αss))
-             (specialize sig d x psss)
+             (specialize sig d x pmats)
              (pWilds (argsTy (dataDefs sig d) x) :> (ps :> pss)))
-isUseful sig ((TyData d : αs) : αss) psss
+isUseful sig ((TyData d : αs) : αss) pmats
   ((PCon c rs :> ps) :> pss)
   = isUseful sig (argsTy (dataDefs sig d) c : (αs : αss))
-      (specialize sig d c psss)
+      (specialize sig d c pmats)
       (rs :> (ps :> pss))
-isUseful sig ((TyData d : αs) : αss) psss
+isUseful sig ((TyData d : αs) : αss) pmats
   ((POr r₁ r₂ :> ps) :> pss)
-  = isUseful sig ((TyData d : αs) : αss) psss ((r₁ :> ps) :> pss) ||
-      isUseful sig ((TyData d : αs) : αss) psss ((r₂ :> ps) :> pss)
+  = isUseful sig ((TyData d : αs) : αss) pmats ((r₁ :> ps) :> pss) ||
+      isUseful sig ((TyData d : αs) : αss) pmats ((r₂ :> ps) :> pss)
 
