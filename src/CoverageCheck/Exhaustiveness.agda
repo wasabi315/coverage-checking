@@ -51,7 +51,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
     nonExhaustiveUToNonExhaustive' : Useful' P —* → NonExhaustive' P
     nonExhaustiveUToNonExhaustive' ⟪ qs , disj , _ ⟫ =
-      qs ⟨ (λ is ms → disj (First⇒Any ms) is) ⟩
+      qs ⟨ (λ insts matches → disj (First⇒Any matches) insts) ⟩
     {-# COMPILE AGDA2HS nonExhaustiveUToNonExhaustive' transparent #-}
 
     nonExhaustiveUToNonExhaustiveList : List (Useful' P —*) → List (NonExhaustive' P)
@@ -70,7 +70,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
       → NonExhaustiveU P
     nonExhaustiveToNonExhaustiveU hs = record
       { witnesses = flip fmap hs λ (qs ⟨ h ⟩) →
-          ⟪ qs , (λ iss is → ¬First⇒¬Any (h is) iss) , —⊆* ⟫
+          ⟪ qs , (λ instMat insts → ¬First⇒¬Any (h insts) instMat) , —⊆* ⟫
       }
 
     @0 exhaustiveToExhaustiveU : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
@@ -92,9 +92,9 @@ module _ ⦃ @0 sig : Signature ⦄ where
             (record
               { witnesses =
                   ⟪ onlys vs
-                  , (λ iss is →
+                  , (λ instMat insts →
                       ¬First⇒¬Any h'
-                        (subst (λ vs → P ≼ᵐ vs) (sym (onlys≼⇒≡ is)) iss))
+                        (subst (λ vs → P ≼ᵐ vs) (sym (onlys≼⇒≡ insts)) instMat))
                   , —⊆* ⟫ ∷ []
               })
             h
