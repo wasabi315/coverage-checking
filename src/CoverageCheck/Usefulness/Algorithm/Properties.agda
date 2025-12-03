@@ -8,214 +8,228 @@ open import CoverageCheck.Usefulness.Algorithm.Types
 open import CoverageCheck.Usefulness.Algorithm.Raw
 open import CoverageCheck.Usefulness.Algorithm.MissingConstructors
 
-module CoverageCheck.Usefulness.Algorithm.Properties
-  ⦃ @0 globals : Globals ⦄
+module @0 CoverageCheck.Usefulness.Algorithm.Properties
+  ⦃ globals : Globals ⦄
+  ⦃ sig : Signature ⦄
   where
 
-private open module @0 G = Globals globals
+private open module G = Globals globals
 
 private
   variable
+    α β : Ty
     αs βs : Tys
     αss : TyStack
     d : NameData
-    @0 α0 : Ty
-    @0 αs0 : Tys
-    @0 αss0 : TyStack
 
 --------------------------------------------------------------------------------
 -- Properties of ≼ and specialize/default
 
-module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}
+module _ {c : NameCon d}
   (let αs = argsTy (dataDefs sig d) c)
   {us : Values αs} {vs : Values βs} {vss : ValueStack αss}
   where
 
+  -- specialize preserves ≼
+
   specialize'-preserves-≼ : {pss : PatternStack ((TyData d ∷ βs) ∷ αss)}
     → pss ≼ˢ (con c us ∷ vs) ∷ vss
-    → specialize' c pss ≼ᵐˢ us ∷ vs ∷ vss
-  specialize'-preserves-≼ {(— ∷ ps) ∷ pss} ((i ∷ is) ∷ iss) =
-    here (—*≼ ∷ is ∷ iss)
+    → specialize' c pss ≼ˢᵐ us ∷ vs ∷ vss
+  specialize'-preserves-≼ {(— ∷ ps) ∷ pss} ((_ ∷ insts) ∷ instss) =
+    here (—*≼ ∷ insts ∷ instss)
   specialize'-preserves-≼ {(con c' rs ∷ ps) ∷ pss} = lem (c ≟ c')
     where
       lem : (eq : Dec (c ≡ c'))
         → ((con c' rs ∷ ps) ∷ pss) ≼ˢ ((con c us ∷ vs) ∷ vss)
-        → specializeConCase c rs ps pss eq ≼ᵐˢ us ∷ vs ∷ vss
-      lem (False ⟨ c≢c' ⟩) ((i        ∷ is) ∷ iss) = contradiction (sym (c≼c'⇒c≡c' i)) c≢c'
-      lem (True  ⟨ refl ⟩) ((con≼ is' ∷ is) ∷ iss) = here (is' ∷ is ∷ iss)
-  specialize'-preserves-≼ {(r₁ ∣ r₂ ∷ ps) ∷ pss} ((∣≼ˡ i ∷ is) ∷ iss) =
-    ++Any⁺ˡ (specialize'-preserves-≼ ((i ∷ is) ∷ iss))
-  specialize'-preserves-≼ {(r₁ ∣ r₂ ∷ ps) ∷ pss} ((∣≼ʳ i ∷ is) ∷ iss) =
-    ++Any⁺ʳ (specialize'-preserves-≼ ((i ∷ is) ∷ iss))
+        → specializeConCase c rs ps pss eq ≼ˢᵐ us ∷ vs ∷ vss
+      lem (False ⟨ c≢c' ⟩) ((inst ∷ _) ∷ _) =
+        contradiction (sym (c≼c'⇒c≡c' inst)) c≢c'
+      lem (True ⟨ refl ⟩) ((con≼ insts' ∷ insts) ∷ instss) =
+        here (insts' ∷ insts ∷ instss)
+  specialize'-preserves-≼ {(r₁ ∣ r₂ ∷ ps) ∷ pss} ((∣≼ˡ inst ∷ insts) ∷ instss) =
+    ++Any⁺ˡ (specialize'-preserves-≼ ((inst ∷ insts) ∷ instss))
+  specialize'-preserves-≼ {(r₁ ∣ r₂ ∷ ps) ∷ pss} ((∣≼ʳ inst ∷ insts) ∷ instss) =
+    ++Any⁺ʳ (specialize'-preserves-≼ ((inst ∷ insts) ∷ instss))
 
-  -- specialize preserves ≼
-  specialize-preserves-≼ : {P : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)}
-    → P ≼ᵐˢ ((con c us ∷ vs) ∷ vss)
-    → specialize c P ≼ᵐˢ (us ∷ vs ∷ vss)
+  specialize-preserves-≼ : {psmat : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)}
+    → psmat ≼ˢᵐ ((con c us ∷ vs) ∷ vss)
+    → specialize c psmat ≼ˢᵐ (us ∷ vs ∷ vss)
   specialize-preserves-≼ = gconcatMapAny⁺ specialize'-preserves-≼
 
+  -- Unspecialization preserves ≼
+
   specialize'-preserves-≼⁻ : {pss : PatternStack ((TyData d ∷ βs) ∷ αss)}
-    → specialize' c pss ≼ᵐˢ (us ∷ vs ∷ vss)
+    → specialize' c pss ≼ˢᵐ (us ∷ vs ∷ vss)
     → pss ≼ˢ ((con c us ∷ vs) ∷ vss)
-  specialize'-preserves-≼⁻ {(— ∷ ps) ∷ pss} (here (_ ∷ is ∷ iss)) =
-    (—≼ ∷ is) ∷ iss
+  specialize'-preserves-≼⁻ {(— ∷ ps) ∷ pss} (here (_ ∷ insts ∷ instss)) =
+    (—≼ ∷ insts) ∷ instss
   specialize'-preserves-≼⁻ {(con c' rs ∷ ps) ∷ pss} = lem (c ≟ c')
     where
       lem : (eq : Dec (c ≡ c'))
-        → specializeConCase c rs ps pss eq ≼ᵐˢ (us ∷ vs ∷ vss)
+        → specializeConCase c rs ps pss eq ≼ˢᵐ (us ∷ vs ∷ vss)
         → (con c' rs ∷ ps) ∷ pss ≼ˢ ((con c us ∷ vs) ∷ vss)
-      lem (True ⟨ refl ⟩) (here (is' ∷ is ∷ iss)) = (con≼ is' ∷ is) ∷ iss
+      lem (True ⟨ refl ⟩) (here (insts' ∷ insts ∷ instss)) =
+        (con≼ insts' ∷ insts) ∷ instss
   specialize'-preserves-≼⁻ {(r₁ ∣ r₂ ∷ ps) ∷ pss} =
     either
-      (λ where ((i ∷ is) ∷ iss) → (∣≼ˡ i ∷ is) ∷ iss)
-      (λ where ((i ∷ is) ∷ iss) → (∣≼ʳ i ∷ is) ∷ iss)
+      (λ where ((inst ∷ insts) ∷ instss) → (∣≼ˡ inst ∷ insts) ∷ instss)
+      (λ where ((inst ∷ insts) ∷ instss) → (∣≼ʳ inst ∷ insts) ∷ instss)
     ∘ bimap
         (specialize'-preserves-≼⁻ {pss = (r₁ ∷ ps) ∷ pss})
         (specialize'-preserves-≼⁻ {pss = (r₂ ∷ ps) ∷ pss})
     ∘ ++Any⁻ _
 
-  -- Unspecialisation preserves ≼
-  specialize-preserves-≼⁻ : {P : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)}
-    → specialize c P ≼ᵐˢ (us ∷ vs ∷ vss)
-    → P ≼ᵐˢ ((con c us ∷ vs) ∷ vss)
+  specialize-preserves-≼⁻ : {psmat : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)}
+    → specialize c psmat ≼ˢᵐ (us ∷ vs ∷ vss)
+    → psmat ≼ˢᵐ ((con c us ∷ vs) ∷ vss)
   specialize-preserves-≼⁻ = gconcatMapAny⁻ specialize'-preserves-≼⁻
 
 
-module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}
+module _ {c : NameCon d}
   {us : Values (argsTy (dataDefs sig d) c)} {vs : Values βs} {vss : ValueStack αss}
   where
 
   default'-preserves-≼ : {pss : PatternStack ((TyData d ∷ βs) ∷ αss)}
-    → c ∉* pss
+    → c ∉ˢ pss
     → pss ≼ˢ (con c us ∷ vs) ∷ vss
-    → default' pss ≼ᵐˢ vs ∷ vss
-  default'-preserves-≼ {(— ∷ ps) ∷ pss} h ((_ ∷ is) ∷ iss) =
-    here (is ∷ iss)
-  default'-preserves-≼ {(con c' rs ∷ ps) ∷ pss} h ((i ∷ is) ∷ iss) =
-    contradiction (sym (c≼c'⇒c≡c' i)) h
-  default'-preserves-≼ {(p ∣ p₁ ∷ ps) ∷ pss} h ((∣≼ˡ i ∷ is) ∷ iss) =
-    ++Any⁺ˡ (default'-preserves-≼ (h ∘ Left) ((i ∷ is) ∷ iss))
-  default'-preserves-≼ {(p ∣ p₁ ∷ ps) ∷ pss} h ((∣≼ʳ i ∷ is) ∷ iss) =
-    ++Any⁺ʳ (default'-preserves-≼ (h ∘ Right) ((i ∷ is) ∷ iss))
+    → default' pss ≼ˢᵐ vs ∷ vss
+  default'-preserves-≼ {(— ∷ ps) ∷ pss} h ((_ ∷ insts) ∷ instss) =
+    here (insts ∷ instss)
+  default'-preserves-≼ {(con c' rs ∷ ps) ∷ pss} h ((inst ∷ _) ∷ _) =
+    contradiction (sym (c≼c'⇒c≡c' inst)) h
+  default'-preserves-≼ {(p ∣ q ∷ ps) ∷ pss} h ((∣≼ˡ inst ∷ insts) ∷ instss) =
+    ++Any⁺ˡ (default'-preserves-≼ (h ∘ Left) ((inst ∷ insts) ∷ instss))
+  default'-preserves-≼ {(p ∣ q ∷ ps) ∷ pss} h ((∣≼ʳ inst ∷ insts) ∷ instss) =
+    ++Any⁺ʳ (default'-preserves-≼ (h ∘ Right) ((inst ∷ insts) ∷ instss))
 
-  -- If c does not appear in the first column of P, default preserves ≼
-  default-preserves-≼ : {P : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)}
-    → c ∉** P
-    → P ≼ᵐˢ (con c us ∷ vs) ∷ vss
-    → default_ P ≼ᵐˢ vs ∷ vss
-  default-preserves-≼ {ps ∷ P} (h ∷ _) (here is) =
-    ++Any⁺ˡ (default'-preserves-≼ h is)
-  default-preserves-≼ {ps ∷ P} (_ ∷ h) (there iss) =
-    ++Any⁺ʳ (default-preserves-≼ h iss)
+  -- If c does not appear in the first column of psmat, default preserves ≼
+  default-preserves-≼ : {psmat : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)}
+    → c ∉ˢᵐ psmat
+    → psmat ≼ˢᵐ (con c us ∷ vs) ∷ vss
+    → default_ psmat ≼ˢᵐ vs ∷ vss
+  default-preserves-≼ {pss ∷ psmat} (h ∷ _) (here instss) =
+    ++Any⁺ˡ (default'-preserves-≼ h instss)
+  default-preserves-≼ {pss ∷ psmat} (_ ∷ h) (there instsMat) =
+    ++Any⁺ʳ (default-preserves-≼ h instsMat)
 
 
-module @0 _ ⦃ sig : Signature ⦄ {v : Value (TyData d)} {vs : Values αs} {vss : ValueStack αss} where
+module _ {v : Value (TyData d)} {vs : Values αs} {vss : ValueStack αss} where
 
   default'-preserves-≼⁻ : {pss : PatternStack ((TyData d ∷ αs) ∷ αss)}
-    → default' pss ≼ᵐˢ vs ∷ vss
+    → default' pss ≼ˢᵐ vs ∷ vss
     → pss ≼ˢ (v ∷ vs) ∷ vss
-  default'-preserves-≼⁻ {(— ∷ ps) ∷ pss} (here (is ∷ iss)) =
-    (—≼ ∷ is) ∷ iss
+  default'-preserves-≼⁻ {(— ∷ ps) ∷ pss} (here (insts ∷ instss)) =
+    (—≼ ∷ insts) ∷ instss
   default'-preserves-≼⁻ {(r₁ ∣ r₂ ∷ ps) ∷ pss} =
     either
-      (λ where ((i ∷ is) ∷ iss) → (∣≼ˡ i ∷ is) ∷ iss)
-      (λ where ((i ∷ is) ∷ iss) → (∣≼ʳ i ∷ is) ∷ iss)
+      (λ where ((inst ∷ insts) ∷ instss) → (∣≼ˡ inst ∷ insts) ∷ instss)
+      (λ where ((inst ∷ insts) ∷ instss) → (∣≼ʳ inst ∷ insts) ∷ instss)
     ∘ bimap
         (default'-preserves-≼⁻ {pss = (r₁ ∷ ps) ∷ pss})
         (default'-preserves-≼⁻ {pss = (r₂ ∷ ps) ∷ pss})
     ∘ ++Any⁻ _
 
-  default-preserves-≼⁻ : {P : PatternStackMatrix ((TyData d ∷ αs) ∷ αss)}
-    → default_ P ≼ᵐˢ vs ∷ vss
-    → P ≼ᵐˢ (v ∷ vs) ∷ vss
+  default-preserves-≼⁻ : {psmat : PatternStackMatrix ((TyData d ∷ αs) ∷ αss)}
+    → default_ psmat ≼ˢᵐ vs ∷ vss
+    → psmat ≼ˢᵐ (v ∷ vs) ∷ vss
   default-preserves-≼⁻ = gconcatMapAny⁻ default'-preserves-≼⁻
 
 --------------------------------------------------------------------------------
 -- Properties of disjointness
 
-module @0 _ ⦃ sig : Signature ⦄
-  {P : PatternStackMatrix ([] ∷ αss0)} {pss : PatternStack αss0}
+module _ {psmat : PatternStackMatrix ([] ∷ αss)} {pss : PatternStack αss} where
+
+  #-tail : psmat #ˢᵐ ([] ∷ pss) → map tailAll psmat #ˢᵐ pss
+  #-tail disj instsMat instss =
+    disj
+      (gmapAny⁻ (λ where {[] ∷ _} instss' → [] ∷ instss') instsMat)
+      ([] ∷ instss)
+
+  #-tail⁻ : map tailAll psmat #ˢᵐ pss → psmat #ˢᵐ ([] ∷ pss)
+  #-tail⁻ disj instsMat ([] ∷ instss) =
+    disj (gmapAny⁺ (λ where {[] ∷ _} ([] ∷ instss') → instss') instsMat) instss
+
+
+module _
+  {psmat : PatternStackMatrix ((α ∷ αs) ∷ αss)}
+  {p q : Pattern α} {ps : Patterns αs} {pss : PatternStack αss}
   where
 
-  #ᵐˢ-tail : P #ᵐˢ ([] ∷ pss) → map tailAll P #ᵐˢ pss
-  #ᵐˢ-tail disj isss iss = disj (gmapAny⁻ (λ where {[] ∷ _} iss' → [] ∷ iss') isss) ([] ∷ iss)
+  #-∣ˡ : psmat #ˢᵐ ((p ∣ q ∷ ps) ∷ pss) → psmat #ˢᵐ ((p ∷ ps) ∷ pss)
+  #-∣ˡ disj instsMat ((inst ∷ insts) ∷ instss) =
+    disj instsMat ((∣≼ˡ inst ∷ insts) ∷ instss)
 
-  #ᵐˢ-tail⁻ : map tailAll P #ᵐˢ pss → P #ᵐˢ ([] ∷ pss)
-  #ᵐˢ-tail⁻ disj isss ([] ∷ iss) = disj (gmapAny⁺ (λ where {[] ∷ _} ([] ∷ iss') → iss') isss) iss
-
-
-module _ ⦃ @0 sig : Signature ⦄
-  {@0 P : PatternStackMatrix ((α0 ∷ αs0) ∷ αss0)}
-  {@0 p q : Pattern α0} {@0 ps : Patterns αs0} {@0 pss : PatternStack αss0}
-  where
-
-  #-∣ˡ : P #ᵐˢ ((p ∣ q ∷ ps) ∷ pss) → P #ᵐˢ ((p ∷ ps) ∷ pss)
-  #-∣ˡ disj isss ((i ∷ is) ∷ iss) = disj isss ((∣≼ˡ i ∷ is) ∷ iss)
-
-  #-∣ʳ : P #ᵐˢ ((p ∣ q ∷ ps) ∷ pss) → P #ᵐˢ ((q ∷ ps) ∷ pss)
-  #-∣ʳ disj isss ((i ∷ is) ∷ iss) = disj isss ((∣≼ʳ i ∷ is) ∷ iss)
+  #-∣ʳ : psmat #ˢᵐ ((p ∣ q ∷ ps) ∷ pss) → psmat #ˢᵐ ((q ∷ ps) ∷ pss)
+  #-∣ʳ disj instsMat ((inst ∷ insts) ∷ instss) =
+    disj instsMat ((∣≼ʳ inst ∷ insts) ∷ instss)
 
 
-module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}
+module _ {c : NameCon d}
   (let αs = argsTy (dataDefs sig d) c)
-  {P : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)}
+  {psmat : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)}
   {rs₁ : Patterns αs} {rs₂ : Patterns βs} {pss : PatternStack αss}
   where
 
-  specialize-preserves-#ᵐˢ :
-    P #ᵐˢ ((con c rs₁ ∷ rs₂) ∷ pss) → specialize c P #ᵐˢ (rs₁ ∷ rs₂ ∷ pss)
-  specialize-preserves-#ᵐˢ disj isss (is₁ ∷ is₂ ∷ iss) =
-    disj (specialize-preserves-≼⁻ isss) ((con≼ is₁ ∷ is₂) ∷ iss)
+  specialize-preserves-#
+    : psmat #ˢᵐ ((con c rs₁ ∷ rs₂) ∷ pss)
+    → specialize c psmat #ˢᵐ (rs₁ ∷ rs₂ ∷ pss)
+  specialize-preserves-# disj instsMat (insts ∷ insts' ∷ instss) =
+    disj (specialize-preserves-≼⁻ instsMat) ((con≼ insts ∷ insts') ∷ instss)
 
-  specialize-preserves-#ᵐˢ⁻ :
-    specialize c P #ᵐˢ (rs₁ ∷ rs₂ ∷ pss) → P #ᵐˢ ((con c rs₁ ∷ rs₂) ∷ pss)
-  specialize-preserves-#ᵐˢ⁻ disj isss ((con≼ is₁ ∷ is₂) ∷ iss) =
-    disj (specialize-preserves-≼ isss) (is₁ ∷ is₂ ∷ iss)
+  specialize-preserves-#⁻
+    : specialize c psmat #ˢᵐ (rs₁ ∷ rs₂ ∷ pss)
+    → psmat #ˢᵐ ((con c rs₁ ∷ rs₂) ∷ pss)
+  specialize-preserves-#⁻ disj instsMat ((con≼ insts ∷ insts') ∷ instss) =
+    disj (specialize-preserves-≼ instsMat) (insts ∷ insts' ∷ instss)
 
 
-module @0 _ ⦃ sig : Signature ⦄ {c : NameCon d}
+module _ {c : NameCon d}
   (let αs = argsTy (dataDefs sig d) c)
-  {P : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)}
+  {psmat : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)}
   {rs : Patterns βs} {pss : PatternStack αss}
   where
 
-  specialize-preserves-#ᵐˢ-wild :
-    P #ᵐˢ ((— ∷ rs) ∷ pss) → specialize c P #ᵐˢ (—* ∷ rs ∷ pss)
-  specialize-preserves-#ᵐˢ-wild disj isss (_ ∷ is' ∷ iss) =
-    disj (specialize-preserves-≼⁻ isss) ((—≼ ∷ is') ∷ iss)
+  specialize-preserves-#-wild
+    : psmat #ˢᵐ ((— ∷ rs) ∷ pss)
+    → specialize c psmat #ˢᵐ (—* ∷ rs ∷ pss)
+  specialize-preserves-#-wild disj instsMat (_ ∷ insts ∷ instss) =
+    disj (specialize-preserves-≼⁻ instsMat) ((—≼ ∷ insts) ∷ instss)
 
 
-module @0 _ ⦃ @0 sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
-  {P : PatternStackMatrix ((TyData d ∷ αs) ∷ αss)}
+module _ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
+  {psmat : PatternStackMatrix ((TyData d ∷ αs) ∷ αss)}
   {p : Pattern (TyData d)} {ps : Patterns αs} {pss : PatternStack αss}
   where
 
-  default-preserves-#ᵐˢ : P #ᵐˢ ((p ∷ ps) ∷ pss) → default_ P #ᵐˢ (ps ∷ pss)
-  default-preserves-#ᵐˢ disj isss (is ∷ iss) =
-    disj (default-preserves-≼⁻ isss) ((exampleFor≼ _ ∷ is) ∷ iss)
+  default-preserves-#
+    : psmat #ˢᵐ ((p ∷ ps) ∷ pss)
+    → default_ psmat #ˢᵐ (ps ∷ pss)
+  default-preserves-# disj instsMat (insts ∷ instss) =
+    disj (default-preserves-≼⁻ instsMat) ((exampleFor≼ _ ∷ insts) ∷ instss)
 
 
-module @0 _ ⦃ @0 sig : Signature ⦄ {c : NameCon d}
-  {P : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)}
-  {qs : Patterns (argsTy (dataDefs sig d) c)} {rs : Patterns βs} {pss : PatternStack αss}
+module _ {c : NameCon d}
+  {psmat : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)}
+  {qs : Patterns (argsTy (dataDefs sig d) c)}
+  {rs : Patterns βs} {pss : PatternStack αss}
   where
 
-  default-preserves-#ᵐˢ⁻ :
-      c ∉** P
-    → default_ P #ᵐˢ (rs ∷ pss)
-    → P #ᵐˢ ((con c qs ∷ rs) ∷ pss)
-  default-preserves-#ᵐˢ⁻ h disj isss ((con≼ _ ∷ is₂) ∷ iss) =
-    disj (default-preserves-≼ h isss) (is₂ ∷ iss)
+  default-preserves-#⁻
+    : c ∉ˢᵐ psmat
+    → default_ psmat #ˢᵐ (rs ∷ pss)
+    → psmat #ˢᵐ ((con c qs ∷ rs) ∷ pss)
+  default-preserves-#⁻ h disj instsMat ((con≼ _ ∷ insts) ∷ instss) =
+    disj (default-preserves-≼ h instsMat) (insts ∷ instss)
 
 
-module @0 _ ⦃ @0 sig : Signature ⦄
-  {P : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)}
+module _
+  {psmat : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)}
   {qs : Patterns βs} {pss : PatternStack αss}
   where
 
-  default-preserves-#ᵐˢ⁻-wild :
-      (∀ c → c ∉** P)
-    → default_ P #ᵐˢ (qs ∷ pss)
-    → P #ᵐˢ ((— ∷ qs) ∷ pss)
-  default-preserves-#ᵐˢ⁻-wild h disj {(con c us ∷ _) ∷ _} isss ((—≼ ∷ is) ∷ iss) =
-    disj (default-preserves-≼ (h _) isss) (is ∷ iss)
+  default-preserves-#⁻-wild
+    : (∀ c → c ∉ˢᵐ psmat)
+    → default_ psmat #ˢᵐ (qs ∷ pss)
+    → psmat #ˢᵐ ((— ∷ qs) ∷ pss)
+  default-preserves-#⁻-wild h disj {(con c us ∷ _) ∷ _} instsMat ((—≼ ∷ insts) ∷ instss) =
+    disj (default-preserves-≼ (h _) instsMat) (insts ∷ instss)

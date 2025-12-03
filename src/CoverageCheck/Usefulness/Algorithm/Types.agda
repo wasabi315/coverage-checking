@@ -101,7 +101,7 @@ module _ ⦃ @0 sig : Signature ⦄
   UsefulS'→Useful' = λ where
     ⟪ qs ∷ [] , disj , subs ∷ [] ⟫ →
       ⟪ qs
-      , (λ instsmat insts → disj (gmapAny⁺ (_∷ []) instsmat) (insts ∷ []))
+      , (λ instmat insts → disj (gmapAny⁺ (_∷ []) instmat) (insts ∷ []))
       , subs ⟫
   {-# COMPILE AGDA2HS UsefulS'→Useful' inline #-}
 
