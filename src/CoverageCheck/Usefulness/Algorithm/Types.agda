@@ -16,9 +16,9 @@ private open module @0 G = Globals globals
 --------------------------------------------------------------------------------
 -- The actual algorithm operates on doubly-nested lists of patterns
 -- instead of lists of patterns.
--- This is because for
+-- This is because:
 --   1. efficiency: O(1) cons/uncons instead of O(n) append/split
---   2. ease of proofs: pattern matching for decomposition instead of with-abstract the result of a split function
+--   2. ease of proofs: pattern matching for decomposition instead of with-abstracting the result of a split function
 --
 -- The following provides type synonyms for the doubly-nested things.
 

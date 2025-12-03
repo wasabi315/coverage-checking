@@ -41,19 +41,19 @@ NameIn xs = ∃[ x ∈ Name ] In x xs
 --------------------------------------------------------------------------------
 -- Eq/Ord instances for NameIn
 
--- x is fresh in xs implies x is not in xs
+-- x is fresh in xs implies that x is not in xs
 Fresh⇒¬In : ∀ {x} xs → Fresh x xs → ¬ In x xs
 Fresh⇒¬In (SCons x xs h) (p , ps) InHere rewrite eqReflexivity x = explode p
 Fresh⇒¬In (SCons x xs h) (p , ps) (InThere q) = Fresh⇒¬In xs ps q
 
--- Ins of the same type are always equal
+-- In values of the same type are always equal
 In-unique : ∀ {x xs} (p q : In x xs) → p ≡ q
 In-unique {xs = SCons _ _ _} InHere      InHere      = refl
 In-unique {xs = SCons _ _ _} (InThere p) (InThere q) = cong InThere (In-unique p q)
 In-unique {xs = SCons _ _ h} InHere      (InThere q) = explode (Fresh⇒¬In _ h q)
 In-unique {xs = SCons _ _ h} (InThere p) InHere      = explode (Fresh⇒¬In _ h p)
 
--- Equality on the name parts enough to show that two NameIns are equal
+-- Equality on the name parts is enough to show that two NameIns are equal
 NameIn≡ : ∀ {@0 xs} {x y : NameIn xs} → value x ≡ value y → x ≡ y
 NameIn≡ {x = x ⟨ p ⟩} {y = x ⟨ q ⟩} refl = cong0 (x ⟨_⟩) (In-unique p q)
 
@@ -176,7 +176,7 @@ module _ {@0 xs} {p : @0 NameIn xs → Type} where
         (decPAnyNameIn' ys f (inj ∘ InThere)))
   {-# COMPILE AGDA2HS decPAnyNameIn' #-}
 
--- Decides whether any names in scope satisfy a given predicate
+-- Decides whether any name in scope satisfies a given predicate
 -- If yes, this function returns a non-empty list of NameIn
 -- together with the proof that the predicate is indeed satisfied
 decPAnyNameIn : ∀ xs {@0 ys}

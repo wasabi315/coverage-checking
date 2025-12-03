@@ -56,7 +56,7 @@ module _ {c : NameCon d}
     → specialize c psmat ≼ˢᵐ (us ∷ vs ∷ vss)
   specialize-preserves-≼ = gconcatMapAny⁺ specialize'-preserves-≼
 
-  -- Unspecialization preserves ≼
+  -- Unspecialization also preserves ≼
 
   specialize'-preserves-≼⁻ : {pss : PatternStack ((TyData d ∷ βs) ∷ αss)}
     → specialize' c pss ≼ˢᵐ (us ∷ vs ∷ vss)

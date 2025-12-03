@@ -58,7 +58,7 @@ module _ ⦃ sig : Signature ⦄ {d : NameData} (c : NameCon d)
 
 module _ ⦃ @0 sig : Signature ⦄ where
 
-  -- Root constructor set: the set of constructors that appear as the outermost constructor pattern in the first column of the pattern matrix.
+  -- Root constructor set: the set of constructors that appear as the outermost constructor patterns in the first column of the pattern matrix.
   -- e.g. The root constructor set is {nil, cons} for the following pattern matrix:
   --
   --   [ [ (nil ∣ cons — nil) , ─ ]
@@ -93,7 +93,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
 module _ ⦃ sig : Signature ⦄ where
 
-  -- Is there a constructor that does not appear in root constructor set?
+  -- Is there a constructor that does not appear in the root constructor set?
   existMissCon : PatternStackMatrix ((TyData d ∷ αs0) ∷ αss0) → Bool
   existMissCon psmat = not (Set.null missConSet)
     where

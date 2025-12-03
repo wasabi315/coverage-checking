@@ -9,8 +9,8 @@ import Data.List.NonEmpty (NonEmpty((:|)))
 decExhaustive ::
               Signature ->
                 Tys -> [Patterns] -> Either (NonEmpty (All Pattern)) ()
-decExhaustive sig αs pss
-  = ifDecP (decUseful sig αs pss (pWilds αs))
+decExhaustive sig αs pmat
+  = ifDecP (decUseful sig αs pmat (pWilds αs))
       (\ h -> Left (witnesses h))
       (Right ())
 

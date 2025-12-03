@@ -32,7 +32,7 @@ syntax Subsumption  p  q  = p ⊆ q
 syntax Subsumptions ps qs = ps ⊆* qs
 
 -- p ⊆ q : p subsumes q
--- Not "complete" e.g. (true ∣ false) ⊆ — is not derivable
+-- Not complete; for example, (true ∣ false) ⊆ — is not derivable
 -- Probably better named BranchSelection
 data Subsumption where
   SWild : {@0 q : Pattern α0} → — ⊆ q

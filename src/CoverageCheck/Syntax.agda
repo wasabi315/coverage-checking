@@ -18,7 +18,7 @@ private
 --------------------------------------------------------------------------------
 -- Types and Signatures
 
--- We only have datatypes in the type system at the moment
+-- We currently only have datatypes in the type system
 -- TODO: Add other types including integers, functions, and type variables
 data Ty : Type where
   TyData : NameData → Ty
@@ -43,8 +43,8 @@ record Dataty (@0 d : NameData) : Type where
   field
     -- The types of the arguments of each constructor
     argsTy : (c : NameCon d) → Tys
-    -- Where we actually store the constructor names for Haskell side
-    -- The global scope is truly for Agda side
+    -- Where we actually store the constructor names for the Haskell side
+    -- The global scope is truly for the Agda side
     dataCons : Scope
     -- dataCons aligns with the global scope
     @0 isConScope : dataCons ≡ conScope d
@@ -167,10 +167,10 @@ module _ ⦃ @0 sig : Signature ⦄ where
 -- Non-empty axiom
 
 -- The algorithm we are formalizing assumes that each type has at least one value.
--- We currently formulate the axiom by the function taking a type and returning
+-- We currently formulate the axiom as a function that takes a type and returns
 -- some value of that type.
 --
--- We are not sure if this is the correct way though.
+-- However, we are not sure if this is the correct way.
 -- The axiom tells us that each type is well-founded.
 -- This would mean that our formalization does not handle a class of datatypes
 -- that are not well-founded, e.g.

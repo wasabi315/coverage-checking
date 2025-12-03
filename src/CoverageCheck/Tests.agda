@@ -11,7 +11,7 @@ open import Haskell.Data.List.NonEmpty using (_∷_)
 -- Set and its operations from agda2hs are postulated entities, so we need rewrite
 -- rules to enable actual computation in working examples.
 -- These rewrite rules may in turn cause the primEraseEquality calls in Prelude to
--- reduce to refl when the sides are definitionally equal, unblocks computation
+-- reduce to refl when the sides are definitionally equal, unblocking computation
 -- stuck at rewrite clauses.
 
 open import Agda.Builtin.Equality.Rewrite
@@ -133,7 +133,7 @@ P =
   (nil ∷ —   ∷ []) ∷
   (—   ∷ nil ∷ []) ∷ []
 
--- P is non-exhaustive, witnessed by the following list of patterns
+-- P is non-exhaustive, as witnessed by the following list of patterns
 _ : decExhaustive P
   ≡ Left (
       ((cons — —  ∷ cons — — ∷ []) ⟨ _ ⟩) ∷
@@ -151,6 +151,6 @@ Q =
   (cons — — ∷ —        ∷ []) ∷
   (—        ∷ cons — — ∷ []) ∷ []
 
--- Q is exhaustive, so we get a total matching function of type `∀ vs → FirstMatch Q vs`
+-- Q is exhaustive, so we obtain a total matching function of type `∀ vs → FirstMatch Q vs`
 _ : decExhaustive Q ≡ Right (Erased (the (∀ vs → FirstMatch Q vs) _))
 _ = refl

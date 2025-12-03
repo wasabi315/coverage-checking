@@ -24,68 +24,68 @@ private
 
 module _ ⦃ @0 sig : Signature ⦄ where
 
-  -- There is a matching row in P for every list of values
+  -- There is a matching row in P for any list of values
   Exhaustive : PatternMatrix αs0 → Type
-  Exhaustive P = ∀ vs → FirstMatch P vs
+  Exhaustive pmat = ∀ vs → FirstMatch pmat vs
 
   -- There is a list of patterns that has at least one instance and whose instances do not match any row in P
   NonExhaustive' : PatternMatrix αs0 → Type
-  NonExhaustive' P = ∃[ ps ∈ _ ] ∀ {vs} → ps ≼* vs → ¬ FirstMatch P vs
+  NonExhaustive' pmat = ∃[ ps ∈ _ ] ∀ {vs} → ps ≼* vs → ¬ FirstMatch pmat vs
   {-# COMPILE AGDA2HS NonExhaustive' inline #-}
 
   NonExhaustive : PatternMatrix αs0 → Type
-  NonExhaustive P = NonEmpty (NonExhaustive' P)
+  NonExhaustive pmat = NonEmpty (NonExhaustive' pmat)
   {-# COMPILE AGDA2HS NonExhaustive inline #-}
 
-  -- non-exhaustiveness defined in terms of usefulness:
+  -- Non-exhaustiveness defined in terms of usefulness:
   -- P is non-exhaustive if —* is useful with respect to P
   NonExhaustiveU : PatternMatrix αs0 → Type
-  NonExhaustiveU P = Useful P —*
+  NonExhaustiveU pmat = Useful pmat —*
   {-# COMPILE AGDA2HS NonExhaustiveU inline #-}
 
   -- P is exhaustive if —* is not useful with respect to P
   ExhaustiveU : PatternMatrix αs0 → Type
-  ExhaustiveU P = ¬ NonExhaustiveU P
+  ExhaustiveU pmat = ¬ NonExhaustiveU pmat
 
-  module _ {@0 P : PatternMatrix αs0} where
+  module _ {@0 pmat : PatternMatrix αs0} where
 
-    nonExhaustiveUToNonExhaustive' : Useful' P —* → NonExhaustive' P
+    nonExhaustiveUToNonExhaustive' : Useful' pmat —* → NonExhaustive' pmat
     nonExhaustiveUToNonExhaustive' ⟪ qs , disj , _ ⟫ =
       qs ⟨ (λ insts matches → disj (First⇒Any matches) insts) ⟩
     {-# COMPILE AGDA2HS nonExhaustiveUToNonExhaustive' transparent #-}
 
-    nonExhaustiveUToNonExhaustiveList : List (Useful' P —*) → List (NonExhaustive' P)
+    nonExhaustiveUToNonExhaustiveList : List (Useful' pmat —*) → List (NonExhaustive' pmat)
     nonExhaustiveUToNonExhaustiveList [] = []
     nonExhaustiveUToNonExhaustiveList (h ∷ hs) =
       nonExhaustiveUToNonExhaustive' h ∷ nonExhaustiveUToNonExhaustiveList hs
     {-# COMPILE AGDA2HS nonExhaustiveUToNonExhaustiveList transparent #-}
 
-    nonExhaustiveUToNonExhaustive : NonEmpty (Useful' P —*) → NonExhaustive P
+    nonExhaustiveUToNonExhaustive : NonEmpty (Useful' pmat —*) → NonExhaustive pmat
     nonExhaustiveUToNonExhaustive (h ∷ hs) =
       nonExhaustiveUToNonExhaustive' h ∷ nonExhaustiveUToNonExhaustiveList hs
     {-# COMPILE AGDA2HS nonExhaustiveUToNonExhaustive transparent #-}
 
     @0 nonExhaustiveToNonExhaustiveU : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
-      → NonExhaustive P
-      → NonExhaustiveU P
+      → NonExhaustive pmat
+      → NonExhaustiveU pmat
     nonExhaustiveToNonExhaustiveU hs = record
       { witnesses = flip fmap hs λ (qs ⟨ h ⟩) →
           ⟪ qs , (λ instMat insts → ¬First⇒¬Any (h insts) instMat) , —⊆* ⟫
       }
 
     @0 exhaustiveToExhaustiveU : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
-      → Exhaustive P
-      → ExhaustiveU P
+      → Exhaustive pmat
+      → ExhaustiveU pmat
     exhaustiveToExhaustiveU h u
       using ⟪ qs , disj , _ ⟫ ∷ _ ← u .witnesses
       = contradiction (First⇒Any (h (examplesFor qs))) (flip disj (examplesFor≼ qs))
 
 
-  module @0 _ {P : PatternMatrix αs0} where
+  module @0 _ {pmat : PatternMatrix αs0} where
 
-    exhaustiveUToExhaustive : ExhaustiveU P → Exhaustive P
+    exhaustiveUToExhaustive : ExhaustiveU pmat → Exhaustive pmat
     exhaustiveUToExhaustive h vs =
-      case decFirstMatch P vs of λ where
+      case decFirstMatch pmat vs of λ where
         (Yes h') → h'
         (No h')  →
           contradiction
@@ -94,7 +94,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
                   ⟪ onlys vs
                   , (λ instMat insts →
                       ¬First⇒¬Any h'
-                        (subst (λ vs → P ≼ᵐ vs) (sym (onlys≼⇒≡ insts)) instMat))
+                        (subst (λ vs → pmat ≼ᵐ vs) (sym (onlys≼⇒≡ insts)) instMat))
                   , —⊆* ⟫ ∷ []
               })
             h
@@ -104,9 +104,9 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
 module _ ⦃ sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α ⦄ where
 
-  decExhaustive : (pss : PatternMatrix αs)
-    → Either (NonExhaustive pss) (Erase (Exhaustive pss))
-  decExhaustive pss = ifDecP (decUseful pss pWilds)
+  decExhaustive : (pmat : PatternMatrix αs)
+    → Either (NonExhaustive pmat) (Erase (Exhaustive pmat))
+  decExhaustive pmat = ifDecP (decUseful pmat pWilds)
     (λ ⦃ h ⦄ → Left (nonExhaustiveUToNonExhaustive (h .witnesses)))
     (λ ⦃ h ⦄ → Right (Erased (exhaustiveUToExhaustive h)))
   {-# COMPILE AGDA2HS decExhaustive #-}

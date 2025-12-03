@@ -34,7 +34,7 @@ private
     @0 d0 : NameData
 
 --------------------------------------------------------------------------------
--- Usefulness problem reduced into a set of smaller sub-problems equivalent to the original problem
+-- Usefulness problem reduced to a set of smaller sub-problems equivalent to the original problem
 
 module _ ⦃ @0 sig : Signature ⦄ where
 
@@ -283,7 +283,7 @@ module _ ⦃ sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α �
 
 --------------------------------------------------------------------------------
 -- The main function: an evidence-producing version of isUseful
--- Computes patterns witnessing usefulness, instead of just returning a boolean
+-- Computes patterns that witness usefulness, instead of just returning a boolean
 -- Useful for informative error reporting
 
 module _
