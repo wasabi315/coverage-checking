@@ -187,7 +187,7 @@ con c ps ≼? con c' vs =
 {-# COMPILE AGDA2HS decInstance #-}
 {-# COMPILE AGDA2HS decInstances #-}
 
--- First-semantics
+-- First-match semantics
 FirstMatch : (@0 pmat : PatternMatrix αs0) (@0 vs : Values αs0) → Type
 FirstMatch pmat vs = First (λ ps → ps ≼* vs) pmat
 {-# COMPILE AGDA2HS FirstMatch #-}
