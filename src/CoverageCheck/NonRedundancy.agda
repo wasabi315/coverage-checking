@@ -24,7 +24,7 @@ private
 
 module _ ⦃ @0 sig : Signature ⦄ where
 
-  -- A pattern matrix satisfies AllNonRedundant if all rows are useful
+  -- A pattern matrix satisfies AllNonRedundant if every row is useful
   -- with respect to all earlier rows.
   AllNonRedundant : @0 PatternMatrix αs0 → Type
   AllNonRedundant pmat =
@@ -35,8 +35,8 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
   -- A predicate on pattern matrices that expresses the existence
   -- of redundant rows.
-  -- This type compiles to one that is roughly isomorphic to List Bool but it is
-  -- ensured that at least one element is true.
+  -- This type compiles to one that is roughly isomorphic to List Bool, but it is
+  -- guaranteed that at least one element is true.
   SomeRedundant : @0 PatternMatrix αs0 → Type
   SomeRedundant pmat =
     Some
@@ -47,6 +47,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
 module @0 _ ⦃ sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α ⦄ where
 
+  -- The negation of SomeRedundant implies AllNonRedundant.
   ¬SomeRedundant→AllNonRedundant : (pmat : PatternMatrix αs)
     → ¬ SomeRedundant pmat
     → AllNonRedundant pmat
@@ -55,9 +56,13 @@ module @0 _ ⦃ sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α
       (λ {pmat'} h → dec-stable (decUseful _ _) (h ∘ Erased))
       (¬Some⇒All¬ (inits1 pmat) h)
 
+--------------------------------------------------------------------------------
+-- Entrypoint
 
 module _ ⦃ sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α ⦄ where
 
+  -- Decides whether a pattern matrix satisfies non-redundancy.
+  -- If it does not, we obtain a proof indicating which row is redundant.
   decAllNonRedundant : (pmat : PatternMatrix αs)
     → Either (SomeRedundant pmat) (Erase (AllNonRedundant pmat))
   decAllNonRedundant pmat =
