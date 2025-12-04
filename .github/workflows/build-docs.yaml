@@ -65,14 +65,17 @@ jobs:
           wget -O agda-stdlib.tar.gz https://github.com/agda/agda-stdlib/archive/v${{ env.AGDA_STDLIB_VERSION }}.tar.gz
           tar -zxvf agda-stdlib.tar.gz
           echo "$HOME/.agda/agda-stdlib-${{ env.AGDA_STDLIB_VERSION }}/standard-library.agda-lib" > ~/.agda/libraries
-          cd -
 
       - name: Install agda2hs
         if: steps.cache-cabal.outputs.cache-hit != 'true'
         run: |
-          cabal install agda2hs-${{ env.AGDA2HS_VERSION }}
-          agda2hs locate >> ~/.agda/libraries
-          tail -n 1 ~/.agda/libraries | sed 's|base/base.agda-lib|containers/containers.agda-lib|' >> ~/.agda/libraries
+          cd ~/.agda
+          git clone https://github.com/agda/agda2hs.git
+          cd agda2hs
+          git checkout tags/v${{ env.AGDA2HS_VERSION }}
+          cabal install
+          echo $(pwd)/lib/base/base.agda-lib >> ~/.agda/libraries
+          echo $(pwd)/lib/containers/containers.agda-lib >> ~/.agda/libraries
 
       - name: Checkout coverage-checking
         uses: actions/checkout@v5
