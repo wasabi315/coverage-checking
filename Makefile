@@ -15,7 +15,8 @@ alllib: lib \
 	lib/CoverageCheck/Usefulness/Algorithm.hs \
 	lib/CoverageCheck/Usefulness/Algorithm/Raw.hs \
 	lib/CoverageCheck/Usefulness/Algorithm/MissingConstructors.hs \
-	lib/CoverageCheck/Exhaustiveness.hs
+	lib/CoverageCheck/Exhaustiveness.hs \
+	lib/CoverageCheck/NonRedundancy.hs
 
 lib:
 	mkdir lib

@@ -22,6 +22,15 @@ data First p = FHere p
              | FThere (First p)
                  deriving (Eq, Show)
 
+data Many p = MNil
+            | MHere p (Many p)
+            | MThere (Many p)
+                deriving (Eq, Show)
+
+data Some p = SHere p (Many p)
+            | SThere (Some p)
+                deriving (Eq, Show)
+
 data HPointwise r = HNil
                   | (:>>) r (HPointwise r)
                       deriving (Eq, Show)
@@ -31,6 +40,22 @@ headAll (p :> _) = p
 
 tailAll :: forall p . All p -> All p
 tailAll (_ :> ps) = ps
+
+tailMany :: forall p . Many p -> Many p
+tailMany (MHere _ ps) = ps
+tailMany (MThere ps) = ps
+
+someToAny :: forall p . Some p -> Many p
+someToAny (SHere px pxs) = MHere px pxs
+someToAny (SThere pxs) = MThere (someToAny pxs)
+
+tailSome :: forall p . Some p -> Many p
+tailSome (SHere px pxs) = pxs
+tailSome (SThere pxs) = someToAny pxs
+
+unthereSome :: forall p . Some p -> Some p
+unthereSome (SHere px pxs) = undefined
+unthereSome (SThere pxs) = pxs
 
 data These a b = This a
                | That b
@@ -74,6 +99,10 @@ ifDecP :: DecP a -> (a -> b) -> b -> b
 ifDecP (Yes p) t e = t p
 ifDecP No t e = e
 
+decToDecP :: Bool -> DecP ()
+decToDecP False = No
+decToDecP True = Yes ()
+
 infix 3 `tupleDecP`
 tupleDecP :: DecP a -> DecP b -> DecP (a, b)
 tupleDecP No _ = No
@@ -96,4 +125,16 @@ firstDecP f [] = No
 firstDecP f (x : xs)
   = ifDecP (f x) (\ p -> Yes (FHere p))
       (mapDecP FThere (firstDecP f xs))
+
+manyDecP :: (a -> DecP p) -> [a] -> DecP (Many p)
+manyDecP f [] = Yes MNil
+manyDecP f (x : xs)
+  = ifDecP (f x) (\ px -> mapDecP (MHere px) (manyDecP f xs))
+      (mapDecP MThere (manyDecP f xs))
+
+someDecP :: (a -> DecP p) -> [a] -> DecP (Some p)
+someDecP f [] = No
+someDecP f (x : xs)
+  = ifDecP (f x) (\ px -> mapDecP (SHere px) (manyDecP f xs))
+      (mapDecP SThere (someDecP f xs))
 

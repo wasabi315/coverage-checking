@@ -156,7 +156,7 @@ pattern there p  = There p
 pattern [_] p    = FHere p
 pattern _∷_ p ps = FThere p ps
 
-module _ {a : Type} (p : @0 a → Type) where
+module _ {@0 a : Type} (p : @0 a → Type) where
 
   data Many : (@0 xs : List a) → Type where
     MNil   : Many []
@@ -167,6 +167,8 @@ module _ {a : Type} (p : @0 a → Type) where
     SHere  : ∀ {@0 x xs} → p x → Many xs → Some (x ∷ xs)
     SThere : ∀ {@0 x xs} → Some xs → Some (x ∷ xs)
 
+  {-# COMPILE AGDA2HS Many deriving (Eq, Show) #-}
+  {-# COMPILE AGDA2HS Some deriving (Eq, Show) #-}
 
 pattern []       = MNil
 pattern _∷_ p ps = MHere p ps
@@ -234,6 +236,42 @@ module _ {@0 a : Type} {p : @0 a → Type} where
   tailFirst : ∀ {@0 x xs} → ¬ p x → First p (x ∷ xs) → First p xs
   tailFirst ¬p [ p ]   = contradiction p ¬p
   tailFirst ¬p (_ ∷ p) = p
+
+  tailMany : ∀ {@0 x xs} → Many p (x ∷ xs) → Many p xs
+  tailMany (_ ∷ ps)   = ps
+  tailMany (there ps) = ps
+  {-# COMPILE AGDA2HS tailMany #-}
+
+  someToAny : ∀ {@0 xs} → Some p xs → Many p xs
+  someToAny (px ∷ pxs) = px ∷ pxs
+  someToAny (there pxs) = there (someToAny pxs)
+  {-# COMPILE AGDA2HS someToAny #-}
+
+  tailSome : ∀ {@0 x xs} → Some p (x ∷ xs) → Many p xs
+  tailSome (px ∷ pxs) = pxs
+  tailSome (there pxs) = someToAny pxs
+  {-# COMPILE AGDA2HS tailSome #-}
+
+  unthereSome : ∀ {@0 x xs} → @0 ¬ p x → Some p (x ∷ xs) → Some p xs
+  unthereSome ¬px (px ∷ pxs) = contradiction px ¬px
+  unthereSome ¬px (there pxs) = pxs
+  {-# COMPILE AGDA2HS unthereSome #-}
+
+  trivialMany : ∀ xs → Many p xs
+  trivialMany [] = []
+  trivialMany (_ ∷ xs) = there (trivialMany xs)
+
+  ¬Some⇒All¬ : ∀ xs → ¬ Some p xs → All (λ x → ¬ p x) xs
+  ¬Some⇒All¬ [] _ = []
+  ¬Some⇒All¬ (x ∷ xs) ¬pxxs =
+    (λ px → ¬pxxs (px ∷ trivialMany xs)) ∷ ¬Some⇒All¬ xs (¬pxxs ∘ there)
+
+
+module _ {@0 a : Type} {p q : @0 a → Type} where
+
+  mapAll : (∀ {x} → p x → q x) → (∀ {xs} → All p xs → All q xs)
+  mapAll f [] = []
+  mapAll f (p ∷ ps) = f p ∷ mapAll f ps
 
 
 module _ {@0 a b : Type} {p : @0 a → Type} {q : @0 b → Type} {f : a → b} where
@@ -362,7 +400,7 @@ inits1 [] = []
 inits1 (x ∷ xs) = map (x ∷_) (inits xs)
 
 --------------------------------------------------------------------------------
--- Reflects
+-- Reflects and Dec
 
 negReflects : ∀ {ba a} → Reflects a ba → Reflects (¬ a) (not ba)
 negReflects {False} ¬a = ¬a
@@ -384,6 +422,10 @@ theseReflects {False} {True}  _  b  = That b
 theseReflects {True}  {True}  a  b  = Both a b
 theseReflects {False} {False} ¬a ¬b = these ¬a ¬b (λ _ → ¬b)
 
+negDec : ∀ {@0 a} → Dec a → Dec (¬ a)
+negDec (ba ⟨ ra ⟩) = (not ba) ⟨ negReflects ra ⟩
+{-# COMPILE AGDA2HS negDec inline #-}
+
 tupleDec : ∀ {@0 a b} → Dec a → Dec b → Dec (a × b)
 tupleDec (ba ⟨ ra ⟩) (bb ⟨ rb ⟩) = (ba && bb) ⟨ tupleReflects ra rb ⟩
 syntax tupleDec a b = a ×-dec b
@@ -400,6 +442,10 @@ theseDec (ba ⟨ ra ⟩) (bb ⟨ rb ⟩) = (ba || bb) ⟨ theseReflects ra rb �
 T : Bool → Type
 T True  = ⊤
 T False = ⊥
+
+@0 dec-stable : ∀ {@0 a} → Dec a → ¬ ¬ a → a
+dec-stable (True  ⟨ a  ⟩) ¬¬a = a
+dec-stable (False ⟨ ¬a ⟩) ¬¬a = contradiction ¬a ¬¬a
 
 --------------------------------------------------------------------------------
 -- Decidable relation that does not erase positive information
@@ -420,6 +466,11 @@ ifDecP : {a b : Type} → DecP a → (⦃ a ⦄ → b) → (@0 ⦃ ¬ a ⦄ → 
 ifDecP (Yes p) t e = t ⦃ p ⦄
 ifDecP (No ¬p) t e = e ⦃ ¬p ⦄
 {-# COMPILE AGDA2HS ifDecP #-}
+
+decToDecP : ∀ {@0 a} → Dec a → DecP (Erase a)
+decToDecP (False ⟨ ¬a ⟩) = No λ (Erased a) → contradiction a ¬a
+decToDecP (True  ⟨ a  ⟩) = Yes (Erased a)
+{-# COMPILE AGDA2HS decToDecP #-}
 
 tupleDecP : ∀ {a b} → DecP a → DecP b → DecP (a × b)
 syntax tupleDecP a b = a ×-decP b
@@ -449,6 +500,26 @@ firstDecP f (x ∷ xs) = ifDecP (f x)
   (λ ⦃ p ⦄ → Yes [ p ])
   (λ ⦃ ¬p ⦄ → mapDecP (¬p ∷_) (tailFirst ¬p) (firstDecP f xs))
 {-# COMPILE AGDA2HS firstDecP #-}
+
+manyDecP : {a : Type} {p : @0 a → Type}
+  → (∀ x → DecP (p x))
+  → ∀ xs → DecP (Many p xs)
+manyDecP f [] = Yes []
+manyDecP f (x ∷ xs) =
+  ifDecP (f x)
+    (λ ⦃ px ⦄ → mapDecP (px ∷_) tailMany (manyDecP f xs))
+    (mapDecP there tailMany (manyDecP f xs))
+{-# COMPILE AGDA2HS manyDecP #-}
+
+someDecP : {a : Type} {p : @0 a → Type}
+  → (∀ x → DecP (p x))
+  → ∀ xs → DecP (Some p xs)
+someDecP f [] = No λ _ → undefined
+someDecP f (x ∷ xs) =
+  ifDecP (f x)
+    (λ ⦃ px ⦄ → mapDecP (px ∷_) tailSome (manyDecP f xs))
+    (λ ⦃ ¬px ⦄ → mapDecP there (unthereSome ¬px) (someDecP f xs))
+{-# COMPILE AGDA2HS someDecP #-}
 
 --------------------------------------------------------------------------------
 -- Sets
