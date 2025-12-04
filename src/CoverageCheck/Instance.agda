@@ -193,7 +193,7 @@ FirstMatch pmat vs = First (λ ps → ps ≼* vs) pmat
 {-# COMPILE AGDA2HS FirstMatch #-}
 
 -- Execute pattern matching
-decFirstMatch : (pmat : PatternMatrix αs0) (vs : Values αs0)
+decPFirstMatch : (pmat : PatternMatrix αs0) (vs : Values αs0)
   → DecP (FirstMatch pmat vs)
-decFirstMatch pmat vs = firstDecP (λ ps → ps ≼*? vs) pmat
-{-# COMPILE AGDA2HS decFirstMatch #-}
+decPFirstMatch pmat vs = firstDecP (λ ps → ps ≼*? vs) pmat
+{-# COMPILE AGDA2HS decPFirstMatch #-}

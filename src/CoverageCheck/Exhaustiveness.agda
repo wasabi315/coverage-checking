@@ -85,7 +85,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
     exhaustiveUToExhaustive : ExhaustiveU pmat → Exhaustive pmat
     exhaustiveUToExhaustive h vs =
-      case decFirstMatch pmat vs of λ where
+      case decPFirstMatch pmat vs of λ where
         (Yes h') → h'
         (No h')  →
           contradiction
@@ -106,7 +106,7 @@ module _ ⦃ sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α �
 
   decExhaustive : (pmat : PatternMatrix αs)
     → Either (NonExhaustive pmat) (Erase (Exhaustive pmat))
-  decExhaustive pmat = ifDecP (decUseful pmat pWilds)
+  decExhaustive pmat = ifDecP (decPUseful pmat pWilds)
     (λ ⦃ h ⦄ → Left (nonExhaustiveUToNonExhaustive (h .witnesses)))
     (λ ⦃ h ⦄ → Right (Erased (exhaustiveUToExhaustive h)))
   {-# COMPILE AGDA2HS decExhaustive #-}

@@ -5,7 +5,7 @@ open import CoverageCheck.Subsumption
 open import CoverageCheck.Syntax
 open import CoverageCheck.Name
 open import Data.Set as Set using (Set)
-open import Haskell.Data.List.NonEmpty using (NonEmpty; _∷_)
+open import Haskell.Data.List.NonEmpty as NonEmpty using (NonEmpty; _∷_)
 
 open import CoverageCheck.Usefulness.Definition
 open import CoverageCheck.Usefulness.Algorithm.Types
@@ -291,36 +291,79 @@ module _
   ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α ⦄
   where
 
-  decUseful' : (psmat : PatternStackMatrix αss) (ps : PatternStack αss)
+  decPUseful' : (psmat : PatternStackMatrix αss) (ps : PatternStack αss)
     → @0 UsefulAcc psmat ps
     → DecP (UsefulS psmat ps)
-  decUseful' {[]} [] [] done = Yes nilOkCase
-  decUseful' {[]} (_ ∷ _) [] done = No nilBadCase
-  decUseful' {[] ∷ αss} psmat ([] ∷ pss) (tailStep h) =
+  decPUseful' {[]} [] [] done = Yes nilOkCase
+  decPUseful' {[]} (_ ∷ _) [] done = No nilBadCase
+  decPUseful' {[] ∷ αss} psmat ([] ∷ pss) (tailStep h) =
     mapDecP tailCase tailCaseInv
+      (decPUseful' (map tailAll psmat) pss h)
+  decPUseful' {(TyData d ∷ αs) ∷ αss} psmat ((— ∷ ps) ∷ pss) (wildStep h h') =
+    case decExistMissCon psmat of λ where
+      (Right miss) →
+        mapDecP (wildMissCase miss) wildMissCaseInv
+          (decPUseful' (default_ psmat) (ps ∷ pss) h)
+      (Left (Erased comp)) →
+        mapDecP wildCompCase wildCompCaseInv
+          (decPAnyNameCon (dataDefs sig d) λ c →
+            decPUseful' (specialize c psmat) (—* ∷ ps ∷ pss) (h' c (comp c)))
+  decPUseful' {(TyData d ∷ αs) ∷ αss} psmat ((con c rs ∷ ps) ∷ pss) (conStep h) =
+    mapDecP conCase conCaseInv
+      (decPUseful' (specialize c psmat) (rs ∷ ps ∷ pss) h)
+  decPUseful' {(TyData d ∷ αs) ∷ αss} psmat ((r₁ ∣ r₂ ∷ ps) ∷ pss) (orStep h h') =
+    mapDecP orCase orCaseInv
+      (theseDecP
+        (decPUseful' psmat ((r₁ ∷ ps) ∷ pss) h)
+        (decPUseful' psmat ((r₂ ∷ ps) ∷ pss) h'))
+  {-# COMPILE AGDA2HS decPUseful' #-}
+
+  decPUseful : (pmat : PatternMatrix αs) (ps : Patterns αs)
+    → DecP (Useful pmat ps)
+  decPUseful pmat ps =
+    mapDecP UsefulS→Useful Useful→UsefulS
+      (decPUseful' (map (_∷ []) pmat) (ps ∷ []) (∀UsefulAcc _ _))
+  {-# COMPILE AGDA2HS decPUseful #-}
+
+-- Evidence-producing on Agda side, but boolean-returning on Haskell side
+
+module _
+  ⦃ sig : Signature ⦄
+  ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α ⦄
+  where
+
+  decUseful' : (psmat : PatternStackMatrix αss) (ps : PatternStack αss)
+    → @0 UsefulAcc psmat ps
+    → Dec (UsefulS psmat ps)
+  decUseful' {[]} [] [] done = True ⟨ nilOkCase ⟩
+  decUseful' {[]} (_ ∷ _) [] done = False ⟨ nilBadCase ⟩
+  decUseful' {[] ∷ αss} psmat ([] ∷ pss) (tailStep h) =
+    mapDec tailCase tailCaseInv
       (decUseful' (map tailAll psmat) pss h)
   decUseful' {(TyData d ∷ αs) ∷ αss} psmat ((— ∷ ps) ∷ pss) (wildStep h h') =
     case decExistMissCon psmat of λ where
       (Right miss) →
-        mapDecP (wildMissCase miss) wildMissCaseInv
+        mapDec (wildMissCase miss) wildMissCaseInv
           (decUseful' (default_ psmat) (ps ∷ pss) h)
       (Left (Erased comp)) →
-        mapDecP wildCompCase wildCompCaseInv
-          (decPAnyNameCon (dataDefs sig d) λ c →
+        mapDec wildCompCase wildCompCaseInv
+          (decAnyNameCon (dataDefs sig d) λ c →
             decUseful' (specialize c psmat) (—* ∷ ps ∷ pss) (h' c (comp c)))
   decUseful' {(TyData d ∷ αs) ∷ αss} psmat ((con c rs ∷ ps) ∷ pss) (conStep h) =
-    mapDecP conCase conCaseInv
+    mapDec conCase conCaseInv
       (decUseful' (specialize c psmat) (rs ∷ ps ∷ pss) h)
   decUseful' {(TyData d ∷ αs) ∷ αss} psmat ((r₁ ∣ r₂ ∷ ps) ∷ pss) (orStep h h') =
-    mapDecP orCase orCaseInv
-      (theseDecP
+    mapDec
+      (either orCaseL orCaseR)
+      (bimap NonEmpty.singleton NonEmpty.singleton ∘ orCaseInv' ∘ NonEmpty.head)
+      (eitherDec
         (decUseful' psmat ((r₁ ∷ ps) ∷ pss) h)
         (decUseful' psmat ((r₂ ∷ ps) ∷ pss) h'))
   {-# COMPILE AGDA2HS decUseful' #-}
 
   decUseful : (pmat : PatternMatrix αs) (ps : Patterns αs)
-    → DecP (Useful pmat ps)
+    → Dec (Useful pmat ps)
   decUseful pmat ps =
-    mapDecP UsefulS→Useful Useful→UsefulS
+    mapDec UsefulS→Useful Useful→UsefulS
       (decUseful' (map (_∷ []) pmat) (ps ∷ []) (∀UsefulAcc _ _))
   {-# COMPILE AGDA2HS decUseful #-}

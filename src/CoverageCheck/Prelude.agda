@@ -16,7 +16,7 @@ open import Haskell.Prelude public using
     ⊤; tt;
     Bool; True; False; not; _&&_; _||_; if_then_else_;
     Nat; zero; suc; _+_;
-    List; _++_; map; foldr; foldMap; elem; sum; concat; concatMap; lengthNat; null; iMonadList;
+    List; _++_; map; foldr; foldMap; elem; sum; concat; concatMap; lengthNat; null; iMonadList; reverse; foldl;
     String;
     _×_; _,_; fst; snd; uncurry;
     Maybe; Just; Nothing; maybe;
@@ -38,6 +38,8 @@ open import Haskell.Law.Eq public using
   (IsLawfulEq; isEquality; eqReflexivity; _≟_; iLawfulEqList; iLawfulEqChar)
 
 open import Haskell.Prim.Foldable public using (iFoldableList; Foldable; any)
+
+open import Haskell.Prim.List public using (scanl)
 
 open import Haskell.Prim.Num public using (iNumNat)
 
@@ -143,7 +145,6 @@ module _ {@0 a : Type} (p : @0 a → Type) where
     FHere  : ∀ {@0 x xs} → p x → First (x ∷ xs)
     FThere : ∀ {@0 x xs} → @0 ¬ p x → First xs → First (x ∷ xs)
 
-
 {-# COMPILE AGDA2HS All   deriving (Eq, Show) #-}
 {-# COMPILE AGDA2HS Any   deriving (Eq, Show) #-}
 {-# COMPILE AGDA2HS First deriving (Eq, Show) #-}
@@ -154,6 +155,24 @@ pattern here  p  = Here p
 pattern there p  = There p
 pattern [_] p    = FHere p
 pattern _∷_ p ps = FThere p ps
+
+module _ {a : Type} (p : @0 a → Type) where
+
+  data Many : (@0 xs : List a) → Type where
+    MNil   : Many []
+    MHere  : ∀ {@0 x xs} → p x → Many xs → Many (x ∷ xs)
+    MThere : ∀ {@0 x xs} → Many xs → Many (x ∷ xs)
+
+  data Some : (@0 xs : List a) → Type where
+    SHere  : ∀ {@0 x xs} → p x → Many xs → Some (x ∷ xs)
+    SThere : ∀ {@0 x xs} → Some xs → Some (x ∷ xs)
+
+
+pattern []       = MNil
+pattern _∷_ p ps = MHere p ps
+pattern _∷_ p ps = SHere p ps
+pattern there ps = MThere ps
+pattern there ps = SThere ps
 
 data HPointwise
   {@0 a : Type} {@0 p q : @0 a → Type}
@@ -263,6 +282,10 @@ these f g h (That x)   = g x
 these f g h (Both x y) = h x y
 {-# COMPILE AGDA2HS these #-}
 
+eitherToThese : {a b : Type} → Either a b → These a b
+eitherToThese = either This That
+{-# COMPILE AGDA2HS eitherToThese inline #-}
+
 instance
   iDefaultFunctorThese : ∀ {a} → DefaultFunctor (These a)
   iDefaultFunctorThese .DefaultFunctor.fmap f (This x) = This x
@@ -327,6 +350,17 @@ partitionEithersNonEmpty {a} {b} (x ∷ xs) = go x xs
     go (Left x)  []       = This (x ∷ [])
     go (Right y) []       = That (y ∷ [])
 
+-- These functions should go in Haskell.Data.List, but it is not possible because
+-- agda2hs-base already has the module of the same name.
+-- Instead, we use the rewrite rule functionality of agda2hs
+
+inits : {a : Type} → List a → List (List a)
+inits = map reverse ∘ scanl (flip _∷_) []
+
+inits1 : {a : Type} → List a → List (NonEmpty a)
+inits1 [] = []
+inits1 (x ∷ xs) = map (x ∷_) (inits xs)
+
 --------------------------------------------------------------------------------
 -- Reflects
 
@@ -343,6 +377,25 @@ eitherReflects : ∀ {ba bb a b} → Reflects a ba → Reflects b bb → Reflect
 eitherReflects {True}  {_}     a  _  = Left a
 eitherReflects {False} {True}  _  b  = Right b
 eitherReflects {False} {False} ¬a ¬b = either ¬a ¬b
+
+theseReflects : ∀ {ba bb a b} → Reflects a ba → Reflects b bb → Reflects (These a b) (ba || bb)
+theseReflects {True}  {False} a  _  = This a
+theseReflects {False} {True}  _  b  = That b
+theseReflects {True}  {True}  a  b  = Both a b
+theseReflects {False} {False} ¬a ¬b = these ¬a ¬b (λ _ → ¬b)
+
+tupleDec : ∀ {@0 a b} → Dec a → Dec b → Dec (a × b)
+tupleDec (ba ⟨ ra ⟩) (bb ⟨ rb ⟩) = (ba && bb) ⟨ tupleReflects ra rb ⟩
+syntax tupleDec a b = a ×-dec b
+{-# COMPILE AGDA2HS tupleDec inline #-}
+
+eitherDec : ∀ {@0 a b} → Dec a → Dec b → Dec (Either a b)
+eitherDec (ba ⟨ ra ⟩) (bb ⟨ rb ⟩) = (ba || bb) ⟨ eitherReflects ra rb ⟩
+{-# COMPILE AGDA2HS eitherDec inline #-}
+
+theseDec : ∀ {@0 a b} → Dec a → Dec b → Dec (These a b)
+theseDec (ba ⟨ ra ⟩) (bb ⟨ rb ⟩) = (ba || bb) ⟨ theseReflects ra rb ⟩
+{-# COMPILE AGDA2HS theseDec inline #-}
 
 T : Bool → Type
 T True  = ⊤

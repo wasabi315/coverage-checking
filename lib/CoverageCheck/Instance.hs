@@ -49,6 +49,7 @@ decInstances (p :> ps) (v :> vs)
 
 type FirstMatch = First Instances
 
-decFirstMatch :: [Patterns] -> Values -> DecP FirstMatch
-decFirstMatch pmat vs = firstDecP (\ ps -> decInstances ps vs) pmat
+decPFirstMatch :: [Patterns] -> Values -> DecP FirstMatch
+decPFirstMatch pmat vs
+  = firstDecP (\ ps -> decInstances ps vs) pmat
 

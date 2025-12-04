@@ -8,3 +8,4 @@ open import CoverageCheck.Instance public
 open import CoverageCheck.Subsumption public
 open import CoverageCheck.Usefulness public
 open import CoverageCheck.Exhaustiveness public
+open import CoverageCheck.NonRedundancy public

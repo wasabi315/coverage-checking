@@ -34,6 +34,20 @@ cons = _<|_
 singleton : {a : Type} → a → NonEmpty a
 singleton x = x ∷ []
 
+init : {a : Type} → NonEmpty a → List a
+init = λ xs → helper (head xs) (tail xs)
+  module Init where
+    helper : {a : Type} → a → List a → List a
+    helper x [] = []
+    helper x (y List.∷ xs) = x List.∷ helper y xs
+
+last : {a : Type} → NonEmpty a → a
+last = λ xs → helper (head xs) (tail xs)
+  module Last where
+    helper : {a : Type} → a → List a → a
+    helper x [] = x
+    helper _ (y List.∷ xs) = helper y xs
+
 --------------------------------------------------------------------------------
 
 private

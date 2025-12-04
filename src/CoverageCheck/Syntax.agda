@@ -73,6 +73,13 @@ record Dataty (@0 d : NameData) : Type where
   decPAnyNameCon = decPAnyNameIn dataCons isConScope
   {-# COMPILE AGDA2HS decPAnyNameCon inline #-}
 
+  -- Boolean-returning on Haskell side
+  decAnyNameCon : {p : @0 NameCon d → Type}
+    → (∀ x → Dec (p x))
+    → Dec (NonEmpty (Σ[ x ∈ NameCon d ] p x))
+  decAnyNameCon f = decAnyNameIn dataCons isConScope f
+  {-# COMPILE AGDA2HS decAnyNameCon inline #-}
+
 open Dataty public
 {-# COMPILE AGDA2HS Dataty #-}
 

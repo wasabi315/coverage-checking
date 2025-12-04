@@ -33,3 +33,10 @@ decPAnyNameIn ::
               Scope -> (Name -> DecP p) -> DecP (NonEmpty (Name, p))
 decPAnyNameIn xs f = decPAnyNameIn' xs f
 
+decAnyNameIn' :: Scope -> (Name -> Bool) -> Bool
+decAnyNameIn' SNil f = False
+decAnyNameIn' (SCons y ys) f = f y || decAnyNameIn' ys f
+
+decAnyNameIn :: Scope -> (Name -> Bool) -> Bool
+decAnyNameIn xs f = decAnyNameIn' xs f
+

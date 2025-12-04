@@ -156,11 +156,11 @@ module _ {@0 xs} {p : @0 NameIn xs → Type} where
   @0 foundInv : ∀ {@0 y ys h}
     → (@0 inj : ∀ {@0 x} → In x (SCons y ys h) → In x xs)
     → Σ[ x ∈ _ ] p (mapRefine inj x)
-    → These
+    → Either
         (p (y ⟨ inj InHere ⟩))
         (NonEmpty (Σ[ x ∈ _ ] p (mapRefine (inj ∘ InThere) x)))
-  foundInv inj (x ⟨ InHere    ⟩ , p) = This p
-  foundInv inj (x ⟨ InThere h ⟩ , p) = That ((x ⟨ h ⟩ , p) ∷ [])
+  foundInv inj (x ⟨ InHere    ⟩ , p) = Left p
+  foundInv inj (x ⟨ InThere h ⟩ , p) = Right ((x ⟨ h ⟩ , p) ∷ [])
 
   decPAnyNameIn' : ∀ ys
     → (f : ∀ x → DecP (p x))
@@ -170,11 +170,12 @@ module _ {@0 xs} {p : @0 NameIn xs → Type} where
   decPAnyNameIn' (SCons y ys h) f inj =
     mapDecP
       (bifoldMap1 (foundHere inj) (foundThere inj))
-      (foundInv inj ∘ NonEmpty.head)
+      (eitherToThese ∘ foundInv inj ∘ NonEmpty.head)
       (theseDecP
         (f (y ⟨ inj InHere ⟩))
         (decPAnyNameIn' ys f (inj ∘ InThere)))
   {-# COMPILE AGDA2HS decPAnyNameIn' #-}
+
 
 -- Decides whether any name in scope satisfies a given predicate
 -- If yes, this function returns a non-empty list of NameIn
@@ -186,3 +187,30 @@ decPAnyNameIn : ∀ xs {@0 ys}
   → DecP (NonEmpty (Σ[ x ∈ NameIn ys ] p x))
 decPAnyNameIn xs refl f = decPAnyNameIn' xs f id
 {-# COMPILE AGDA2HS decPAnyNameIn #-}
+
+-- Boolean-returning version on Haskell side
+
+module _ {@0 xs} {@0 p : @0 NameIn xs → Type} where
+
+  decAnyNameIn' : ∀ ys
+    → (f : ∀ x → Dec (p x))
+    → (@0 inj : ∀ {@0 x} → In x ys → In x xs)
+    → Dec (NonEmpty (Σ[ x ∈ _ ] p (mapRefine inj x)))
+  decAnyNameIn' [] f inj = False ⟨ (λ where (_ ∷ _) → undefined) ⟩
+  decAnyNameIn' (SCons y ys h) f inj =
+    mapDec
+      (bifoldMap1 (foundHere {p = p} inj) (foundThere {p = p} inj))
+      (foundInv {p = p} inj ∘ NonEmpty.head)
+      (eitherDec
+        (f (y ⟨ inj InHere ⟩))
+        (decAnyNameIn' ys f (inj ∘ InThere)))
+  {-# COMPILE AGDA2HS decAnyNameIn' #-}
+
+
+decAnyNameIn : ∀ xs {@0 ys}
+  → (@0 eq : xs ≡ ys)
+  → {@0 p : @0 NameIn ys → Type}
+  → (∀ x → Dec (p x))
+  → Dec (NonEmpty (Σ[ x ∈ NameIn ys ] p x))
+decAnyNameIn xs refl f = decAnyNameIn' xs f id
+{-# COMPILE AGDA2HS decAnyNameIn #-}

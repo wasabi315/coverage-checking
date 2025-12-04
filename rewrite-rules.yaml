@@ -1,0 +1,7 @@
+rewrites:
+  - from: "CoverageCheck.Prelude.inits"
+    to: "inits"
+    importing: "Data.List"
+  - from: "CoverageCheck.Prelude.inits1"
+    to: "inits1"
+    importing: "Data.List"
