@@ -34,7 +34,7 @@ jobs:
           wget -O agda-stdlib.tar.gz https://github.com/agda/agda-stdlib/archive/v${{ env.AGDA_STDLIB_VERSION }}.tar.gz
           tar -zxvf agda-stdlib.tar.gz
           mkdir -p ~/.agda
-          echo "$(pwd)/agda-stdlib-${{ env.AGDA_STDLIB_VERSION }}/standard-library.agda-lib" > ~/.agda/libraries
+          echo "$HOME/agda-stdlib-${{ env.AGDA_STDLIB_VERSION }}/standard-library.agda-lib" > ~/.agda/libraries
 
       - name: Install agda2hs
         run: |
