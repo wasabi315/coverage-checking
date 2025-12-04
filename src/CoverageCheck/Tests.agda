@@ -135,6 +135,7 @@ P =
   (—   ∷ nil ∷ []) ∷ []
 
 -- P is non-exhaustive, as witnessed by the following list of patterns
+-- Values covered by these witness patterns are proved not to match any row in P
 _ : decExhaustive P
   ≡ Left (
       ((cons — —  ∷ cons — — ∷ []) ⟨ _ ⟩) ∷
