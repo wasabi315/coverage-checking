@@ -1,6 +1,6 @@
 {-# OPTIONS --rewriting #-}
 
-module @0 CoverageCheck.Test where
+module @0 CoverageCheck.Tests where
 
 open import CoverageCheck
 open import Data.Set as Set using (Set)
