@@ -62,7 +62,6 @@ jobs:
         run: |
           wget -O agda-stdlib.tar.gz https://github.com/agda/agda-stdlib/archive/v${{ env.AGDA_STDLIB_VERSION }}.tar.gz
           tar -zxvf agda-stdlib.tar.gz
-          ls
           mkdir -p ~/.agda
           echo "$(pwd)/agda-stdlib-${{ env.AGDA_STDLIB_VERSION }}/standard-library.agda-lib" > ~/.agda/libraries
 
@@ -77,6 +76,8 @@ jobs:
 
       - name: Build docs
         run: |
+          ls agda-stdlib-${{ env.AGDA_STDLIB_VERSION }}/standard-library.agda-lib
+          cat ~/.agda/libraries
           agda --html --html-dir ${{ env.AGDA_HTML_DIR }} --include-path=. --include-path=src index.agda
 
       - name: Setup Pages
