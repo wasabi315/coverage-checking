@@ -1,9 +1,25 @@
-name: Build docs
+name: Build highlighted Agda code and deploy to GitHub Pages
 
 on:
+  # Runs on pushes targeting the default branch
   push:
     branches:
       - main
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 env:
   GHC_VERSION: 9.12.2
@@ -11,11 +27,23 @@ env:
   AGDA_VERSION: 2.8.0
   AGDA_STDLIB_VERSION: 2.3
   AGDA2HS_VERSION: 1.4
+  AGDA_HTML_DIR: html
 
 jobs:
-  build-docs:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Cache ~/.cabal directories
+        uses: actions/cache@v4
+        id: cache-cabal
+        with:
+          path: |
+            ~/.cabal/packages
+            ~/.cabal/store
+            ~/.cabal/bin
+            ~/.cabal/share
+          key: ${{ runner.os }}-${{ env.GHC_VERSION }}-${{ env.CABAL_VERSION }}-${{ env.AGDA_VERSION}}-${{ env.AGDA2HS_VERSION }}
+
       - name: Install ghc and cabal
         uses: haskell-actions/setup@v2
         with:
@@ -27,16 +55,19 @@ jobs:
         run: echo ~/.cabal/bin >> "${GITHUB_PATH}"
 
       - name: Install Agda
+        if: steps.cache-cabal.outputs.cache-hit != 'true'
         run: cabal install Agda-${{ env.AGDA_VERSION }}
 
       - name: Install agda-stdlib
         run: |
           wget -O agda-stdlib.tar.gz https://github.com/agda/agda-stdlib/archive/v${{ env.AGDA_STDLIB_VERSION }}.tar.gz
           tar -zxvf agda-stdlib.tar.gz
+          ls
           mkdir -p ~/.agda
-          echo "$HOME/agda-stdlib-${{ env.AGDA_STDLIB_VERSION }}/standard-library.agda-lib" > ~/.agda/libraries
+          echo "$(pwd)/agda-stdlib-${{ env.AGDA_STDLIB_VERSION }}/standard-library.agda-lib" > ~/.agda/libraries
 
       - name: Install agda2hs
+        if: steps.cache-cabal.outputs.cache-hit != 'true'
         run: |
           cabal install agda2hs-${{ env.AGDA2HS_VERSION }}
           agda2hs locate >> ~/.agda/libraries
@@ -46,12 +77,16 @@ jobs:
 
       - name: Build docs
         run: |
-          agda --html index.agda
+          agda --html --html-dir ${{ env.AGDA_HTML_DIR }} --include-path=. --include-path=src index.agda
 
-      - name: Deploy HTML
-        uses: JamesIves/github-pages-deploy-action@v4
-        if: success()
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          branch: gh-pages
-          folder: html
-          git-config-name: Github Actions
+          path: ${{ env.AGDA_HTML_DIR }}
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
