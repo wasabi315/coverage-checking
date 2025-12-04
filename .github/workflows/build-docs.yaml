@@ -1,0 +1,57 @@
+name: Build docs
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  GHC_VERSION: 9.12.2
+  CABAL_VERSION: 3.12.1.0
+  AGDA_VERSION: 2.8.0
+  AGDA_STDLIB_VERSION: 2.3
+  AGDA2HS_VERSION: 1.4
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install ghc and cabal
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: ${{ env.GHC_VERSION }}
+          cabal-version: ${{ env.CABAL_VERSION }}
+          cabal-update: true
+
+      - name: Put cabal programs in PATH
+        run: echo ~/.cabal/bin >> "${GITHUB_PATH}"
+
+      - name: Install Agda
+        run: cabal install Agda-${{ env.AGDA_VERSION }}
+
+      - name: Install agda-stdlib
+        run: |
+          wget -O agda-stdlib.tar.gz https://github.com/agda/agda-stdlib/archive/v${{ env.AGDA_STDLIB_VERSION }}.tar.gz
+          tar -zxvf agda-stdlib.tar.gz
+          mkdir -p ~/.agda
+          echo "$(pwd)/agda-stdlib-${{ env.AGDA_STDLIB_VERSION }}/standard-library.agda-lib" > ~/.agda/libraries
+
+      - name: Install agda2hs
+        run: |
+          cabal install agda2hs-${{ env.AGDA2HS_VERSION }}
+          agda2hs locate >> ~/.agda/libraries
+
+      - name: Checkout coverage-checking
+        uses: actions/checkout@v5
+
+      - name: Build docs
+        run: |
+          agda --html index.agda
+
+      - name: Deploy HTML
+        uses: JamesIves/github-pages-deploy-action@v4
+        if: success()
+        with:
+          branch: gh-pages
+          folder: html
+          git-config-name: Github Actions
