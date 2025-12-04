@@ -128,6 +128,7 @@ instance
   nonEmptyAxiom {TyData ⟨unit⟩} = con ⟨unit⟩ []
   nonEmptyAxiom {TyData ⟨list⟩} = con ⟨nil⟩ []
 
+
 P : PatternMatrix (TyData ⟨list⟩ ∷ TyData ⟨list⟩ ∷ [])
 P =
   (nil ∷ —   ∷ []) ∷
@@ -142,6 +143,10 @@ _ : decExhaustive P
       ((one —     ∷ one —    ∷ []) ⟨ _ ⟩) ∷ [])
 _ = refl
 
+-- All rows in P are non-redundant
+_ : decAllNonRedundant P ≡ Right _
+_ = refl
+
 Q : PatternMatrix (TyData ⟨list⟩ ∷ TyData ⟨list⟩ ∷ [])
 Q =
   (nil      ∷ —        ∷ []) ∷
@@ -151,6 +156,28 @@ Q =
   (cons — — ∷ —        ∷ []) ∷
   (—        ∷ cons — — ∷ []) ∷ []
 
--- Q is exhaustive, so we obtain a total matching function of type `∀ vs → FirstMatch Q vs`
+-- Q is exhaustive, so we obtain a total matching function of type
+--   `∀ vs → FirstMatch Q vs`
 _ : decExhaustive Q ≡ Right (Erased (the (∀ vs → FirstMatch Q vs) _))
+_ = refl
+
+-- The last row of Q is redundant, so we obtain a proof of uselessness for the last row
+_ : decAllNonRedundant Q
+  ≡ (Left
+      $ there
+      $ there
+      $ there
+      $ there
+      $ there
+      $ Erased
+          (the
+            (¬ Useful
+              ( (nil      ∷ —        ∷ []) ∷
+                (—        ∷ nil      ∷ []) ∷
+                (one —    ∷ —        ∷ []) ∷
+                (—        ∷ one —    ∷ []) ∷
+                (cons — — ∷ —        ∷ []) ∷ [])
+                (—        ∷ cons — — ∷ []))
+            _)
+      ∷ [])
 _ = refl

@@ -12,7 +12,7 @@ infixr 5 _∷_
 -- agda2hs re-exports
 
 open import Haskell.Prelude public using
-  ( Type; id; _∘_; flip; case_of_; undefined;
+  ( Type; id; _∘_; _$_; flip; case_of_; undefined;
     ⊤; tt;
     Bool; True; False; not; _&&_; _||_; if_then_else_;
     Nat; zero; suc; _+_;
