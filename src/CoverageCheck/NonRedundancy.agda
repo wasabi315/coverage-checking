@@ -53,7 +53,7 @@ module @0 _ ⦃ sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α
     → AllNonRedundant pmat
   ¬SomeRedundant→AllNonRedundant pmat h =
     mapAll
-      (λ {pmat'} h → dec-stable (decUseful _ _) (h ∘ Erased))
+      (λ h → dec-stable (decUseful _ _) (h ∘ Erased))
       (¬Some⇒All¬ (inits1 pmat) h)
 
 --------------------------------------------------------------------------------

@@ -68,7 +68,7 @@ _ : decAllNonRedundant Q
 _ = refl
 ```
 
-See [src/CoverageCheck/Tests.agda](src/CoverageCheck/Tests.agda) for full code.
+See [highlighted Agda code](https://wasabi315.github.io/coverage-check/index.html) for full code.
 
 ## Building
 
