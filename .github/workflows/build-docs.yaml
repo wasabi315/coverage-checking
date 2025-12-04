@@ -72,6 +72,7 @@ jobs:
         run: |
           cabal install agda2hs-${{ env.AGDA2HS_VERSION }}
           agda2hs locate >> ~/.agda/libraries
+          tail -n 1 ~/.agda/libraries | sed 's|base/base.agda-lib|containers/containers.agda-lib|' >> ~/.agda/libraries
 
       - name: Checkout coverage-checking
         uses: actions/checkout@v5
