@@ -24,6 +24,8 @@ private
 
 module _ ⦃ @0 sig : Signature ⦄ where
 
+  -- A pattern matrix satisfies AllNonRedundant if all rows are useful
+  -- with respect to all earlier rows.
   AllNonRedundant : @0 PatternMatrix αs0 → Type
   AllNonRedundant pmat =
     All
@@ -31,6 +33,10 @@ module _ ⦃ @0 sig : Signature ⦄ where
       (inits1 pmat)
   {-# COMPILE AGDA2HS AllNonRedundant inline #-}
 
+  -- A predicate on pattern matrices that expresses the existence
+  -- of redundant rows.
+  -- This type compiles to one that is roughly isomorphic to List Bool but it is
+  -- ensured that at least one element is true.
   SomeRedundant : @0 PatternMatrix αs0 → Type
   SomeRedundant pmat =
     Some
