@@ -79,7 +79,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Build docs
-        run: agda --html --html-dir ${{ env.AGDA_HTML_DIR }} --include-path=. --include-path=src index.agda
+        run: agda --html --html-dir ${{ env.AGDA_HTML_DIR }} --include-path=. --include-path=src --include-path=test index.agda
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

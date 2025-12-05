@@ -1,0 +1,4 @@
+name: coverage-checking-test
+include: . ../src
+depend: standard-library agda2hs-base agda2hs-containers
+flags: --with-K --erasure --no-import-sorts
