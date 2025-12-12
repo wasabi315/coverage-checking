@@ -1,0 +1,96 @@
+name: Generate Haskell code from Agda code using agda2hs and push to a separate branch
+
+on:
+  # Runs on pushes targeting the default branch
+  push:
+    branches:
+      - main
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: write
+
+env:
+  GHC_VERSION: 9.12.2
+  CABAL_VERSION: 3.12.1.0
+  AGDA_VERSION: 2.8.0
+  AGDA_STDLIB_VERSION: 2.3
+  AGDA2HS_VERSION: 1.4
+  HASKELL_BRANCH: haskell
+
+jobs:
+  generate-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cache ~/.cabal directories
+        uses: actions/cache@v4
+        id: cache-cabal
+        with:
+          path: |
+            ~/.cabal/packages
+            ~/.cabal/store
+            ~/.cabal/bin
+            ~/.cabal/share
+          key: ${{ runner.os }}-${{ env.GHC_VERSION }}-${{ env.CABAL_VERSION }}-${{ env.AGDA_VERSION}}-${{ env.AGDA2HS_VERSION }}
+
+      - name: Install ghc and cabal
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: ${{ env.GHC_VERSION }}
+          cabal-version: ${{ env.CABAL_VERSION }}
+          cabal-update: true
+
+      - name: Put cabal programs in PATH
+        run: echo ~/.cabal/bin >> "${GITHUB_PATH}"
+
+      - name: Install Agda
+        if: steps.cache-cabal.outputs.cache-hit != 'true'
+        run: cabal install Agda-${{ env.AGDA_VERSION }}
+
+      - name: Install agda-stdlib
+        run: |
+          mkdir -p ~/.agda
+          cd ~/.agda
+          wget -O agda-stdlib.tar.gz https://github.com/agda/agda-stdlib/archive/v${{ env.AGDA_STDLIB_VERSION }}.tar.gz
+          tar -zxvf agda-stdlib.tar.gz
+          echo "$HOME/.agda/agda-stdlib-${{ env.AGDA_STDLIB_VERSION }}/standard-library.agda-lib" > ~/.agda/libraries
+
+      - name: Install agda2hs-base and agda2hs-containers
+        run: |
+          cd ~/.agda
+          git clone https://github.com/agda/agda2hs.git
+          cd agda2hs
+          git checkout tags/v${{ env.AGDA2HS_VERSION }}
+          echo $(pwd)/lib/base/base.agda-lib >> ~/.agda/libraries
+          echo $(pwd)/lib/containers/containers.agda-lib >> ~/.agda/libraries
+
+      - name: Install agda2hs
+        if: steps.cache-cabal.outputs.cache-hit != 'true'
+        run: |
+          cd ~/.agda/agda2hs
+          cabal install
+
+      - name: Checkout coverage-checking
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Generate Haskell code
+        run: make
+
+      - name: Push generated Haskell code to a separate branch
+        run: |
+          git switch ${{ env.HASKELL_BRANCH }} || git switch -c ${{ env.HASKELL_BRANCH }}
+          sed -i '/lib\//d' .gitignore
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          if git diff --cached --quiet; then
+            echo "No changes in generated Haskell; skipping commit and push."
+            exit 0
+          fi
+          git commit -m "Generate Haskell code"
+          git push -u origin ${{ env.HASKELL_BRANCH }}
