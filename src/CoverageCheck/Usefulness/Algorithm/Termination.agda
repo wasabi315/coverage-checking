@@ -69,6 +69,17 @@ data UsefulAcc : (psmat : PatternStackMatrix αss) (ps : PatternStack αss) → 
 --------------------------------------------------------------------------------
 -- Termination measures
 
+-- The algorithm has a complicated recursive structure. In particular, the
+-- following details prevent us from using naive pattern size as a measure:
+--   1. The specialize and default operations expand or-patterns into multiple clauses
+--   2. The specialize operation expands a wildcard pattern into multiple wildcard patterns
+-- The measure we use is based on the following idea:
+--   a. Calculate the size after expanding all or-patterns (while still counting
+--      the number of or-patterns) to overcome the first issue
+--   b. Do not count wildcard patterns in the size calculation to overcome the second issue
+--   c. The size does not decrease for some steps because of b. To address this,
+--      we use a lexicographic order combining other measures that decrease at those steps
+
 ∥_∥ : Patterns αs → Nat → Nat
 ∥ [] ∥ n = n
 ∥ — ∷ ps ∥ n = ∥ ps ∥ n
@@ -232,6 +243,23 @@ default-≤ : (psmat : PatternStackMatrix ((TyData d ∷ αs) ∷ αss))
 default-≤ [] = ≤-refl
 default-≤ (ps ∷ psmat) rewrite ∥∥-++ (default' ps) (default_ psmat)
   = +-mono-≤ (default'-≤ ps) (default-≤ psmat)
+
+--------------------------------------------------------------------------------
+-- Each step strictly reduces the problem size
+
+{-
+
+   +---------------------------+---------------+-----------+------------+
+   |    step    \   measure    |  ∥ psmat ∥ˢᵐ  |  ∥ ps ∥ˢ  |  ∥ αss ∥ᵗ  |
+   +---------------------------+---------------+-----------+------------+
+   | tail case                 |       =       |     =     |     <      |
+   | con case                  |       ≤       |     <     |     ?      |
+   | wildcard case (missing)   |       ≤       |     =     |     <      |
+   | wildcard case (complete)  |       <       |     ?     |     ?      |
+   | or case                   |       =       |     <     |     =      |
+   +---------------------------+---------------+-----------+------------+
+
+-}
 
 tail-⊏ : (psmat : PatternStackMatrix ([] ∷ αss)) (pss : PatternStack αss)
   → (_ , map tailAll psmat , pss) ⊏ (_ , psmat , [] ∷ pss)
