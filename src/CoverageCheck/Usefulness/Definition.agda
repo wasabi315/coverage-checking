@@ -7,14 +7,15 @@ open import Haskell.Data.List.NonEmpty using (NonEmpty; _∷_)
 
 module CoverageCheck.Usefulness.Definition
   ⦃ @0 globals : Globals ⦄
-  ⦃ @0 sig : Signature ⦄
   where
 
 private open module @0 G = Globals globals
 
 --------------------------------------------------------------------------------
 
-module _ {@0 αs0} (@0 pmat : PatternMatrix αs0) (@0 ps : Patterns αs0) where
+module _ ⦃ @0 sig : Signature ⦄
+  {@0 αs0} (@0 pmat : PatternMatrix αs0) (@0 ps : Patterns αs0)
+  where
 
   record Useful' : Type where
     no-eta-equality
@@ -40,17 +41,21 @@ module _ {@0 αs0} (@0 pmat : PatternMatrix αs0) (@0 ps : Patterns αs0) where
 
 --------------------------------------------------------------------------------
 
-module _ {@0 αs0} (@0 pmat : PatternMatrix αs0) (@0 ps : Patterns αs0) where
+module _ ⦃ @0 sig : Signature ⦄
+  {@0 αs0} (@0 pmat : PatternMatrix αs0) (@0 ps : Patterns αs0)
+  where
 
   -- The original definition of usefulness in the paper
   record OriginalUseful : Type where
+    constructor ⟪_,_,_⟫
     field
       witness : Values αs0
-      pmat⋠witness : pmat ⋠ᵐ witness
-      ps≼witness : ps ≼* witness
+      @0 pmat⋠witness : pmat ⋠ᵐ witness
+      @0 ps≼witness : ps ≼* witness
 
 
-module @0 _
+module _
+  ⦃ sig : Signature ⦄
   ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
   {αs} {pmat : PatternMatrix αs} {ps : Patterns αs}
   where
@@ -62,4 +67,19 @@ module @0 _
     { witness = examplesFor qs
     ; pmat⋠witness = λ h → disj h (examplesFor≼ qs)
     ; ps≼witness = subsumes subs (examplesFor≼ qs)
+    }
+
+
+module _ ⦃ @0 sig : Signature ⦄
+  {@0 αs0} (@0 pmat : PatternMatrix αs0) (@0 ps : Patterns αs0)
+  where
+
+  -- The original definition of usefulness implies our extended one
+  OriginalUseful→Useful : OriginalUseful pmat ps → Useful pmat ps
+  OriginalUseful→Useful ⟪ vs , ninsts , insts ⟫ = record
+    { witnesses =
+        ⟪ onlys vs
+        , (λ h h' → ninsts (subst (λ vs → pmat ≼ᵐ vs) (sym (onlys≼⇒≡ h')) h))
+        , ⊆onlys insts ⟫
+        ∷ []
     }

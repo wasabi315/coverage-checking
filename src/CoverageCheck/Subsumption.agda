@@ -116,3 +116,18 @@ subsume (∣⊆ʳ sub) inst = ∣≼ʳ (subsume sub inst)
 
 subsumes [] [] = []
 subsumes (sub ∷ subs) (inst ∷ insts) = subsume sub inst ∷ subsumes subs insts
+
+⊆only : {p : Pattern α0} {v : Value α0}
+  → p ≼ v
+  → p ⊆ only v
+⊆onlys : {ps : Patterns αs0} {vs : Values αs0}
+  → ps ≼* vs
+  → ps ⊆* onlys vs
+
+⊆only —≼ = —⊆
+⊆only (con≼ insts) = con⊆ (⊆onlys insts)
+⊆only (∣≼ˡ inst) = ∣⊆ˡ (⊆only inst)
+⊆only (∣≼ʳ inst) = ∣⊆ʳ (⊆only inst)
+
+⊆onlys [] = []
+⊆onlys (inst ∷ insts) = ⊆only inst ∷ ⊆onlys insts
