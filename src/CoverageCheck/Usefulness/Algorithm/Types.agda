@@ -47,27 +47,27 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
   -- Instance/subsumption relations between doubly-nested things
 
-  InstanceStack : @0 PatternStack αss0 → @0 ValueStack αss0 → Type
-  syntax InstanceStack pss vss = pss ≼ˢ vss
-  pss ≼ˢ vss = HPointwise (λ ps vs → ps ≼* vs) pss vss
+  InstanceStack : @0 ValueStack αss0 → @0 PatternStack αss0 → Type
+  syntax InstanceStack vss pss = vss ≼ˢ pss
+  vss ≼ˢ pss = HPointwise (λ vs ps → vs ≼* ps) vss pss
   {-# COMPILE AGDA2HS InstanceStack inline #-}
 
-  InstanceMatrixStack : @0 PatternStackMatrix αss0 → @0 ValueStack αss0 → Type
-  syntax InstanceMatrixStack psss vss = psss ≼ˢᵐ vss
-  psmat ≼ˢᵐ vss = Any (λ pss → pss ≼ˢ vss) psmat
+  InstanceMatrixStack : @0 ValueStack αss0 → @0 PatternStackMatrix αss0 → Type
+  syntax InstanceMatrixStack vss psss = vss ≼ˢᵐ psss
+  vss ≼ˢᵐ psmat = Any (λ pss → vss ≼ˢ pss) psmat
   {-# COMPILE AGDA2HS InstanceMatrixStack inline #-}
 
-  _⋠ˢ_ : @0 PatternStack αss0 → @0 ValueStack αss0 → Type
-  pss ⋠ˢ vss = ¬ pss ≼ˢ vss
+  _⋠ˢ_ : @0 ValueStack αss0 → @0 PatternStack αss0 → Type
+  vss ⋠ˢ pss = ¬ vss ≼ˢ pss
 
-  _⋠ˢᵐ_ : @0 PatternStackMatrix αss0 → @0 ValueStack αss0 → Type
-  psmat ⋠ˢᵐ vss = ¬ psmat ≼ˢᵐ vss
+  _⋠ˢᵐ_ : @0 ValueStack αss0 → @0 PatternStackMatrix αss0 → Type
+  vss ⋠ˢᵐ psmat = ¬ vss ≼ˢᵐ psmat
 
   _#ˢᵐ_ : @0 PatternStackMatrix αss0 → @0 PatternStack αss0 → Type
-  psmat #ˢᵐ qss = ∀ {vss} → psmat ≼ˢᵐ vss → qss ≼ˢ vss → ⊥
+  psmat #ˢᵐ qss = ∀ {vss} → vss ≼ˢᵐ psmat → vss ≼ˢ qss → ⊥
 
   SubsumptionStack : @0 PatternStack αss0 → @0 PatternStack αss0 → Type
-  syntax SubsumptionStack pss vss = pss ⊆ˢ vss
+  syntax SubsumptionStack pss qss = pss ⊆ˢ qss
   pss ⊆ˢ vss = HPointwise (λ ps vs → ps ⊆* vs) pss vss
   {-# COMPILE AGDA2HS SubsumptionStack inline #-}
 
@@ -80,7 +80,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
     field
       witness : PatternStack αss0
       @0 psmat#witness : psmat #ˢᵐ witness
-      @0 pss⊆witness : pss ⊆ˢ witness
+      @0 witness⊆pss : witness ⊆ˢ pss
 
   -- Type synonym rather than record to eliminate wrapping/unwrapping in algorithm
   UsefulS : @0 PatternStackMatrix αss0 → @0 PatternStack αss0 → Type

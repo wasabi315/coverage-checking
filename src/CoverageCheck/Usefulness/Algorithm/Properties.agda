@@ -33,15 +33,15 @@ module _ {c : NameCon d}
   -- specialize preserves ≼
 
   specialize'-preserves-≼ : {pss : PatternStack ((TyData d ∷ βs) ∷ αss)}
-    → pss ≼ˢ (con c us ∷ vs) ∷ vss
-    → specialize' c pss ≼ˢᵐ us ∷ vs ∷ vss
+    → (con c us ∷ vs) ∷ vss ≼ˢ pss
+    → us ∷ vs ∷ vss ≼ˢᵐ specialize' c pss
   specialize'-preserves-≼ {(— ∷ ps) ∷ pss} ((_ ∷ insts) ∷ instss) =
     here (—*≼ ∷ insts ∷ instss)
   specialize'-preserves-≼ {(con c' rs ∷ ps) ∷ pss} = lem (c ≟ c')
     where
       lem : (eq : Dec (c ≡ c'))
-        → ((con c' rs ∷ ps) ∷ pss) ≼ˢ ((con c us ∷ vs) ∷ vss)
-        → specializeConCase c rs ps pss eq ≼ˢᵐ us ∷ vs ∷ vss
+        → (con c us ∷ vs) ∷ vss ≼ˢ (con c' rs ∷ ps) ∷ pss
+        → us ∷ vs ∷ vss ≼ˢᵐ specializeConCase c rs ps pss eq
       lem (False ⟨ c≢c' ⟩) ((inst ∷ _) ∷ _) =
         contradiction (sym (c≼c'⇒c≡c' inst)) c≢c'
       lem (True ⟨ refl ⟩) ((con≼ insts' ∷ insts) ∷ instss) =
@@ -52,22 +52,22 @@ module _ {c : NameCon d}
     ++Any⁺ʳ (specialize'-preserves-≼ ((inst ∷ insts) ∷ instss))
 
   specialize-preserves-≼ : {psmat : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)}
-    → psmat ≼ˢᵐ ((con c us ∷ vs) ∷ vss)
-    → specialize c psmat ≼ˢᵐ (us ∷ vs ∷ vss)
+    → (con c us ∷ vs) ∷ vss ≼ˢᵐ psmat
+    → us ∷ vs ∷ vss ≼ˢᵐ specialize c psmat
   specialize-preserves-≼ = gconcatMapAny⁺ specialize'-preserves-≼
 
   -- Unspecialization also preserves ≼
 
   specialize'-preserves-≼⁻ : {pss : PatternStack ((TyData d ∷ βs) ∷ αss)}
-    → specialize' c pss ≼ˢᵐ (us ∷ vs ∷ vss)
-    → pss ≼ˢ ((con c us ∷ vs) ∷ vss)
+    → us ∷ vs ∷ vss ≼ˢᵐ specialize' c pss
+    → (con c us ∷ vs) ∷ vss ≼ˢ pss
   specialize'-preserves-≼⁻ {(— ∷ ps) ∷ pss} (here (_ ∷ insts ∷ instss)) =
     (—≼ ∷ insts) ∷ instss
   specialize'-preserves-≼⁻ {(con c' rs ∷ ps) ∷ pss} = lem (c ≟ c')
     where
       lem : (eq : Dec (c ≡ c'))
-        → specializeConCase c rs ps pss eq ≼ˢᵐ (us ∷ vs ∷ vss)
-        → (con c' rs ∷ ps) ∷ pss ≼ˢ ((con c us ∷ vs) ∷ vss)
+        → us ∷ vs ∷ vss ≼ˢᵐ specializeConCase c rs ps pss eq
+        → (con c us ∷ vs) ∷ vss ≼ˢ (con c' rs ∷ ps) ∷ pss
       lem (True ⟨ refl ⟩) (here (insts' ∷ insts ∷ instss)) =
         (con≼ insts' ∷ insts) ∷ instss
   specialize'-preserves-≼⁻ {(r₁ ∣ r₂ ∷ ps) ∷ pss} =
@@ -80,8 +80,8 @@ module _ {c : NameCon d}
     ∘ ++Any⁻ _
 
   specialize-preserves-≼⁻ : {psmat : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)}
-    → specialize c psmat ≼ˢᵐ (us ∷ vs ∷ vss)
-    → psmat ≼ˢᵐ ((con c us ∷ vs) ∷ vss)
+    → us ∷ vs ∷ vss ≼ˢᵐ specialize c psmat
+    → (con c us ∷ vs) ∷ vss ≼ˢᵐ psmat
   specialize-preserves-≼⁻ = gconcatMapAny⁻ specialize'-preserves-≼⁻
 
 
@@ -91,8 +91,8 @@ module _ {c : NameCon d}
 
   default'-preserves-≼ : {pss : PatternStack ((TyData d ∷ βs) ∷ αss)}
     → c ∉ˢ pss
-    → pss ≼ˢ (con c us ∷ vs) ∷ vss
-    → default' pss ≼ˢᵐ vs ∷ vss
+    → (con c us ∷ vs) ∷ vss ≼ˢ pss
+    → vs ∷ vss ≼ˢᵐ default' pss
   default'-preserves-≼ {(— ∷ ps) ∷ pss} h ((_ ∷ insts) ∷ instss) =
     here (insts ∷ instss)
   default'-preserves-≼ {(con c' rs ∷ ps) ∷ pss} h ((inst ∷ _) ∷ _) =
@@ -105,8 +105,8 @@ module _ {c : NameCon d}
   -- If c does not appear in the first column of psmat, default preserves ≼
   default-preserves-≼ : {psmat : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)}
     → c ∉ˢᵐ psmat
-    → psmat ≼ˢᵐ (con c us ∷ vs) ∷ vss
-    → default_ psmat ≼ˢᵐ vs ∷ vss
+    → (con c us ∷ vs) ∷ vss ≼ˢᵐ psmat
+    → vs ∷ vss ≼ˢᵐ default_ psmat
   default-preserves-≼ {pss ∷ psmat} (h ∷ _) (here instss) =
     ++Any⁺ˡ (default'-preserves-≼ h instss)
   default-preserves-≼ {pss ∷ psmat} (_ ∷ h) (there instsMat) =
@@ -116,8 +116,8 @@ module _ {c : NameCon d}
 module _ {v : Value (TyData d)} {vs : Values αs} {vss : ValueStack αss} where
 
   default'-preserves-≼⁻ : {pss : PatternStack ((TyData d ∷ αs) ∷ αss)}
-    → default' pss ≼ˢᵐ vs ∷ vss
-    → pss ≼ˢ (v ∷ vs) ∷ vss
+    → vs ∷ vss ≼ˢᵐ default' pss
+    → (v ∷ vs) ∷ vss ≼ˢ pss
   default'-preserves-≼⁻ {(— ∷ ps) ∷ pss} (here (insts ∷ instss)) =
     (—≼ ∷ insts) ∷ instss
   default'-preserves-≼⁻ {(r₁ ∣ r₂ ∷ ps) ∷ pss} =
@@ -130,8 +130,8 @@ module _ {v : Value (TyData d)} {vs : Values αs} {vss : ValueStack αss} where
     ∘ ++Any⁻ _
 
   default-preserves-≼⁻ : {psmat : PatternStackMatrix ((TyData d ∷ αs) ∷ αss)}
-    → default_ psmat ≼ˢᵐ vs ∷ vss
-    → psmat ≼ˢᵐ (v ∷ vs) ∷ vss
+    → vs ∷ vss ≼ˢᵐ default_ psmat
+    → (v ∷ vs) ∷ vss ≼ˢᵐ psmat
   default-preserves-≼⁻ = gconcatMapAny⁻ default'-preserves-≼⁻
 
 --------------------------------------------------------------------------------

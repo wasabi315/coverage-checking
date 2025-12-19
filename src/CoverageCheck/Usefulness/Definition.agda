@@ -24,9 +24,9 @@ module _ ⦃ @0 sig : Signature ⦄
     field
       witness : Patterns αs0
       -- pmat and witness are disjoint, i.e. they have no common instances
-      @0 pmat#witness : ∀ {vs} → pmat ≼ᵐ vs → witness ≼* vs → ⊥
+      @0 pmat#witness : ∀ {vs} → vs ≼ᵐ pmat → vs ≼* witness → ⊥
       -- ps subsumes witness
-      @0 ps⊆witness : ps ⊆* witness
+      @0 witness⊆ps : witness ⊆* ps
 
   record Useful : Type where
     no-eta-equality
@@ -50,8 +50,8 @@ module _ ⦃ @0 sig : Signature ⦄
     constructor ⟪_,_,_⟫
     field
       witness : Values αs0
-      @0 pmat⋠witness : pmat ⋠ᵐ witness
-      @0 ps≼witness : ps ≼* witness
+      @0 witness⋠pmat : witness ⋠ᵐ pmat
+      @0 witness≼ps : witness ≼* ps
 
 
 module _
@@ -63,11 +63,11 @@ module _
   -- Our extended definition of usefulness implies the original one
   -- assuming the non-empty axiom
   Useful→OriginalUseful : Useful pmat ps → OriginalUseful pmat ps
-  Useful→OriginalUseful record { witnesses = ⟪ qs , disj , subs ⟫ ∷ _ } = record
-    { witness = examplesFor qs
-    ; pmat⋠witness = λ h → disj h (examplesFor≼ qs)
-    ; ps≼witness = subsumes subs (examplesFor≼ qs)
-    }
+  Useful→OriginalUseful record { witnesses = ⟪ qs , disj , subs ⟫ ∷ _ } =
+    ⟪ examplesFor qs
+    , (λ h → disj h (examplesFor≼ qs))
+    , subsumes subs (examplesFor≼ qs)
+    ⟫
 
 
 module _ ⦃ @0 sig : Signature ⦄
@@ -75,11 +75,13 @@ module _ ⦃ @0 sig : Signature ⦄
   where
 
   -- The original definition of usefulness implies our extended one
+  -- Together with Useful→OriginalUseful, this shows the equivalence of the two definitions
+  -- of usefulness under the non-empty axiom
   OriginalUseful→Useful : OriginalUseful pmat ps → Useful pmat ps
   OriginalUseful→Useful ⟪ vs , ninsts , insts ⟫ = record
     { witnesses =
         ⟪ onlys vs
-        , (λ h h' → ninsts (subst (λ vs → pmat ≼ᵐ vs) (sym (onlys≼⇒≡ h')) h))
+        , (λ h h' → ninsts (subst (λ vs → vs ≼ᵐ pmat) (onlys≼⇒≡ h') h))
         , ⊆onlys insts ⟫
         ∷ []
     }

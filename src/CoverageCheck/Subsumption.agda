@@ -35,7 +35,7 @@ syntax Subsumptions ps qs = ps ⊆* qs
 -- Not complete; for example, (true ∣ false) ⊆ — is not derivable
 -- Probably better named BranchSelection
 data Subsumption where
-  SWild : {@0 q : Pattern α0} → — ⊆ q
+  SWild : {@0 p : Pattern α0} → p ⊆ —
 
   SCon : {c : NameCon d0}
     → (let @0 αs : Tys
@@ -45,12 +45,12 @@ data Subsumption where
     → con c ps ⊆ con c qs
 
   SOrL : {@0 p q r : Pattern α0}
-    → (sub : p ⊆ r)
-    → (p ∣ q) ⊆ r
+    → (sub : p ⊆ q)
+    → p ⊆ (q ∣ r)
 
   SOrR : {@0 p q r : Pattern α0}
-    → (sub : q ⊆ r)
-    → (p ∣ q) ⊆ r
+    → (sub : p ⊆ r)
+    → p ⊆ (q ∣ r)
 
 {-# COMPILE AGDA2HS Subsumption deriving Show #-}
 
@@ -73,7 +73,7 @@ qs ⊈* ps = ¬ ps ⊆* qs
 -- Properties of the subsumption relation
 
 -- List of wildcards subsumes any list of patterns
-sWilds : {@0 qs : Patterns αs} → Subsumptions {αs} —* qs
+sWilds : {@0 ps : Patterns αs} → ps ⊆* —*
 sWilds {[]}     {[]}    = []
 sWilds {α ∷ αs} {_ ∷ _} = —⊆ ∷ sWilds
 {-# COMPILE AGDA2HS sWilds #-}
@@ -82,7 +82,7 @@ syntax sWilds = —⊆*
 module _ {@0 p q r : Pattern α0} where
 
   -- Inversion lemma for ∣⊆ˡ and ∣⊆ʳ
-  sOrInv : (p ∣ q ⊆ r) → Either (p ⊆ r) (q ⊆ r)
+  sOrInv : (p ⊆ q ∣ r) → Either (p ⊆ q) (p ⊆ r)
   sOrInv (∣⊆ˡ sub) = Left sub
   sOrInv (∣⊆ʳ sub) = Right sub
   {-# COMPILE AGDA2HS sOrInv #-}
@@ -104,10 +104,10 @@ module _ {@0 c : NameCon d0}
 -- ⊆ implies the "semantic" version of subsumption relation
 subsume : {p q : Pattern α0} {v : Value α0}
   → p ⊆ q
-  → (q ≼ v → p ≼ v)
+  → (v ≼ p → v ≼ q)
 subsumes : {ps qs : Patterns αs0} {vs : Values αs0}
   → ps ⊆* qs
-  → (qs ≼* vs → ps ≼* vs)
+  → (vs ≼* ps → vs ≼* qs)
 
 subsume —⊆ inst = —≼
 subsume (con⊆ subs) (con≼ insts) = con≼ (subsumes subs insts)
@@ -118,11 +118,11 @@ subsumes [] [] = []
 subsumes (sub ∷ subs) (inst ∷ insts) = subsume sub inst ∷ subsumes subs insts
 
 ⊆only : {p : Pattern α0} {v : Value α0}
-  → p ≼ v
-  → p ⊆ only v
+  → v ≼ p
+  → only v ⊆ p
 ⊆onlys : {ps : Patterns αs0} {vs : Values αs0}
-  → ps ≼* vs
-  → ps ⊆* onlys vs
+  → vs ≼* ps
+  → onlys vs ⊆* ps
 
 ⊆only —≼ = —⊆
 ⊆only (con≼ insts) = con⊆ (⊆onlys insts)

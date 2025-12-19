@@ -25,71 +25,71 @@ private
 --------------------------------------------------------------------------------
 -- Instance relation
 
-data Instance : (@0 p : Pattern α0) (@0 v : Value α0) → Type
-Instances : (@0 ps : Patterns αs0) (@0 vs : Values αs0) → Type
+data Instance : (@0 v : Value α0) (@0 p : Pattern α0) → Type
+Instances : (@0 vs : Values αs0) (@0 ps : Patterns αs0) → Type
 
-syntax Instance  p  v  = p ≼ v
-syntax Instances ps vs = ps ≼* vs
+syntax Instance  v  p  = v ≼ p
+syntax Instances vs ps = vs ≼* ps
 
--- p ≼ v : pattern p matches value v
+-- v ≼ p : value v matches pattern p (or value v is an instance of pattern p)
 data Instance where
-  IWild : {@0 v : Value α0} → — ≼ v
+  IWild : {@0 v : Value α0} → v ≼ —
 
   ICon : {c : NameCon d0}
     → (let @0 αs : Tys
            αs = argsTy (dataDefs sig d0) c)
-    → {@0 ps : Patterns αs} {@0 vs : Values αs}
-    → (insts : ps ≼* vs)
-    → con c ps ≼ con c vs
+    → {@0 vs : Values αs} {@0 ps : Patterns αs}
+    → (insts : vs ≼* ps)
+    → con c vs ≼ con c ps
 
-  IOrL : {@0 p q : Pattern α0} {@0 v : Value α0}
-    → (inst : p ≼ v)
-    → (p ∣ q) ≼ v
+  IOrL : {@0 v : Value α0} {@0 p q : Pattern α0}
+    → (inst : v ≼ p)
+    → v ≼ (p ∣ q)
 
-  IOrR : {@0 p q : Pattern α0} {@0 v : Value α0}
-    → (inst : q ≼ v)
-    → (p ∣ q) ≼ v
+  IOrR : {@0 v : Value α0} {@0 p q : Pattern α0}
+    → (inst : v ≼ q)
+    → v ≼ (p ∣ q)
 
 pattern —≼         = IWild
 pattern con≼ insts = ICon insts
 pattern ∣≼ˡ inst   = IOrL inst
 pattern ∣≼ʳ inst   = IOrR inst
 
--- ps ≼* vs : each pattern in ps matches the corresponding value in vs
-Instances = HPointwise (λ p v → p ≼ v)
+-- vs ≼* ps : each value in vs matches the corresponding pattern in ps
+Instances = HPointwise (λ v p → v ≼ p)
 
 {-# COMPILE AGDA2HS Instance deriving Show #-}
 {-# COMPILE AGDA2HS Instances #-}
 
--- pmat ≼ᵐ vs : some row (clause) in pmat matches vs
-InstanceMatrix : (@0 pmat : PatternMatrix αs0) (@0 vs : Values αs0) → Type
-syntax InstanceMatrix pmat vs = pmat ≼ᵐ vs
-pmat ≼ᵐ vs = Any (λ ps → ps ≼* vs) pmat
+-- vs ≼ᵐ pmat : some row (clause) in pmat matches vs
+InstanceMatrix : (@0 vs : Values αs0) (@0 pmat : PatternMatrix αs0) → Type
+syntax InstanceMatrix vs pmat = vs ≼ᵐ pmat
+vs ≼ᵐ pmat = Any (λ ps → vs ≼* ps) pmat
 {-# COMPILE AGDA2HS InstanceMatrix #-}
 
-_⋠_ : (@0 p : Pattern α0) (@0 v : Value α0) → Type
-p ⋠ v = ¬ p ≼ v
+_⋠_ : (@0 v : Value α0) (@0 p : Pattern α0) → Type
+v ⋠ p = ¬ v ≼ p
 
-_⋠*_ : (@0 ps : Patterns αs0) (@0 vs : Values αs0) → Type
-ps ⋠* vs = ¬ ps ≼* vs
+_⋠*_ : (@0 vs : Values αs0) (@0 ps : Patterns αs0) → Type
+vs ⋠* ps = ¬ vs ≼* ps
 
-_⋠ᵐ_ : (@0 pmat : PatternMatrix αs0) (@0 vs : Values αs0) → Type
-pmat ⋠ᵐ vs = ¬ pmat ≼ᵐ vs
+_⋠ᵐ_ : (@0 vs : Values αs0) (@0 pmat : PatternMatrix αs0) → Type
+vs ⋠ᵐ pmat = ¬ vs ≼ᵐ pmat
 
 --------------------------------------------------------------------------------
 -- Properties of the instance relation
 
 -- List of wildcards matches any list of values
-iWilds : {@0 vs : Values αs} → —* ≼* vs
+iWilds : {@0 vs : Values αs} → vs ≼* —*
 iWilds {[]}     {[]}     = []
 iWilds {α ∷ αs} {v ∷ vs} = —≼ ∷ iWilds
 syntax iWilds = —*≼
 {-# COMPILE AGDA2HS iWilds #-}
 
-module _ {@0 p q : Pattern α0} {@0 v : Value α0} where
+module _ {@0 v : Value α0} {@0 p q : Pattern α0} where
 
   -- Inversion lemma for ∣≼ˡ and ∣≼ʳ
-  iOrInv : (p ∣ q ≼ v) → Either (p ≼ v) (q ≼ v)
+  iOrInv : (v ≼ p ∣ q) → Either (v ≼ p) (v ≼ q)
   iOrInv (∣≼ˡ inst) = Left inst
   iOrInv (∣≼ʳ inst) = Right inst
   syntax iOrInv = ∣≼⁻
@@ -99,20 +99,23 @@ module _ {@0 p q : Pattern α0} {@0 v : Value α0} where
 module _ {@0 c : NameCon d0}
   (let @0 αs : Tys
        αs = argsTy (dataDefs sig d0) c)
-  {@0 ps : Patterns αs} {@0 vs : Values αs}
+  {@0 vs : Values αs} {@0 ps : Patterns αs}
   where
 
   -- Inversion lemma for con≼
-  iConInv : (con c ps ≼ con c vs) → ps ≼* vs
+  iConInv : (con c vs ≼ con c ps) → vs ≼* ps
   iConInv (con≼ insts) = insts
   syntax iConInv = con≼⁻
   {-# COMPILE AGDA2HS iConInv #-}
 
 
-module _ {@0 p : Pattern α0} {@0 v : Value α0} {@0 ps : Patterns αs0} {@0 vs : Values αs0} where
+module _
+  {@0 v : Value α0} {@0 p : Pattern α0}
+  {@0 vs : Values αs0} {@0 ps : Patterns αs0}
+  where
 
   -- Inversion lemma for ∷
-  iUncons : (p ∷ ps ≼* v ∷ vs) → (p ≼ v) × (ps ≼* vs)
+  iUncons : (v ∷ vs ≼* p ∷ ps) → (v ≼ p) × (vs ≼* ps)
   iUncons (inst ∷ insts) = inst , insts
   syntax iUncons = ∷ⁱ⁻
   {-# COMPILE AGDA2HS iUncons #-}
@@ -123,27 +126,27 @@ module _ {c c' : NameCon d0}
        αs = argsTy (dataDefs sig d0) c
        @0 αs' : Tys
        αs' = argsTy (dataDefs sig d0) c')
-  {@0 ps : Patterns αs} {@0 vs : Values αs'}
+  {@0 vs : Values αs'} {@0 ps : Patterns αs}
   where
 
   -- Constructor names are equal if the constructor pattern matches the corresponding value
-  c≼c'⇒c≡c' : con c ps ≼ con c' vs → c ≡ c'
+  c≼c'⇒c≡c' : con c' vs ≼ con c ps → c ≡ c'
   c≼c'⇒c≡c' (con≼ _) = refl
 
 
 -- only v matches v
-only≼  : (v : Value α0) → only v ≼ v
-onlys≼ : (vs : Values αs0) → onlys vs ≼* vs
+only≼  : (v : Value α0) → v ≼ only v
+onlys≼ : (vs : Values αs0) → vs ≼* onlys vs
 
 only≼ (con c vs) = con≼ (onlys≼ vs)
 
-onlys≼ []       = []
+onlys≼ [] = []
 onlys≼ (v ∷ vs) = only≼ v ∷ onlys≼ vs
 
 -- only v matches v' implies v ≡ v'
--- Together with only≼, only v ≼ v' is equivalent to v ≡ v'
-only≼⇒≡  : {v v' : Value α0} → only v ≼ v' → v ≡ v'
-onlys≼⇒≡ : {vs vs' : Values αs0} → onlys vs ≼* vs' → vs ≡ vs'
+-- Together with only≼, v ≼ only v' is equivalent to v ≡ v'
+only≼⇒≡  : {v v' : Value α0} → v ≼ only v' → v ≡ v'
+onlys≼⇒≡ : {vs vs' : Values αs0} → vs ≼* onlys vs' → vs ≡ vs'
 
 only≼⇒≡ {v = con c vs} {con c vs'} (con≼ insts) = cong (con c) (onlys≼⇒≡ insts)
 
@@ -154,8 +157,8 @@ onlys≼⇒≡ {vs = v ∷ vs} {v' ∷ vs'} (inst ∷ insts) =
 module _ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄ where
 
   -- p matches exampleFor p
-  exampleFor≼  : (p : Pattern α0) → p ≼ exampleFor p
-  examplesFor≼ : (ps : Patterns αs0) → ps ≼* examplesFor ps
+  exampleFor≼  : (p : Pattern α0) → exampleFor p ≼ p
+  examplesFor≼ : (ps : Patterns αs0) → examplesFor ps ≼* ps
 
   exampleFor≼ —          = —≼
   exampleFor≼ (con c ps) = con≼ (examplesFor≼ ps)
@@ -168,32 +171,32 @@ module _ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄ where
 -- Pattern matching
 -- Formalized as a decision procedure for the instance relation
 
-decInstance  : (p : Pattern α0) (v : Value α0) → DecP (p ≼ v)
-decInstances : (ps : Patterns αs0) (vs : Values αs0) → DecP (ps ≼* vs)
+decInstance  : (v : Value α0) (p : Pattern α0) → DecP (v ≼ p)
+decInstances : (vs : Values αs0) (ps : Patterns αs0) → DecP (vs ≼* ps)
 
-syntax decInstance  p  v  = p ≼? v
-syntax decInstances ps vs = ps ≼*? vs
+syntax decInstance  v  p  = v ≼? p
+syntax decInstances vs ps = vs ≼*? ps
 
-— ≼? v = Yes —≼
-(p ∣ q) ≼? v = mapDecP (either ∣≼ˡ ∣≼ʳ) ∣≼⁻ (eitherDecP (p ≼? v) (q ≼? v))
-con c ps ≼? con c' vs =
+v ≼? — = Yes —≼
+v ≼? (p ∣ q) = mapDecP (either ∣≼ˡ ∣≼ʳ) ∣≼⁻ (eitherDecP (v ≼? p) (v ≼? q))
+con c vs ≼? con c' ps =
   ifDec (c ≟ c')
-    (λ where ⦃ refl ⦄ → mapDecP con≼ con≼⁻ (ps ≼*? vs))
-    (λ ⦃ c≢c' ⦄ → No (contraposition c≼c'⇒c≡c' c≢c'))
+    (λ where ⦃ refl ⦄ → mapDecP con≼ con≼⁻ (vs ≼*? ps))
+    (λ ⦃ c≢c' ⦄ → No (contraposition c≼c'⇒c≡c' (c≢c' ∘ sym)))
 
 [] ≼*? [] = Yes []
-(p ∷ ps) ≼*? (v ∷ vs) = mapDecP (uncurry _∷_ ) ∷ⁱ⁻ (p ≼? v ×-decP ps ≼*? vs)
+(v ∷ vs) ≼*? (p ∷ ps) = mapDecP (uncurry _∷_ ) ∷ⁱ⁻ (v ≼? p ×-decP vs ≼*? ps)
 
 {-# COMPILE AGDA2HS decInstance #-}
 {-# COMPILE AGDA2HS decInstances #-}
 
 -- First-match semantics
-FirstMatch : (@0 pmat : PatternMatrix αs0) (@0 vs : Values αs0) → Type
-FirstMatch pmat vs = First (λ ps → ps ≼* vs) pmat
+FirstMatch : (@0 vs : Values αs0) (@0 pmat : PatternMatrix αs0) → Type
+FirstMatch vs pmat = First (λ ps → vs ≼* ps) pmat
 {-# COMPILE AGDA2HS FirstMatch #-}
 
 -- Execute pattern matching
-decPFirstMatch : (pmat : PatternMatrix αs0) (vs : Values αs0)
-  → DecP (FirstMatch pmat vs)
-decPFirstMatch pmat vs = firstDecP (λ ps → ps ≼*? vs) pmat
+decPFirstMatch : (vs : Values αs0) (pmat : PatternMatrix αs0)
+  → DecP (FirstMatch vs pmat)
+decPFirstMatch vs pmat = firstDecP (λ ps → vs ≼*? ps) pmat
 {-# COMPILE AGDA2HS decPFirstMatch #-}

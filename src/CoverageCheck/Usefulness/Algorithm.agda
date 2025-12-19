@@ -213,7 +213,7 @@ module _ ⦃ @0 sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α
 
   @0 wildCompCaseInv' : ∀ qss
     → psmat #ˢᵐ qss
-    → ((— ∷ ps) ∷ pss) ⊆ˢ qss
+    → qss ⊆ˢ ((— ∷ ps) ∷ pss)
     → Σ[ c ∈ NameCon d0 ] UsefulS' (specialize c psmat) (—* ∷ ps ∷ pss)
   wildCompCaseInv' ((— ∷ qs) ∷ qss) disj ((s ∷ ss) ∷ sss) =
     exampleCon ,

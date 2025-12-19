@@ -26,11 +26,11 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
   -- There is a matching row in P for any list of values
   Exhaustive : PatternMatrix αs0 → Type
-  Exhaustive pmat = ∀ vs → FirstMatch pmat vs
+  Exhaustive pmat = ∀ vs → FirstMatch vs pmat
 
   -- There is a list of patterns that has at least one instance and whose instances do not match any row in P
   NonExhaustive' : PatternMatrix αs0 → Type
-  NonExhaustive' pmat = ∃[ ps ∈ _ ] ∀ {vs} → ps ≼* vs → ¬ FirstMatch pmat vs
+  NonExhaustive' pmat = ∃[ ps ∈ _ ] ∀ {vs} → vs ≼* ps → ¬ FirstMatch vs pmat
   {-# COMPILE AGDA2HS NonExhaustive' inline #-}
 
   NonExhaustive : PatternMatrix αs0 → Type
@@ -85,7 +85,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
     exhaustiveUToExhaustive : ExhaustiveU pmat → Exhaustive pmat
     exhaustiveUToExhaustive h vs =
-      case decPFirstMatch pmat vs of λ where
+      case decPFirstMatch vs pmat of λ where
         (Yes h') → h'
         (No h')  →
           contradiction
@@ -94,7 +94,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
                   ⟪ onlys vs
                   , (λ instMat insts →
                       ¬First⇒¬Any h'
-                        (subst (λ vs → pmat ≼ᵐ vs) (sym (onlys≼⇒≡ insts)) instMat))
+                        (subst (λ vs → vs ≼ᵐ pmat) (onlys≼⇒≡ insts) instMat))
                   , —⊆* ⟫ ∷ []
               })
             h

@@ -255,7 +255,7 @@ default-≤ (ps ∷ psmat) rewrite ∥∥-++ (default' ps) (default_ psmat)
    | tail case                 |       =       |     =     |     <      |
    | con case                  |       ≤       |     <     |     ?      |
    | wildcard case (missing)   |       ≤       |     =     |     <      |
-   | wildcard case (complete)  |       <       |     ?     |     ?      |
+   | wildcard case (complete)  |       <       |     =     |     ?      |
    | or case                   |       =       |     <     |     =      |
    +---------------------------+---------------+-----------+------------+
 
