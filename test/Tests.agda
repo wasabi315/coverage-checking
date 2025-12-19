@@ -159,7 +159,7 @@ Q =
 
 -- Q is exhaustive, so we obtain a total matching function of type
 --   `∀ vs → FirstMatch Q vs`
-_ : decExhaustive Q ≡ Right (Erased (the (∀ vs → FirstMatch Q vs) _))
+_ : decExhaustive Q ≡ Right (Erased (the (∀ vs → FirstMatch vs Q) _))
 _ = refl
 
 -- The last row of Q is redundant, so we obtain a proof of uselessness for the last row
