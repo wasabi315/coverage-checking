@@ -16,18 +16,20 @@ private open module @0 G = Globals globals
 module _ ⦃ @0 sig : Signature ⦄
   {@0 αs0} (@0 pmat : PatternMatrix αs0) (@0 ps : Patterns αs0)
   where
-  infix -1 _,_,_
+  infix -1 _,_
 
-  record Useful' : Type where
+  record IsWitness (witness : Patterns αs0) : Type where
     no-eta-equality
     pattern
-    constructor _,_,_
+    constructor _,_
     field
-      witness : Patterns αs0
       -- pmat and witness are disjoint, i.e. they have no common instances
-      @0 pmat#witness : ∀ {vs} → vs ≼ᵐ pmat → vs ≼* witness → ⊥
+      pmat#witness : ∀ {vs} → vs ≼ᵐ pmat → vs ≼* witness → ⊥
       -- ps subsumes witness
-      @0 witness⊆ps : witness ⊆* ps
+      witness⊆ps : witness ⊆* ps
+
+  Useful' : Type
+  Useful' = ∃[ witness ∈ _ ] IsWitness witness
 
   record Useful : Type where
     no-eta-equality
@@ -37,7 +39,7 @@ module _ ⦃ @0 sig : Signature ⦄
 
   open Useful public
 
-  {-# COMPILE AGDA2HS Useful' unboxed #-}
+  {-# COMPILE AGDA2HS Useful' inline #-}
   {-# COMPILE AGDA2HS Useful newtype deriving (Show) #-}
 
 --------------------------------------------------------------------------------
@@ -45,15 +47,20 @@ module _ ⦃ @0 sig : Signature ⦄
 module _ ⦃ @0 sig : Signature ⦄
   {@0 αs0} (@0 pmat : PatternMatrix αs0) (@0 ps : Patterns αs0)
   where
-  infix -1 _,_,_
+  infix -1 _,_
 
   -- The original definition of usefulness in the paper
-  record OriginalUseful : Type where
-    constructor _,_,_
+
+  record IsWitnessOriginal (witness : Values αs0) : Type where
+    no-eta-equality
+    pattern
+    constructor _,_
     field
-      witness : Values αs0
-      @0 witness⋠pmat : witness ⋠ᵐ pmat
-      @0 witness≼ps : witness ≼* ps
+      witness⋠pmat : witness ⋠ᵐ pmat
+      witness≼ps : witness ≼* ps
+
+  OriginalUseful : Type
+  OriginalUseful = ∃[ witness ∈ _ ] IsWitnessOriginal witness
 
 
 module _
@@ -65,10 +72,9 @@ module _
   -- Our extended definition of usefulness implies the original one
   -- assuming the non-empty axiom
   Useful→OriginalUseful : Useful pmat ps → OriginalUseful pmat ps
-  Useful→OriginalUseful record { witnesses = (qs , disj , subs) ∷ _ } =
-    examplesFor qs ,
-    (λ h → disj h (examplesFor≼ qs)) ,
-    subsumes subs (examplesFor≼ qs)
+  Useful→OriginalUseful record { witnesses = (qs ⟨ disj , subs ⟩) ∷ _ } =
+    examplesFor qs
+      ⟨ (λ h → disj h (examplesFor≼ qs)) , subsumes subs (examplesFor≼ qs) ⟩
 
 
 module _ ⦃ @0 sig : Signature ⦄
@@ -79,10 +85,10 @@ module _ ⦃ @0 sig : Signature ⦄
   -- Together with Useful→OriginalUseful, this shows the equivalence of the two definitions
   -- of usefulness under the non-empty axiom
   OriginalUseful→Useful : OriginalUseful pmat ps → Useful pmat ps
-  OriginalUseful→Useful (vs , ninsts , insts) = record
+  OriginalUseful→Useful (vs ⟨ ninsts , insts ⟩) = record
     { witnesses =
-        ( onlys vs
-        , (λ h h' → ninsts (subst (λ vs → vs ≼ᵐ pmat) (onlys≼⇒≡ h') h))
-        , ⊆onlys insts )
+        (onlys vs
+          ⟨ (λ h h' → ninsts (subst (λ vs → vs ≼ᵐ pmat) (onlys≼⇒≡ h') h))
+          , ⊆onlys insts ⟩)
         ∷ []
     }

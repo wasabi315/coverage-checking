@@ -32,7 +32,6 @@ private
 
 module _ ⦃ @0 sig : Signature ⦄ where
   infix 4 InstanceStack InstanceMatrixStack _⋠ˢ_ _⋠ˢᵐ_ SubsumptionStack
-  infix -1 _,_,_
 
   ValueStack : @0 TyStack → Type
   ValueStack αss = All Values αss
@@ -74,18 +73,23 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
   -- Usefulness relation for doubly-nested things
 
-  record UsefulS' (@0 psmat : PatternStackMatrix αss0) (@0 pss : PatternStack αss0) : Type where
-    no-eta-equality
-    pattern
-    constructor _,_,_
-    field
-      witness : PatternStack αss0
-      @0 psmat#witness : psmat #ˢᵐ witness
-      @0 witness⊆pss : witness ⊆ˢ pss
+  module _ (@0 psmat : PatternStackMatrix αss0) (@0 pss : PatternStack αss0) where
+    infix -1 _,_
 
-  -- Type synonym rather than record to eliminate wrapping/unwrapping in algorithm
-  UsefulS : @0 PatternStackMatrix αss0 → @0 PatternStack αss0 → Type
-  UsefulS psmat pss = NonEmpty (UsefulS' psmat pss)
+    record IsWitnessS (witness : PatternStack αss0) : Type where
+      no-eta-equality
+      pattern
+      constructor _,_
+      field
+        psmat#witness : psmat #ˢᵐ witness
+        witness⊆pss : witness ⊆ˢ pss
+
+    UsefulS' : Type
+    UsefulS' = ∃[ witness ∈ _ ] IsWitnessS witness
+
+    -- Type synonym rather than record to eliminate wrapping/unwrapping in algorithm
+    UsefulS : Type
+    UsefulS = NonEmpty UsefulS'
 
   {-# COMPILE AGDA2HS UsefulS' unboxed #-}
   {-# COMPILE AGDA2HS UsefulS inline #-}
@@ -100,10 +104,10 @@ module _ ⦃ @0 sig : Signature ⦄
 
   UsefulS'→Useful' : UsefulS' (map (_∷ []) pmat) (ps ∷ []) → Useful' pmat ps
   UsefulS'→Useful' = λ where
-    (qs ∷ [] , disj , subs ∷ []) →
-      qs ,
-      (λ instmat insts → disj (gmapAny⁺ (_∷ []) instmat) (insts ∷ [])) ,
-      subs
+    ((qs ∷ []) ⟨ disj , subs ∷ [] ⟩) →
+      qs
+        ⟨ (λ instmat insts → disj (gmapAny⁺ (_∷ []) instmat) (insts ∷ []))
+        , subs ⟩
   {-# COMPILE AGDA2HS UsefulS'→Useful' inline #-}
 
   UsefulS→Useful : UsefulS (map (_∷ []) pmat) (ps ∷ []) → Useful pmat ps
@@ -111,12 +115,12 @@ module _ ⦃ @0 sig : Signature ⦄
   {-# COMPILE AGDA2HS UsefulS→Useful inline #-}
 
   @0 Useful'→UsefulS' : Useful' pmat ps → UsefulS' (map (_∷ []) pmat) (ps ∷ [])
-  Useful'→UsefulS' (qs , disj , subs) =
-    qs ∷ [] ,
-    (λ where
-      {_ ∷ []} instsmat (insts ∷ []) →
-        disj (gmapAny⁻ (λ where (insts' ∷ []) → insts') instsmat) insts) ,
-    subs ∷ []
+  Useful'→UsefulS' (qs ⟨ disj , subs ⟩) =
+    (qs ∷ [])
+      ⟨ (λ where
+          {_ ∷ []} instsmat (insts ∷ []) →
+            disj (gmapAny⁻ (λ where (insts' ∷ []) → insts') instsmat) insts)
+      , subs ∷ [] ⟩
 
   @0 Useful→UsefulS : Useful pmat ps → UsefulS (map (_∷ []) pmat) (ps ∷ [])
   Useful→UsefulS = fmap Useful'→UsefulS' ∘ witnesses
