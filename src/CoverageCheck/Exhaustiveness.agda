@@ -50,7 +50,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
   module _ {@0 pmat : PatternMatrix αs0} where
 
     nonExhaustiveUToNonExhaustive' : Useful' pmat —* → NonExhaustive' pmat
-    nonExhaustiveUToNonExhaustive' ⟪ qs , disj , _ ⟫ =
+    nonExhaustiveUToNonExhaustive' (qs , disj , _) =
       qs ⟨ (λ insts matches → disj (First⇒Any matches) insts) ⟩
     {-# COMPILE AGDA2HS nonExhaustiveUToNonExhaustive' transparent #-}
 
@@ -70,14 +70,14 @@ module _ ⦃ @0 sig : Signature ⦄ where
       → NonExhaustiveU pmat
     nonExhaustiveToNonExhaustiveU hs = record
       { witnesses = flip fmap hs λ (qs ⟨ h ⟩) →
-          ⟪ qs , (λ instMat insts → ¬First⇒¬Any (h insts) instMat) , —⊆* ⟫
+          qs , (λ instMat insts → ¬First⇒¬Any (h insts) instMat) , —⊆*
       }
 
     @0 exhaustiveToExhaustiveU : ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄
       → Exhaustive pmat
       → ExhaustiveU pmat
     exhaustiveToExhaustiveU h u
-      using ⟪ qs , disj , _ ⟫ ∷ _ ← u .witnesses
+      using (qs , disj , _) ∷ _ ← u .witnesses
       = contradiction (First⇒Any (h (examplesFor qs))) (flip disj (examplesFor≼ qs))
 
 
@@ -91,11 +91,12 @@ module _ ⦃ @0 sig : Signature ⦄ where
           contradiction
             (record
               { witnesses =
-                  ⟪ onlys vs
-                  , (λ instMat insts →
+                  ( onlys vs ,
+                    (λ instMat insts →
                       ¬First⇒¬Any h'
-                        (subst (λ vs → vs ≼ᵐ pmat) (onlys≼⇒≡ insts) instMat))
-                  , —⊆* ⟫ ∷ []
+                        (subst (λ vs → vs ≼ᵐ pmat) (onlys≼⇒≡ insts) instMat)) ,
+                    —⊆* )
+                  ∷ []
               })
             h
 

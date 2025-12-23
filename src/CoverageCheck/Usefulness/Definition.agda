@@ -16,11 +16,12 @@ private open module @0 G = Globals globals
 module _ ⦃ @0 sig : Signature ⦄
   {@0 αs0} (@0 pmat : PatternMatrix αs0) (@0 ps : Patterns αs0)
   where
+  infix -1 _,_,_
 
   record Useful' : Type where
     no-eta-equality
     pattern
-    constructor ⟪_,_,_⟫
+    constructor _,_,_
     field
       witness : Patterns αs0
       -- pmat and witness are disjoint, i.e. they have no common instances
@@ -44,10 +45,11 @@ module _ ⦃ @0 sig : Signature ⦄
 module _ ⦃ @0 sig : Signature ⦄
   {@0 αs0} (@0 pmat : PatternMatrix αs0) (@0 ps : Patterns αs0)
   where
+  infix -1 _,_,_
 
   -- The original definition of usefulness in the paper
   record OriginalUseful : Type where
-    constructor ⟪_,_,_⟫
+    constructor _,_,_
     field
       witness : Values αs0
       @0 witness⋠pmat : witness ⋠ᵐ pmat
@@ -63,11 +65,10 @@ module _
   -- Our extended definition of usefulness implies the original one
   -- assuming the non-empty axiom
   Useful→OriginalUseful : Useful pmat ps → OriginalUseful pmat ps
-  Useful→OriginalUseful record { witnesses = ⟪ qs , disj , subs ⟫ ∷ _ } =
-    ⟪ examplesFor qs
-    , (λ h → disj h (examplesFor≼ qs))
-    , subsumes subs (examplesFor≼ qs)
-    ⟫
+  Useful→OriginalUseful record { witnesses = (qs , disj , subs) ∷ _ } =
+    examplesFor qs ,
+    (λ h → disj h (examplesFor≼ qs)) ,
+    subsumes subs (examplesFor≼ qs)
 
 
 module _ ⦃ @0 sig : Signature ⦄
@@ -78,10 +79,10 @@ module _ ⦃ @0 sig : Signature ⦄
   -- Together with Useful→OriginalUseful, this shows the equivalence of the two definitions
   -- of usefulness under the non-empty axiom
   OriginalUseful→Useful : OriginalUseful pmat ps → Useful pmat ps
-  OriginalUseful→Useful ⟪ vs , ninsts , insts ⟫ = record
+  OriginalUseful→Useful (vs , ninsts , insts) = record
     { witnesses =
-        ⟪ onlys vs
+        ( onlys vs
         , (λ h h' → ninsts (subst (λ vs → vs ≼ᵐ pmat) (onlys≼⇒≡ h') h))
-        , ⊆onlys insts ⟫
+        , ⊆onlys insts )
         ∷ []
     }
