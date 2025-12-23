@@ -7,7 +7,7 @@ open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Product.Relation.Binary.Lex.Strict using (×-Lex; ×-wellFounded)
 open import Data.Sum using (inj₁; inj₂)
 open import Function.Base using (_on_)
-open import Induction.WellFounded using (WellFounded; Acc; acc)
+open import Induction.WellFounded as WellFounded using (WellFounded; Acc; acc)
 open import Relation.Binary.Construct.On using () renaming (wellFounded to on-wellFounded)
 
 open import CoverageCheck.Prelude hiding (Σ-syntax; _×_; _,_; _<_)
@@ -36,35 +36,6 @@ private
     αs βs : Tys
     αss : TyStack
     d : NameData
-
---------------------------------------------------------------------------------
--- Specialized accessibility predicate for usefulness checking algorithm
--- This method by Ana Bove allows separation of termination proof from the algorithm
-
-data UsefulAcc : (psmat : PatternStackMatrix αss) (ps : PatternStack αss) → Type where
-  done : {psmat : PatternStackMatrix []} → UsefulAcc psmat []
-
-  tailStep : {psmat : PatternStackMatrix ([] ∷ αss)} {pss : PatternStack αss}
-    → UsefulAcc (map tailAll psmat) pss
-    → UsefulAcc psmat ([] ∷ pss)
-
-  wildStep : {psmat : PatternStackMatrix ((TyData d ∷ αs) ∷ αss)}
-    → {ps : Patterns αs} {pss : PatternStack αss}
-    → UsefulAcc (default_ psmat) (ps ∷ pss)
-    → (∀ c → c ∈ˢᵐ psmat → UsefulAcc (specialize c psmat) (—* ∷ ps ∷ pss))
-    → UsefulAcc psmat ((— ∷ ps) ∷ pss)
-
-  conStep : {psmat : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)} {c : NameCon d}
-    → (let αs = argsTy (dataDefs sig d) c)
-    → {rs : Patterns αs} {ps : Patterns βs} {pss : PatternStack αss}
-    → UsefulAcc (specialize c psmat) (rs ∷ ps ∷ pss)
-    → UsefulAcc psmat ((con c rs ∷ ps) ∷ pss)
-
-  orStep : {psmat : PatternStackMatrix ((α ∷ αs) ∷ αss)}
-    → {p q : Pattern α} {ps : Patterns αs} {pss : PatternStack αss}
-    → UsefulAcc psmat ((p ∷ ps) ∷ pss)
-    → UsefulAcc psmat ((q ∷ ps) ∷ pss)
-    → UsefulAcc psmat ((p ∣ q ∷ ps) ∷ pss)
 
 --------------------------------------------------------------------------------
 -- Termination measures
@@ -116,7 +87,9 @@ _⊏_ = ×-Lex _≡_ _<_ (×-Lex _≡_ _<_ _<_) on inputSize
   on-wellFounded inputSize
     (×-wellFounded <-wellFounded (×-wellFounded <-wellFounded <-wellFounded))
 
--- shorthand for creating _⊏_ proofs
+open WellFounded.All ⊏-wellFounded renaming (wfRec to ⊏-rec)
+
+-- shorthand for constructing _⊏_ proofs
 pattern ↓₀ ∣P∣<∣Q∣ = inj₁ ∣P∣<∣Q∣
 pattern ↓₁ ∣P∣≡∣Q∣ ∣ps∣<∣qs∣ = inj₂ (∣P∣≡∣Q∣ , inj₁ ∣ps∣<∣qs∣)
 pattern ↓₂ ∣P∣≡∣Q∣ ∣ps∣≡∣qs∣ ∣αss∣<∣βss∣ = inj₂ (∣P∣≡∣Q∣ , inj₂ (∣ps∣≡∣qs∣ , ∣αss∣<∣βss∣))
@@ -309,24 +282,50 @@ or-⊏ᵣ psmat r₁ r₂ ps pss =
 --------------------------------------------------------------------------------
 -- Termination proof
 
-∀UsefulAcc' : (psmat : PatternStackMatrix αss) (pss : PatternStack αss)
-  → Acc _⊏_ (_ , psmat , pss)
-  → UsefulAcc psmat pss
-∀UsefulAcc' psmat [] (acc _) = done
-∀UsefulAcc' psmat ([] ∷ pss) (acc rec) =
-  tailStep (∀UsefulAcc' (map tailAll psmat) pss (rec (tail-⊏ psmat pss)))
-∀UsefulAcc' {αss = (TyData d ∷ αs) ∷ αss} psmat ((— ∷ ps) ∷ pss) (acc rec) =
-  wildStep
-    (∀UsefulAcc' (default_ psmat) (ps ∷ pss) (rec (default-⊏ psmat ps pss)))
-    (λ c m → ∀UsefulAcc' (specialize c psmat) (—* ∷ ps ∷ pss) (rec (specializeWild-⊏ c psmat ps pss m)))
-∀UsefulAcc' psmat ((con c rs ∷ ps) ∷ pss) (acc rec) =
-  conStep (∀UsefulAcc' (specialize c psmat) (rs ∷ ps ∷ pss) (rec (specializeCon-⊏ psmat c rs ps pss)))
-∀UsefulAcc' psmat ((r₁ ∣ r₂ ∷ ps) ∷ pss) (acc rec) =
-  orStep
-    (∀UsefulAcc' psmat ((r₁ ∷ ps) ∷ pss) (rec (or-⊏ₗ psmat r₁ r₂ ps pss)))
-    (∀UsefulAcc' psmat ((r₂ ∷ ps) ∷ pss) (rec (or-⊏ᵣ psmat r₁ r₂ ps pss)))
+-- Specialized accessibility predicate for usefulness checking algorithm
+-- This method by Ana Bove allows separation of termination proof from the algorithm
+data UsefulAcc : (psmat : PatternStackMatrix αss) (ps : PatternStack αss) → Type where
+  done : {psmat : PatternStackMatrix []} → UsefulAcc psmat []
+
+  tailStep : {psmat : PatternStackMatrix ([] ∷ αss)} {pss : PatternStack αss}
+    → UsefulAcc (map tailAll psmat) pss
+    → UsefulAcc psmat ([] ∷ pss)
+
+  wildStep : {psmat : PatternStackMatrix ((TyData d ∷ αs) ∷ αss)}
+    → {ps : Patterns αs} {pss : PatternStack αss}
+    → UsefulAcc (default_ psmat) (ps ∷ pss)
+    → (∀ c → c ∈ˢᵐ psmat → UsefulAcc (specialize c psmat) (—* ∷ ps ∷ pss))
+    → UsefulAcc psmat ((— ∷ ps) ∷ pss)
+
+  conStep : {psmat : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)} {c : NameCon d}
+    → (let αs = argsTy (dataDefs sig d) c)
+    → {rs : Patterns αs} {ps : Patterns βs} {pss : PatternStack αss}
+    → UsefulAcc (specialize c psmat) (rs ∷ ps ∷ pss)
+    → UsefulAcc psmat ((con c rs ∷ ps) ∷ pss)
+
+  orStep : {psmat : PatternStackMatrix ((α ∷ αs) ∷ αss)}
+    → {r₁ r₂ : Pattern α} {ps : Patterns αs} {pss : PatternStack αss}
+    → UsefulAcc psmat ((r₁ ∷ ps) ∷ pss)
+    → UsefulAcc psmat ((r₂ ∷ ps) ∷ pss)
+    → UsefulAcc psmat ((r₁ ∣ r₂ ∷ ps) ∷ pss)
 
 -- UsefulAcc can be constructed for any input
 ∀UsefulAcc : (psmat : PatternStackMatrix αss) (ps : PatternStack αss)
   → UsefulAcc psmat ps
-∀UsefulAcc psmat ps = ∀UsefulAcc' psmat ps (⊏-wellFounded _)
+∀UsefulAcc psmat ps =
+  ⊏-rec _ (λ (_ , psmat , ps) → UsefulAcc psmat ps)
+    (λ where
+      (αss , psmat , []) rec → done
+      (αss , psmat , [] ∷ pss) rec →
+        tailStep (rec (tail-⊏ psmat pss))
+      (αss , psmat , (con c rs ∷ ps) ∷ pss) rec →
+        conStep (rec (specializeCon-⊏ psmat c rs ps pss))
+      (αss , psmat , (r₁ ∣ r₂ ∷ ps) ∷ pss) rec →
+        orStep
+          (rec (or-⊏ₗ psmat r₁ r₂ ps pss))
+          (rec (or-⊏ᵣ psmat r₁ r₂ ps pss))
+      ((TyData d ∷ αs) ∷ αss , psmat , (— ∷ ps) ∷ pss) rec →
+        wildStep
+          (rec (default-⊏ psmat ps pss))
+          (λ c h → rec (specializeWild-⊏ c psmat ps pss h)))
+    (_ , psmat , ps)
