@@ -534,8 +534,7 @@ module _ {a : Type} ⦃ _ : Ord a ⦄ where
 
   -- Wrap the postulated properties of Set with primEraseEquality.
   -- These wrapped properties reduce to refl when the sides are definitionally equal.
-  -- This wrapping does not affect the validity of the proofs; we are merely
-  -- encapsulating the reliable properties from agda2hs.
+  -- This should not affect the validity of the proofs.
 
   prop-null→empty : (s : Set a) → Set.null s ≡ True → s ≡ Set.empty
   prop-null→empty s eq = primEraseEquality (Set.prop-null→empty s eq)
