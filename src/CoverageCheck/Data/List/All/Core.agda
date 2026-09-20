@@ -1,29 +1,29 @@
 module CoverageCheck.Data.List.All.Core where
 
-open import Haskell.Prelude hiding (All)
+open import Haskell.Prelude hiding (All; a)
 
 infixr 5 _:>_
 
 private
   variable
-    @0 a0 : Type
-    p q : @0 a0 → Type
-    @0 x0 : a0
-    @0 xs0 : List a0
+    @0 a : Type
+    p q : @0 a → Type
+    @0 x : a
+    @0 xs : List a
 
 --------------------------------------------------------------------------------
 
-data All (p : @0 a0 → Type) : (@0 xs : List a0) → Type where
+data All (p : @0 a → Type) : (@0 xs : List a) → Type where
   Nil  : All p []
-  _:>_ : ∀ {@0 x xs} → p x → All p xs → All p (x ∷ xs)
+  _:>_ : p x → All p xs → All p (x ∷ xs)
 
 {-# COMPILE AGDA2HS All deriving (Eq, Show) #-}
 
-headAll : All p (x0 ∷ xs0) → p x0
+headAll : All p (x ∷ xs) → p x
 headAll (p :> _) = p
 {-# COMPILE AGDA2HS headAll #-}
 
-tailAll : All p (x0 ∷ xs0) → All p xs0
+tailAll : All p (x ∷ xs) → All p xs
 tailAll (_ :> ps) = ps
 {-# COMPILE AGDA2HS tailAll #-}
 

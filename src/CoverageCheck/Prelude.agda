@@ -113,161 +113,26 @@ mapListRefine f (x ∷ xs) = mapRefine f x ∷ mapListRefine f xs
 --------------------------------------------------------------------------------
 -- Relations on lists
 
-open import CoverageCheck.Data.List.All.Core as All public
+open import CoverageCheck.Data.List.All as All public
+open import CoverageCheck.Data.List.Any as Any public
+open import CoverageCheck.Data.List.First as First public
+open import CoverageCheck.Data.List.Many as Many public
+open import CoverageCheck.Data.List.Some as Some public
+open import CoverageCheck.Data.List.HPointwise as HPointwise public
 
 pattern [] = All.Nil
 pattern _∷_ p ps = p All.:> ps
-
-module _ {@0 a : Type} (p : @0 a → Type) where
-
-  data Any : (@0 xs : List a) → Type where
-    Here  : ∀ {@0 x xs} → p x → Any (x ∷ xs)
-    There : ∀ {@0 x xs} → Any xs → Any (x ∷ xs)
-
-  data First : (@0 xs : List a) → Type where
-    FHere  : ∀ {@0 x xs} → p x → First (x ∷ xs)
-    FThere : ∀ {@0 x xs} → @0 ¬ p x → First xs → First (x ∷ xs)
-
-{-# COMPILE AGDA2HS Any   deriving (Eq, Show) #-}
-{-# COMPILE AGDA2HS First deriving (Eq, Show) #-}
-
-pattern here  p  = Here p
-pattern there p  = There p
-pattern [_] p    = FHere p
+pattern here p = Any.Here p
+pattern there p = Any.There p
+pattern [_] p = FHere p
 pattern _∷_ p ps = FThere p ps
-
-module _ {@0 a : Type} (p : @0 a → Type) where
-
-  data Many : (@0 xs : List a) → Type where
-    MNil   : Many []
-    MHere  : ∀ {@0 x xs} → p x → Many xs → Many (x ∷ xs)
-    MThere : ∀ {@0 x xs} → Many xs → Many (x ∷ xs)
-
-  data Some : (@0 xs : List a) → Type where
-    SHere  : ∀ {@0 x xs} → p x → Many xs → Some (x ∷ xs)
-    SThere : ∀ {@0 x xs} → Some xs → Some (x ∷ xs)
-
-  {-# COMPILE AGDA2HS Many deriving (Eq, Show) #-}
-  {-# COMPILE AGDA2HS Some deriving (Eq, Show) #-}
-
-pattern []       = MNil
+pattern [] = MNil
 pattern _∷_ p ps = MHere p ps
-pattern _∷_ p ps = SHere p ps
 pattern there ps = MThere ps
+pattern _∷_ p ps = SHere p ps
 pattern there ps = SThere ps
-
-data HPointwise
-  {@0 a : Type} {@0 p q : @0 a → Type}
-  (r : ∀ {@0 x} → @0 p x → @0 q x → Type)
-  : ∀ {@0 xs} → @0 All p xs → @0 All q xs → Type
-  where
-  HNil  : HPointwise r [] []
-  _:>>_ : ∀ {@0 x xs}
-    → {@0 px : p x} {@0 pxs : All p xs}
-    → {@0 qx : q x} {@0 qxs : All q xs}
-    → r px qx
-    → HPointwise r pxs qxs
-    → HPointwise r (px ∷ pxs) (qx ∷ qxs)
-
-{-# COMPILE AGDA2HS HPointwise deriving (Eq, Show) #-}
-
 pattern [] = HNil
 pattern _∷_ rx rxs = rx :>> rxs
-
-module _ {@0 a : Type} {p : @0 a → Type} where
-
-  All¬⇒¬Any : ∀ {@0 xs} → All (λ x → ¬ p x) xs → ¬ Any p xs
-  All¬⇒¬Any (¬p ∷ _)   (here  p) = ¬p p
-  All¬⇒¬Any (_  ∷ ¬ps) (there p) = All¬⇒¬Any ¬ps p
-
-  ¬Any⇒All¬ : ∀ xs → ¬ Any p xs → All (λ x → ¬ p x) xs
-  ¬Any⇒All¬ []       ¬p = []
-  ¬Any⇒All¬ (x ∷ xs) ¬p = ¬p ∘ here ∷ ¬Any⇒All¬ xs (¬p ∘ there)
-
-  ++Any⁺ˡ : ∀ {@0 xs ys} → Any p xs → Any p (xs ++ ys)
-  ++Any⁺ˡ (here p)  = here p
-  ++Any⁺ˡ (there p) = there (++Any⁺ˡ p)
-
-  ++Any⁺ʳ : ∀ {xs} {@0 ys} → Any p ys → Any p (xs ++ ys)
-  ++Any⁺ʳ {[]}     p = p
-  ++Any⁺ʳ {x ∷ xs} p = there (++Any⁺ʳ p)
-
-  ++Any⁻ : ∀ xs {@0 ys} → Any p (xs ++ ys) → Either (Any p xs) (Any p ys)
-  ++Any⁻ []       p         = Right p
-  ++Any⁻ (x ∷ xs) (here p)  = Left (here p)
-  ++Any⁻ (x ∷ xs) (there p) = bimap there id (++Any⁻ xs p)
-
-  First⇒Any : ∀ {@0 xs} → First p xs → Any p xs
-  First⇒Any [ p ]   = here p
-  First⇒Any (_ ∷ ps) = there (First⇒Any ps)
-
-  ¬First⇒¬Any : ∀ {@0 xs} → ¬ First p xs → ¬ Any p xs
-  ¬First⇒¬Any ¬p (here p)  = ¬p [ p ]
-  ¬First⇒¬Any ¬p (there p) = ¬First⇒¬Any (¬p ∘ (¬p ∘ [_] ∷_)) p
-
-  tailFirst : ∀ {@0 x xs} → ¬ p x → First p (x ∷ xs) → First p xs
-  tailFirst ¬p [ p ]   = contradiction p ¬p
-  tailFirst ¬p (_ ∷ p) = p
-
-  tailMany : ∀ {@0 x xs} → Many p (x ∷ xs) → Many p xs
-  tailMany (_ ∷ ps)   = ps
-  tailMany (there ps) = ps
-  {-# COMPILE AGDA2HS tailMany #-}
-
-  someToAny : ∀ {@0 xs} → Some p xs → Many p xs
-  someToAny (px ∷ pxs) = px ∷ pxs
-  someToAny (there pxs) = there (someToAny pxs)
-  {-# COMPILE AGDA2HS someToAny #-}
-
-  tailSome : ∀ {@0 x xs} → Some p (x ∷ xs) → Many p xs
-  tailSome (px ∷ pxs) = pxs
-  tailSome (there pxs) = someToAny pxs
-  {-# COMPILE AGDA2HS tailSome #-}
-
-  unthereSome : ∀ {@0 x xs} → @0 ¬ p x → Some p (x ∷ xs) → Some p xs
-  unthereSome ¬px (px ∷ pxs) = contradiction px ¬px
-  unthereSome ¬px (there pxs) = pxs
-  {-# COMPILE AGDA2HS unthereSome #-}
-
-  trivialMany : ∀ xs → Many p xs
-  trivialMany [] = []
-  trivialMany (_ ∷ xs) = there (trivialMany xs)
-
-  ¬Some⇒All¬ : ∀ xs → ¬ Some p xs → All (λ x → ¬ p x) xs
-  ¬Some⇒All¬ [] _ = []
-  ¬Some⇒All¬ (x ∷ xs) ¬pxxs =
-    (λ px → ¬pxxs (px ∷ trivialMany xs)) ∷ ¬Some⇒All¬ xs (¬pxxs ∘ there)
-
-
-module _ {@0 a b : Type} {p : @0 a → Type} {q : @0 b → Type} {f : a → b} where
-
-  gmapAny⁺
-    : (∀ {x} → p x → q (f x))
-    → (∀ {xs} → Any p xs → Any q (map f xs))
-  gmapAny⁺ g {x ∷ xs} (here p)  = here (g p)
-  gmapAny⁺ g {x ∷ xs} (there p) = there (gmapAny⁺ g p)
-
-  gmapAny⁻
-    : (∀ {x} → q (f x) → p x)
-    → (∀ {xs} → Any q (map f xs) → Any p xs)
-  gmapAny⁻ g {x ∷ xs} (here p)  = here (g p)
-  gmapAny⁻ g {x ∷ xs} (there p) = there (gmapAny⁻ g p)
-
-
-module _ {@0 a b : Type} {p : @0 a → Type} {q : @0 b → Type} {f : a → List b} where
-
-  gconcatMapAny⁺
-    : (∀ {x} → p x → Any q (f x))
-    → (∀ {xs} → Any p xs → Any q (concatMap f xs))
-  gconcatMapAny⁺ g {x ∷ xs} (here p)  = ++Any⁺ˡ (g p)
-  gconcatMapAny⁺ g {x ∷ xs} (there p) = ++Any⁺ʳ (gconcatMapAny⁺ g p)
-
-  gconcatMapAny⁻
-    : (∀ {x} → Any q (f x) → p x)
-    → (∀ {xs : List _} → Any q (concatMap f xs) → Any p xs)
-  gconcatMapAny⁻ g {x ∷ xs} p with ++Any⁻ (f x) p
-  ... | Left q  = here (g q)
-  ... | Right q = there (gconcatMapAny⁻ g q)
 
 --------------------------------------------------------------------------------
 -- These
@@ -308,32 +173,3 @@ open import CoverageCheck.Extra.Dec public
 -- Decidable relation that does not erase positive information
 
 open import CoverageCheck.Extra.DecP public
-
-firstDecP : ∀ {a} {p : @0 a → Type}
-  → (∀ x → DecP (p x))
-  → (∀ xs → DecP (First p xs))
-firstDecP f []       = No λ _ → undefined
-firstDecP f (x ∷ xs) = ifDecP (f x)
-  (λ ⦃ p ⦄ → Yes [ p ])
-  (λ ⦃ ¬p ⦄ → mapDecP (¬p ∷_) (tailFirst ¬p) (firstDecP f xs))
-{-# COMPILE AGDA2HS firstDecP #-}
-
-manyDecP : {a : Type} {p : @0 a → Type}
-  → (∀ x → DecP (p x))
-  → ∀ xs → DecP (Many p xs)
-manyDecP f [] = Yes []
-manyDecP f (x ∷ xs) =
-  ifDecP (f x)
-    (λ ⦃ px ⦄ → mapDecP (px ∷_) tailMany (manyDecP f xs))
-    (mapDecP there tailMany (manyDecP f xs))
-{-# COMPILE AGDA2HS manyDecP #-}
-
-someDecP : {a : Type} {p : @0 a → Type}
-  → (∀ x → DecP (p x))
-  → ∀ xs → DecP (Some p xs)
-someDecP f [] = No λ _ → undefined
-someDecP f (x ∷ xs) =
-  ifDecP (f x)
-    (λ ⦃ px ⦄ → mapDecP (px ∷_) tailSome (manyDecP f xs))
-    (λ ⦃ ¬px ⦄ → mapDecP there (unthereSome ¬px) (someDecP f xs))
-{-# COMPILE AGDA2HS someDecP #-}

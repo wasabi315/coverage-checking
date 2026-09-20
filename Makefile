@@ -9,6 +9,14 @@ alllib: lib \
 	lib/CoverageCheck/Data/These.hs \
 	lib/CoverageCheck/Extra/DecP.hs \
 	lib/CoverageCheck/Data/List/All/Core.hs \
+	lib/CoverageCheck/Data/List/Any/Core.hs \
+	lib/CoverageCheck/Data/List/First/Core.hs \
+	lib/CoverageCheck/Data/List/First/Properties.hs \
+	lib/CoverageCheck/Data/List/Many/Core.hs \
+	lib/CoverageCheck/Data/List/Many/Properties.hs \
+	lib/CoverageCheck/Data/List/Some/Core.hs \
+	lib/CoverageCheck/Data/List/Some/Properties.hs \
+	lib/CoverageCheck/Data/List/HPointwise/Core.hs \
 	lib/CoverageCheck/Prelude.hs \
 	lib/CoverageCheck/Name.hs \
 	lib/CoverageCheck/Syntax.hs \
