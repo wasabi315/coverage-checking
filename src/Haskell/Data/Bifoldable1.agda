@@ -1,10 +1,6 @@
 module Haskell.Data.Bifoldable1 where
 
-open import Haskell.Prim using (Type; id; _∘_)
-open import Haskell.Prim.Functor using (Functor)
-open import Haskell.Prim.Monoid using (Semigroup; MonoidEndo; _<>_; mempty)
-open import Haskell.Prim.Tuple using (_×_; _,_; fst; snd)
-open import Haskell.Prim.Either using (Either; Left; Right)
+open import Haskell.Prelude
 
 open import Haskell.Data.Bifoldable using (Bifoldable)
 

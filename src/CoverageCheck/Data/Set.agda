@@ -169,6 +169,6 @@ module _ {a : Type} ⦃ _ : Ord a ⦄ where
     (x ∷ xs) ⦃ eq ⦄ →
       let @0 f : ∀ {y} → elem y (x ∷ xs) ≡ True → Set.member y s ≡ True
           f eq2 = trans (sym (prop-member-toAscList _ s)) (trans (cong (elem _) eq) eq2)
-       in Right (x ⟨ f (cong (_|| elem x xs) (eqReflexivity x)) ⟩ NE.∷
+       in Right (x ⟨ f (cong (_|| elem x xs) (eqReflexivity x)) ⟩ NE.:|
                  toAscListW' xs λ eq3 → f (trans (cong (_ ||_) eq3) (prop-x-||-True _)))
   {-# COMPILE AGDA2HS toAscNonEmptyW inline #-}

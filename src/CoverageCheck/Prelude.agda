@@ -1,11 +1,5 @@
 module CoverageCheck.Prelude where
 
-{-# FOREIGN AGDA2HS
-import Data.Bifoldable (Bifoldable(..))
-import Data.Bifoldable1 (Bifoldable1(..))
-import Data.Bifunctor (Bifunctor(..))
-#-}
-
 infixr 5 _∷_
 
 --------------------------------------------------------------------------------
@@ -53,9 +47,6 @@ open import Haskell.Law.Equality public using
 
 open import Haskell.Law.List public using (map-++)
 
-open import Haskell.Extra.Dec public using
-  (Reflects; mapReflects; extractTrue; extractFalse; Dec; mapDec; ifDec)
-
 open import Haskell.Extra.Erase public using
   (Erase; Erased; get; Σ0; ⟨_⟩_; <_>)
 
@@ -96,21 +87,7 @@ open import Haskell.Data.Bifoldable1 public using
 --------------------------------------------------------------------------------
 -- Bottom and negation
 
-infix 3 ¬_
-
-¬_ : Type → Type
-¬ a = a → ⊥
-
-explode : {a : Type} → @0 ⊥ → a
-explode _ = undefined
-{-# COMPILE AGDA2HS explode inline #-}
-
-contradiction : {a b : Type} → a → @0 ¬ a → b
-contradiction a ¬a = explode (¬a a)
-{-# COMPILE AGDA2HS contradiction inline #-}
-
-contraposition : {a b : Type} → (a → b) → (¬ b → ¬ a)
-contraposition f g = g ∘ f
+open import CoverageCheck.Extra.Negation public
 
 --------------------------------------------------------------------------------
 -- Equality
@@ -310,73 +287,14 @@ module _ {@0 a b : Type} {p : @0 a → Type} {q : @0 b → Type} {f : a → List
 --------------------------------------------------------------------------------
 -- These
 
-data These (a b : Type) : Type where
-  This  : a → These a b
-  That  : b → These a b
-  Both  : a → b → These a b
-
-{-# COMPILE AGDA2HS These deriving (Eq, Show) #-}
-
-these : {a b c : Type} → (a → c) → (b → c) → (a → b → c) → These a b → c
-these f g h (This x)   = f x
-these f g h (That x)   = g x
-these f g h (Both x y) = h x y
-{-# COMPILE AGDA2HS these #-}
-
-eitherToThese : {a b : Type} → Either a b → These a b
-eitherToThese = either This That
-{-# COMPILE AGDA2HS eitherToThese inline #-}
-
-instance
-  iDefaultFunctorThese : ∀ {a} → DefaultFunctor (These a)
-  iDefaultFunctorThese .DefaultFunctor.fmap f (This x) = This x
-  iDefaultFunctorThese .DefaultFunctor.fmap f (That y) = That (f y)
-  iDefaultFunctorThese .DefaultFunctor.fmap f (Both x y) = Both x (f y)
-
-  iFunctorThese : ∀ {a} → Functor (These a)
-  iFunctorThese = record {DefaultFunctor iDefaultFunctorThese}
-  {-# COMPILE AGDA2HS iFunctorThese #-}
-
-  iBifunctorFromBimapThese : BifunctorFromBimap These
-  iBifunctorFromBimapThese .BifunctorFromBimap.bimap f g (This x) = This (f x)
-  iBifunctorFromBimapThese .BifunctorFromBimap.bimap f g (That y) = That (g y)
-  iBifunctorFromBimapThese .BifunctorFromBimap.bimap f g (Both x y) = Both (f x) (g y)
-
-  iBifunctorThese : Bifunctor These
-  iBifunctorThese = record {BifunctorFromBimap iBifunctorFromBimapThese}
-  {-# COMPILE AGDA2HS iBifunctorThese #-}
-
-  iBifoldableFromBifoldMapThese : BifoldableFromBifoldMap These
-  iBifoldableFromBifoldMapThese .BifoldableFromBifoldMap.bifoldMap f g (This x) = f x
-  iBifoldableFromBifoldMapThese .BifoldableFromBifoldMap.bifoldMap f g (That y) = g y
-  iBifoldableFromBifoldMapThese .BifoldableFromBifoldMap.bifoldMap f g (Both x y) = f x <> g y
-
-  iBifoldableThese : Bifoldable These
-  iBifoldableThese = record {BifoldableFromBifoldMap iBifoldableFromBifoldMapThese}
-  {-# COMPILE AGDA2HS iBifoldableThese #-}
-
-  iBifoldable1These : Bifoldable1 These
-  iBifoldable1These .Bifoldable1.bifoldMap1 f g (This x) = f x
-  iBifoldable1These .Bifoldable1.bifoldMap1 f g (That y) = g y
-  iBifoldable1These .Bifoldable1.bifoldMap1 f g (Both x y) = f x <> g y
-  {-# COMPILE AGDA2HS iBifoldable1These #-}
-
-  iSemigroupThese : ∀ {a b} → ⦃ Semigroup a ⦄ → ⦃ Semigroup b ⦄ → Semigroup (These a b)
-  iSemigroupThese ._<>_ (This x)   (This x')    = This (x <> x')
-  iSemigroupThese ._<>_ (This x)   (That y')    = Both x y'
-  iSemigroupThese ._<>_ (This x)   (Both x' y') = Both (x <> x') y'
-  iSemigroupThese ._<>_ (That y)   (This x')    = Both x' y
-  iSemigroupThese ._<>_ (That y)   (That y')    = That (y <> y')
-  iSemigroupThese ._<>_ (That y)   (Both x' y') = Both x' (y <> y')
-  iSemigroupThese ._<>_ (Both x y) (This x')    = Both (x <> x') y
-  iSemigroupThese ._<>_ (Both x y) (That y')    = Both x (y <> y')
-  iSemigroupThese ._<>_ (Both x y) (Both x' y') = Both (x <> x') (y <> y')
-  {-# COMPILE AGDA2HS iSemigroupThese #-}
+open import CoverageCheck.Data.These public
 
 --------------------------------------------------------------------------------
 -- Non-empty lists
 
-open import Haskell.Data.List.NonEmpty using (NonEmpty; _∷_; _<|_)
+open import Haskell.Data.List.NonEmpty as NE using (NonEmpty; _<|_)
+
+pattern _∷_ x xs = x NE.:| xs
 
 mapNonEmptyRefine : {a : Type} {@0 p q : a → Type}
   → (@0 f : ∀ {x} → p x → q x)
@@ -384,24 +302,6 @@ mapNonEmptyRefine : {a : Type} {@0 p q : a → Type}
   → NonEmpty (∃[ x ∈ a ] q x)
 mapNonEmptyRefine f (x ∷ xs) = mapRefine f x ∷ mapListRefine f xs
 {-# COMPILE AGDA2HS mapNonEmptyRefine transparent #-}
-
-partitionEithersNonEmpty : {a b : Type}
-  → NonEmpty (Either a b)
-  → These (NonEmpty a) (NonEmpty b)
-partitionEithersNonEmpty {a} {b} (x ∷ xs) = go x xs
-  where
-    cons : Either a b → These (NonEmpty a) (NonEmpty b) → These (NonEmpty a) (NonEmpty b)
-    cons (Left x)  (This xs)    = This (x <| xs)
-    cons (Left x)  (That ys)    = Both (x ∷ []) ys
-    cons (Left x)  (Both xs ys) = Both (x <| xs) ys
-    cons (Right y) (This xs)    = Both xs (y ∷ [])
-    cons (Right y) (That ys)    = That (y <| ys)
-    cons (Right y) (Both xs ys) = Both xs (y <| ys)
-
-    go : Either a b → List (Either a b) → These (NonEmpty a) (NonEmpty b)
-    go x         (y ∷ xs) = cons x (go y xs)
-    go (Left x)  []       = This (x ∷ [])
-    go (Right y) []       = That (y ∷ [])
 
 -- These functions should go in Haskell.Data.List, but it is not possible because
 -- agda2hs-base already has the module of the same name.
@@ -417,95 +317,12 @@ inits1 (x ∷ xs) = map (x ∷_) (inits xs)
 --------------------------------------------------------------------------------
 -- Reflects and Dec
 
-negReflects : ∀ {ba a} → Reflects a ba → Reflects (¬ a) (not ba)
-negReflects {False} ¬a = ¬a
-negReflects {True}  a  = λ ¬a → ¬a a
-
-tupleReflects : ∀ {ba bb a b} → Reflects a ba → Reflects b bb → Reflects (a × b) (ba && bb)
-tupleReflects {False} {_}     ¬a _  = ¬a ∘ fst
-tupleReflects {True}  {False} _  ¬b = ¬b ∘ snd
-tupleReflects {True}  {True}  a  b  = a , b
-
-eitherReflects : ∀ {ba bb a b} → Reflects a ba → Reflects b bb → Reflects (Either a b) (ba || bb)
-eitherReflects {True}  {_}     a  _  = Left a
-eitherReflects {False} {True}  _  b  = Right b
-eitherReflects {False} {False} ¬a ¬b = either ¬a ¬b
-
-theseReflects : ∀ {ba bb a b} → Reflects a ba → Reflects b bb → Reflects (These a b) (ba || bb)
-theseReflects {True}  {False} a  _  = This a
-theseReflects {False} {True}  _  b  = That b
-theseReflects {True}  {True}  a  b  = Both a b
-theseReflects {False} {False} ¬a ¬b = these ¬a ¬b (λ _ → ¬b)
-
-negDec : ∀ {@0 a} → Dec a → Dec (¬ a)
-negDec (ba ⟨ ra ⟩) = (not ba) ⟨ negReflects ra ⟩
-{-# COMPILE AGDA2HS negDec inline #-}
-
-tupleDec : ∀ {@0 a b} → Dec a → Dec b → Dec (a × b)
-tupleDec (ba ⟨ ra ⟩) (bb ⟨ rb ⟩) = (ba && bb) ⟨ tupleReflects ra rb ⟩
-syntax tupleDec a b = a ×-dec b
-{-# COMPILE AGDA2HS tupleDec inline #-}
-
-eitherDec : ∀ {@0 a b} → Dec a → Dec b → Dec (Either a b)
-eitherDec (ba ⟨ ra ⟩) (bb ⟨ rb ⟩) = (ba || bb) ⟨ eitherReflects ra rb ⟩
-{-# COMPILE AGDA2HS eitherDec inline #-}
-
-theseDec : ∀ {@0 a b} → Dec a → Dec b → Dec (These a b)
-theseDec (ba ⟨ ra ⟩) (bb ⟨ rb ⟩) = (ba || bb) ⟨ theseReflects ra rb ⟩
-{-# COMPILE AGDA2HS theseDec inline #-}
-
-T : Bool → Type
-T True  = ⊤
-T False = ⊥
-
-@0 dec-stable : ∀ {@0 a} → Dec a → ¬ ¬ a → a
-dec-stable (True  ⟨ a  ⟩) ¬¬a = a
-dec-stable (False ⟨ ¬a ⟩) ¬¬a = contradiction ¬a ¬¬a
+open import CoverageCheck.Extra.Dec public
 
 --------------------------------------------------------------------------------
 -- Decidable relation that does not erase positive information
 
-infix 3 tupleDecP
-
-data DecP (a : Type) : Type where
-  Yes : (p : a) → DecP a
-  No  : (@0 p : ¬ a) → DecP a
-{-# COMPILE AGDA2HS DecP deriving Show #-}
-
-mapDecP : ∀ {a b} → (a → b) → @0 (b → a) → DecP a → DecP b
-mapDecP f g (Yes p) = Yes (f p)
-mapDecP f g (No ¬p) = No (contraposition g ¬p)
-{-# COMPILE AGDA2HS mapDecP #-}
-
-ifDecP : {a b : Type} → DecP a → (⦃ a ⦄ → b) → (@0 ⦃ ¬ a ⦄ → b) → b
-ifDecP (Yes p) t e = t ⦃ p ⦄
-ifDecP (No ¬p) t e = e ⦃ ¬p ⦄
-{-# COMPILE AGDA2HS ifDecP #-}
-
-decToDecP : ∀ {@0 a} → Dec a → DecP (Erase a)
-decToDecP (False ⟨ ¬a ⟩) = No λ (Erased a) → contradiction a ¬a
-decToDecP (True  ⟨ a  ⟩) = Yes (Erased a)
-{-# COMPILE AGDA2HS decToDecP #-}
-
-tupleDecP : ∀ {a b} → DecP a → DecP b → DecP (a × b)
-syntax tupleDecP a b = a ×-decP b
-No ¬p ×-decP _     = No (contraposition fst ¬p)
-Yes _ ×-decP No ¬q = No (contraposition snd ¬q)
-Yes p ×-decP Yes q = Yes (p , q)
-{-# COMPILE AGDA2HS tupleDecP #-}
-
-eitherDecP : ∀ {a b} → DecP a → DecP b → DecP (Either a b)
-eitherDecP (Yes p) _       = Yes (Left p)
-eitherDecP (No ¬p) (Yes q) = Yes (Right q)
-eitherDecP (No ¬p) (No ¬q) = No (either ¬p ¬q)
-{-# COMPILE AGDA2HS eitherDecP #-}
-
-theseDecP : ∀ {a b} → DecP a → DecP b → DecP (These a b)
-theseDecP (Yes p) (Yes q) = Yes (Both p q)
-theseDecP (Yes p) (No ¬q) = Yes (This p)
-theseDecP (No ¬p) (Yes q) = Yes (That q)
-theseDecP (No ¬p) (No ¬q) = No (these ¬p ¬q (λ _ → ¬q))
-{-# COMPILE AGDA2HS theseDecP #-}
+open import CoverageCheck.Extra.DecP public
 
 firstDecP : ∀ {a} {p : @0 a → Type}
   → (∀ x → DecP (p x))

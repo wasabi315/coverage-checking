@@ -1,9 +1,6 @@
 module Haskell.Data.Foldable1 where
 
-open import Haskell.Prim using (Type; id; _∘_)
-open import Haskell.Prim.Functor using (Functor)
-open import Haskell.Prim.Monoid using (Semigroup; _<>_)
-open import Haskell.Prim.Foldable using (Foldable)
+open import Haskell.Prelude
 
 --------------------------------------------------------------------------------
 

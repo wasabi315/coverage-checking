@@ -1,9 +1,6 @@
 module Haskell.Data.Bifunctor where
 
-open import Haskell.Prim using (Type; id; _∘_)
-open import Haskell.Prim.Functor using (Functor)
-open import Haskell.Prim.Tuple using (_×_; _,_; fst; snd)
-open import Haskell.Prim.Either using (Either; Left; Right)
+open import Haskell.Prelude
 
 --------------------------------------------------------------------------------
 

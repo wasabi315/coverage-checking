@@ -21,7 +21,9 @@ common warnings
 
 library
     import:           warnings
-    exposed-modules:  CoverageCheck.Prelude
+    exposed-modules:  CoverageCheck.Data.These
+                    , CoverageCheck.Extra.DecP
+                    , CoverageCheck.Prelude
                     , CoverageCheck.Syntax
                     , CoverageCheck.Instance
                     , CoverageCheck.Subsumption

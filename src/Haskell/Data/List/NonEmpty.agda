@@ -1,16 +1,11 @@
 module Haskell.Data.List.NonEmpty where
 
-open import Haskell.Prim using (Type; List; []; _∘_)
-open import Haskell.Prim.Applicative using (Applicative; pure; _<*>_; DefaultApplicative)
-open import Haskell.Prim.Functor using (Functor; fmap; _<$_)
-open import Haskell.Prim.List using (_++_)
-open import Haskell.Prim.Monad using (Monad; _>>=_; DefaultMonad)
-open import Haskell.Prim.Monoid using (Semigroup; _<>_)
-open import Haskell.Prim.Foldable using (Foldable; DefaultFoldable; foldMap)
+open import Haskell.Prelude
+  hiding (NonEmpty; head; tail; toList; init; last)
 
 open import Haskell.Data.Foldable1 using (Foldable1)
 
-infixr 5 _:|_ _∷_ _<|_
+infixr 5 _:|_ _<|_
 
 --------------------------------------------------------------------------------
 
@@ -24,18 +19,16 @@ record NonEmpty (a : Type) : Type where
 
 open NonEmpty public
 
-pattern _∷_ x xs = x :| xs
-
 toList : {a : Type} → NonEmpty a → List a
 toList xs = head xs List.∷ tail xs
 
 _<|_ : {a : Type} → a → NonEmpty a → NonEmpty a
-x <| xs = x ∷ head xs List.∷ tail xs
+x <| xs = x :| head xs List.∷ tail xs
 
 cons = _<|_
 
 singleton : {a : Type} → a → NonEmpty a
-singleton x = x ∷ []
+singleton x = x :| []
 
 init : {a : Type} → NonEmpty a → List a
 init = λ xs → helper (head xs) (tail xs)
@@ -55,7 +48,7 @@ last = λ xs → helper (head xs) (tail xs)
 
 private
   bindNonEmpty : ∀ {a b} → NonEmpty a → (a → NonEmpty b) → NonEmpty b
-  bindNonEmpty xs f = head fx ∷ tail fx ++ fxs
+  bindNonEmpty xs f = head fx :| tail fx ++ fxs
     where
       fx = f (head xs)
       fxs = tail xs >>= (toList ∘ f)
@@ -63,13 +56,13 @@ private
 instance
 
   iFunctorNonEmpty : Functor NonEmpty
-  iFunctorNonEmpty .fmap f xs = f (head xs) ∷ fmap f (tail xs)
-  iFunctorNonEmpty ._<$_ b xs = b ⦃ head xs ⦄ ∷ (b <$ tail xs)
+  iFunctorNonEmpty .fmap f xs = f (head xs) :| fmap f (tail xs)
+  iFunctorNonEmpty ._<$_ b xs = b ⦃ head xs ⦄ :| (b <$ tail xs)
 
   iDefaultApplicativeNonEmpty : DefaultApplicative NonEmpty
-  iDefaultApplicativeNonEmpty .DefaultApplicative.pure x = x ∷ []
+  iDefaultApplicativeNonEmpty .DefaultApplicative.pure x = x :| []
   iDefaultApplicativeNonEmpty .DefaultApplicative._<*>_ fs xs =
-    bindNonEmpty fs λ f → bindNonEmpty xs λ x → f x ∷ []
+    bindNonEmpty fs λ f → bindNonEmpty xs λ x → f x :| []
 
   iApplicativeNonEmpty : Applicative NonEmpty
   iApplicativeNonEmpty = record {DefaultApplicative iDefaultApplicativeNonEmpty}
@@ -81,16 +74,16 @@ instance
   iMonadNonEmpty = record {DefaultMonad iDefaultMonadNonEmpty}
 
   iSemigroupNonEmpty : ∀ {a} → Semigroup (NonEmpty a)
-  iSemigroupNonEmpty ._<>_ (x ∷ xs) ys = x ∷ xs ++ toList ys
+  iSemigroupNonEmpty ._<>_ (x :| xs) ys = x :| xs ++ toList ys
 
   iDefaultFoldableNonEmpty : DefaultFoldable NonEmpty
-  iDefaultFoldableNonEmpty .DefaultFoldable.foldMap f (x ∷ xs) = f x <> foldMap f xs
+  iDefaultFoldableNonEmpty .DefaultFoldable.foldMap f (x :| xs) = f x <> foldMap f xs
 
   iFoldableNonEmpty : Foldable NonEmpty
   iFoldableNonEmpty = record {DefaultFoldable iDefaultFoldableNonEmpty}
 
   iFoldable1NonEmpty : Foldable1 NonEmpty
-  iFoldable1NonEmpty .Foldable1.foldMap1 f (x ∷ xs) = go (f x) xs
+  iFoldable1NonEmpty .Foldable1.foldMap1 f (x :| xs) = go (f x) xs
     where
       go : _ → List _ → _
       go y [] = y

@@ -6,6 +6,8 @@ LIBRARIES =
 # this should stay in sync with the modules defined in cabal
 # also the order is silly, we redo a lot of the work because we don't know the dependencies
 alllib: lib \
+	lib/CoverageCheck/Data/These.hs \
+	lib/CoverageCheck/Extra/DecP.hs \
 	lib/CoverageCheck/Prelude.hs \
 	lib/CoverageCheck/Name.hs \
 	lib/CoverageCheck/Syntax.hs \
