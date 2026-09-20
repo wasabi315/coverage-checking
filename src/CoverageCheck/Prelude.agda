@@ -77,6 +77,9 @@ open import Haskell.Extra.Sigma public using (Σ; Σ-syntax; _,_; fst; snd)
 --------------------------------------------------------------------------------
 -- Things in Haskell base but not provided by agda2hs-base
 
+open import Haskell.Data.Foldable1 public using
+  ( Foldable1; foldMap1 )
+
 open import Haskell.Data.Bifunctor public using
   ( Bifunctor; bimap; first; second;
     BifunctorFromBimap; BifunctorFromFirstSecond;
@@ -357,6 +360,18 @@ instance
   iBifoldable1These .Bifoldable1.bifoldMap1 f g (That y) = g y
   iBifoldable1These .Bifoldable1.bifoldMap1 f g (Both x y) = f x <> g y
   {-# COMPILE AGDA2HS iBifoldable1These #-}
+
+  iSemigroupThese : ∀ {a b} → ⦃ Semigroup a ⦄ → ⦃ Semigroup b ⦄ → Semigroup (These a b)
+  iSemigroupThese ._<>_ (This x)   (This x')    = This (x <> x')
+  iSemigroupThese ._<>_ (This x)   (That y')    = Both x y'
+  iSemigroupThese ._<>_ (This x)   (Both x' y') = Both (x <> x') y'
+  iSemigroupThese ._<>_ (That y)   (This x')    = Both x' y
+  iSemigroupThese ._<>_ (That y)   (That y')    = That (y <> y')
+  iSemigroupThese ._<>_ (That y)   (Both x' y') = Both x' (y <> y')
+  iSemigroupThese ._<>_ (Both x y) (This x')    = Both (x <> x') y
+  iSemigroupThese ._<>_ (Both x y) (That y')    = Both x (y <> y')
+  iSemigroupThese ._<>_ (Both x y) (Both x' y') = Both (x <> x') (y <> y')
+  {-# COMPILE AGDA2HS iSemigroupThese #-}
 
 --------------------------------------------------------------------------------
 -- Non-empty lists
@@ -675,7 +690,7 @@ module _ {a : Type} ⦃ _ : Ord a ⦄ where
     [] ⦃ eq ⦄ →
       Left (Erased λ x → trans (sym (prop-member-toAscList x s)) (cong (elem x) eq))
     (x ∷ xs) ⦃ eq ⦄ →
-      let @0 f : ∀ {y} → elem y (x ∷ xs) ≡ True → Set.member y s ≡ True
+      let @0 f : ∀ {y} → elem y (x List.∷ xs) ≡ True → Set.member y s ≡ True
           f eq2 = trans (sym (prop-member-toAscList _ s)) (trans (cong (elem _) eq) eq2)
        in Right (x ⟨ f (cong (_|| elem x xs) (eqReflexivity x)) ⟩ ∷
                  toAscListW' xs λ eq3 → f (trans (cong (_ ||_) eq3) (prop-x-||-True _)))

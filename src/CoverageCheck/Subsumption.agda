@@ -33,7 +33,6 @@ syntax Subsumptions ps qs = ps ⊆* qs
 
 -- p ⊆ q : q subsumes p
 -- Not complete; for example, — ⊆ (true ∣ false) is not derivable
--- Probably better named BranchSelection
 data Subsumption where
   SWild : {@0 p : Pattern α0} → p ⊆ —
 
@@ -52,12 +51,18 @@ data Subsumption where
     → (sub : p ⊆ r)
     → p ⊆ (q ∣ r)
 
+  SOr : {@0 p q r : Pattern α0}
+    → (sub₁ : p ⊆ r)
+    → (sub₂ : q ⊆ r)
+    → (p ∣ q) ⊆ r
+
 {-# COMPILE AGDA2HS Subsumption deriving Show #-}
 
-pattern —⊆        = SWild
-pattern con⊆ subs = SCon subs
-pattern ∣⊆ˡ sub   = SOrL sub
-pattern ∣⊆ʳ sub   = SOrR sub
+pattern —⊆           = SWild
+pattern con⊆ subs    = SCon subs
+pattern ⊆∣ˡ sub      = SOrL sub
+pattern ⊆∣ʳ sub      = SOrR sub
+pattern ∣⊆ sub₁ sub₂ = SOr sub₁ sub₂
 
 Subsumptions = HPointwise (λ p q → p ⊆ q)
 
@@ -79,15 +84,16 @@ sWilds {α ∷ αs} {_ ∷ _} = —⊆ ∷ sWilds
 {-# COMPILE AGDA2HS sWilds #-}
 syntax sWilds = —⊆*
 
-module _ {@0 p q r : Pattern α0} where
+-- ⊆ is reflexive
+⊆-refl  : (p : Pattern α0) → p ⊆ p
+⊆*-refl : (ps : Patterns αs0) → ps ⊆* ps
 
-  -- Inversion lemma for ∣⊆ˡ and ∣⊆ʳ
-  sOrInv : (p ⊆ q ∣ r) → Either (p ⊆ q) (p ⊆ r)
-  sOrInv (∣⊆ˡ sub) = Left sub
-  sOrInv (∣⊆ʳ sub) = Right sub
-  {-# COMPILE AGDA2HS sOrInv #-}
-  syntax sOrInv = ∣⊆⁻
+⊆-refl —          = —⊆
+⊆-refl (con c ps) = con⊆ (⊆*-refl ps)
+⊆-refl (p ∣ q)    = ∣⊆ (⊆∣ˡ (⊆-refl p)) (⊆∣ʳ (⊆-refl q))
 
+⊆*-refl []       = []
+⊆*-refl (p ∷ ps) = ⊆-refl p ∷ ⊆*-refl ps
 
 module _ {@0 c : NameCon d0}
   (let @0 αs : Tys
@@ -111,8 +117,10 @@ subsumes : {ps qs : Patterns αs0} {vs : Values αs0}
 
 subsume —⊆ inst = —≼
 subsume (con⊆ subs) (con≼ insts) = con≼ (subsumes subs insts)
-subsume (∣⊆ˡ sub) inst = ∣≼ˡ (subsume sub inst)
-subsume (∣⊆ʳ sub) inst = ∣≼ʳ (subsume sub inst)
+subsume (⊆∣ˡ sub) inst = ∣≼ˡ (subsume sub inst)
+subsume (⊆∣ʳ sub) inst = ∣≼ʳ (subsume sub inst)
+subsume (∣⊆ sub _) (∣≼ˡ inst) = subsume sub inst
+subsume (∣⊆ _ sub) (∣≼ʳ inst) = subsume sub inst
 
 subsumes [] [] = []
 subsumes (sub ∷ subs) (inst ∷ insts) = subsume sub inst ∷ subsumes subs insts
@@ -126,8 +134,8 @@ subsumes (sub ∷ subs) (inst ∷ insts) = subsume sub inst ∷ subsumes subs in
 
 ⊆only —≼ = —⊆
 ⊆only (con≼ insts) = con⊆ (⊆onlys insts)
-⊆only (∣≼ˡ inst) = ∣⊆ˡ (⊆only inst)
-⊆only (∣≼ʳ inst) = ∣⊆ʳ (⊆only inst)
+⊆only (∣≼ˡ inst) = ⊆∣ˡ (⊆only inst)
+⊆only (∣≼ʳ inst) = ⊆∣ʳ (⊆only inst)
 
 ⊆onlys [] = []
 ⊆onlys (inst ∷ insts) = ⊆only inst ∷ ⊆onlys insts

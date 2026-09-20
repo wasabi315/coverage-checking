@@ -6,6 +6,9 @@ open import Haskell.Prim.Functor using (Functor; fmap; _<$_)
 open import Haskell.Prim.List using (_++_)
 open import Haskell.Prim.Monad using (Monad; _>>=_; DefaultMonad)
 open import Haskell.Prim.Monoid using (Semigroup; _<>_)
+open import Haskell.Prim.Foldable using (Foldable; DefaultFoldable; foldMap)
+
+open import Haskell.Data.Foldable1 using (Foldable1)
 
 infixr 5 _:|_ _∷_ _<|_
 
@@ -79,3 +82,16 @@ instance
 
   iSemigroupNonEmpty : ∀ {a} → Semigroup (NonEmpty a)
   iSemigroupNonEmpty ._<>_ (x ∷ xs) ys = x ∷ xs ++ toList ys
+
+  iDefaultFoldableNonEmpty : DefaultFoldable NonEmpty
+  iDefaultFoldableNonEmpty .DefaultFoldable.foldMap f (x ∷ xs) = f x <> foldMap f xs
+
+  iFoldableNonEmpty : Foldable NonEmpty
+  iFoldableNonEmpty = record {DefaultFoldable iDefaultFoldableNonEmpty}
+
+  iFoldable1NonEmpty : Foldable1 NonEmpty
+  iFoldable1NonEmpty .Foldable1.foldMap1 f (x ∷ xs) = go (f x) xs
+    where
+      go : _ → List _ → _
+      go y [] = y
+      go y (x List.∷ xs) = y <> go (f x) xs

@@ -49,6 +49,20 @@ module _ ⦃ @0 sig : Signature ⦄ where
     contradiction [] (h (here []))
 
 
+module _ ⦃ @0 sig : Signature ⦄ where
+
+  -- We can generalise nilOkCase
+  -- Any pattern stack is useful with respect to the empty matrix
+
+  @0 ⊆ˢ-refl : (pss : PatternStack αss0) → pss ⊆ˢ pss
+  ⊆ˢ-refl []         = []
+  ⊆ˢ-refl (ps ∷ pss) = ⊆*-refl ps ∷ ⊆ˢ-refl pss
+
+  emptyMatrixCase : (pss : PatternStack αss0) → UsefulS [] pss
+  emptyMatrixCase pss = (pss , (λ ()) , ⊆ˢ-refl pss) ∷ []
+  {-# COMPILE AGDA2HS emptyMatrixCase #-}
+
+
 module _ ⦃ @0 sig : Signature ⦄
   {@0 psmat : PatternStackMatrix ([] ∷ αss0)} {@0 pss : PatternStack αss0}
   where
@@ -81,7 +95,7 @@ module _ ⦃ @0 sig : Signature ⦄
     : UsefulS' psmat ((r₁ ∷ ps) ∷ pss)
     → UsefulS' psmat ((r₁ ∣ r₂ ∷ ps) ∷ pss)
   orCaseL' ((q ∷ qs) ∷ qss , disj , (s ∷ ss) ∷ sss) =
-    (q ∷ qs) ∷ qss , disj , (∣⊆ˡ s ∷ ss) ∷ sss
+    (q ∷ qs) ∷ qss , disj , (⊆∣ˡ s ∷ ss) ∷ sss
   {-# COMPILE AGDA2HS orCaseL' transparent #-}
 
   orCaseList
@@ -101,7 +115,7 @@ module _ ⦃ @0 sig : Signature ⦄
     : UsefulS' psmat ((r₂ ∷ ps) ∷ pss)
     → UsefulS' psmat ((r₁ ∣ r₂ ∷ ps) ∷ pss)
   orCaseR' ((q ∷ qs) ∷ qss , disj , (s ∷ ss) ∷ sss) =
-    (q ∷ qs) ∷ qss , disj , (∣⊆ʳ s ∷ ss) ∷ sss
+    (q ∷ qs) ∷ qss , disj , (⊆∣ʳ s ∷ ss) ∷ sss
   {-# COMPILE AGDA2HS orCaseR' transparent #-}
 
   orCaseRList
@@ -125,18 +139,27 @@ module _ ⦃ @0 sig : Signature ⦄
   orCase (Both hs1 hs2) = orCaseL hs1 <> orCaseR hs2
   {-# COMPILE AGDA2HS orCase #-}
 
+  @0 orCaseInvW : ∀ qss
+    → psmat #ˢᵐ qss
+    → qss ⊆ˢ ((r₁ ∣ r₂ ∷ ps) ∷ pss)
+    → These (UsefulS psmat ((r₁ ∷ ps) ∷ pss)) (UsefulS psmat ((r₂ ∷ ps) ∷ pss))
+  orCaseInvW ((q ∷ qs) ∷ qss) disj ((⊆∣ˡ s ∷ ss) ∷ sss) =
+    This (((q ∷ qs) ∷ qss , disj , (s ∷ ss) ∷ sss) ∷ [])
+  orCaseInvW ((q ∷ qs) ∷ qss) disj ((⊆∣ʳ s ∷ ss) ∷ sss) =
+    That (((q ∷ qs) ∷ qss , disj , (s ∷ ss) ∷ sss) ∷ [])
+  orCaseInvW ((q₁ ∣ q₂ ∷ qs) ∷ qss) disj ((∣⊆ s₁ s₂ ∷ ss) ∷ sss) =
+    orCaseInvW ((q₁ ∷ qs) ∷ qss) (#-∣ˡ disj) ((s₁ ∷ ss) ∷ sss) <>
+    orCaseInvW ((q₂ ∷ qs) ∷ qss) (#-∣ʳ disj) ((s₂ ∷ ss) ∷ sss)
+
   @0 orCaseInv'
     : UsefulS' psmat ((r₁ ∣ r₂ ∷ ps) ∷ pss)
-    → Either (UsefulS' psmat ((r₁ ∷ ps) ∷ pss)) (UsefulS' psmat ((r₂ ∷ ps) ∷ pss))
-  orCaseInv' ((q ∷ qs) ∷ qss , disj , (∣⊆ˡ s ∷ ss) ∷ sss) =
-    Left ((q ∷ qs) ∷ qss , disj , (s ∷ ss) ∷ sss)
-  orCaseInv' ((q ∷ qs) ∷ qss , disj , (∣⊆ʳ s ∷ ss) ∷ sss) =
-    Right ((q ∷ qs) ∷ qss , disj , (s ∷ ss) ∷ sss)
+    → These (UsefulS psmat ((r₁ ∷ ps) ∷ pss)) (UsefulS psmat ((r₂ ∷ ps) ∷ pss))
+  orCaseInv' (qss , disj , sss) = orCaseInvW qss disj sss
 
   @0 orCaseInv
     : UsefulS psmat ((r₁ ∣ r₂ ∷ ps) ∷ pss)
     → These (UsefulS psmat ((r₁ ∷ ps) ∷ pss)) (UsefulS psmat ((r₂ ∷ ps) ∷ pss))
-  orCaseInv = partitionEithersNonEmpty ∘ fmap orCaseInv'
+  orCaseInv hs = foldMap1 orCaseInv' hs
 
 
 module _ ⦃ @0 sig : Signature ⦄ {c : NameCon d0}
@@ -162,18 +185,27 @@ module _ ⦃ @0 sig : Signature ⦄ {c : NameCon d0}
   conCase = fmap conCase'
   {-# COMPILE AGDA2HS conCase inline #-}
 
+  conCaseInvW : ∀ qss
+    → @0 psmat #ˢᵐ qss
+    → @0 qss ⊆ˢ ((con c rs ∷ ps) ∷ pss)
+    → UsefulS (specialize c psmat) (rs ∷ ps ∷ pss)
+  conCaseInvW ((con c qs' ∷ qs) ∷ qss) disj ((con⊆ ss' ∷ ss) ∷ sss) =
+    (qs' ∷ qs ∷ qss ,
+     specialize-preserves-# disj ,
+     ss' ∷ ss ∷ sss) ∷ []
+  conCaseInvW ((q₁ ∣ q₂ ∷ qs) ∷ qss) disj ((∣⊆ s₁ s₂ ∷ ss) ∷ sss) =
+    conCaseInvW ((q₁ ∷ qs) ∷ qss) (#-∣ˡ disj) ((s₁ ∷ ss) ∷ sss) <>
+    conCaseInvW ((q₂ ∷ qs) ∷ qss) (#-∣ʳ disj) ((s₂ ∷ ss) ∷ sss)
+
   conCaseInv'
     : UsefulS' psmat ((con c rs ∷ ps) ∷ pss)
-    → UsefulS' (specialize c psmat) (rs ∷ ps ∷ pss)
-  conCaseInv' ((con c qs' ∷ qs) ∷ qss , disj , (con⊆ ss' ∷ ss) ∷ sss) =
-    qs' ∷ qs ∷ qss ,
-    specialize-preserves-# disj ,
-    ss' ∷ ss ∷ sss
+    → UsefulS (specialize c psmat) (rs ∷ ps ∷ pss)
+  conCaseInv' (qss , disj , sss) = conCaseInvW qss disj sss
 
   conCaseInv
     : UsefulS psmat ((con c rs ∷ ps) ∷ pss)
     → UsefulS (specialize c psmat) (rs ∷ ps ∷ pss)
-  conCaseInv = fmap conCaseInv'
+  conCaseInv hs = foldMap1 conCaseInv' hs
 
 
 module _ ⦃ @0 sig : Signature ⦄
@@ -212,23 +244,25 @@ module _ ⦃ @0 sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α
   @0 wildCompCaseInv' : ∀ qss
     → psmat #ˢᵐ qss
     → qss ⊆ˢ ((— ∷ ps) ∷ pss)
-    → Σ[ c ∈ NameCon d0 ] UsefulS' (specialize c psmat) (—* ∷ ps ∷ pss)
+    → NonEmpty (Σ[ c ∈ NameCon d0 ] UsefulS (specialize c psmat) (—* ∷ ps ∷ pss))
   wildCompCaseInv' ((— ∷ qs) ∷ qss) disj ((s ∷ ss) ∷ sss) =
-    exampleCon ,
-    (—* ∷ qs ∷ qss , specialize-preserves-#-wild disj , —⊆* ∷ ss ∷ sss)
+    (exampleCon ,
+     (—* ∷ qs ∷ qss , specialize-preserves-#-wild disj , —⊆* ∷ ss ∷ sss) ∷ [])
+    ∷ []
   wildCompCaseInv' ((con c qs' ∷ qs) ∷ qss) disj ((s ∷ ss) ∷ sss) =
-    c ,
-    (qs' ∷ qs ∷ qss , specialize-preserves-# disj , —⊆* ∷ ss ∷ sss)
+    (c ,
+     (qs' ∷ qs ∷ qss , specialize-preserves-# disj , —⊆* ∷ ss ∷ sss) ∷ [])
+    ∷ []
   wildCompCaseInv' ((q₁ ∣ q₂ ∷ qs) ∷ qss) disj ((s ∷ ss) ∷ sss) =
-    wildCompCaseInv' ((q₁ ∷ qs) ∷ qss) (#-∣ˡ disj) ((—⊆ ∷ ss) ∷ sss)
+    wildCompCaseInv' ((q₁ ∷ qs) ∷ qss) (#-∣ˡ disj) ((—⊆ ∷ ss) ∷ sss) <>
+    wildCompCaseInv' ((q₂ ∷ qs) ∷ qss) (#-∣ʳ disj) ((—⊆ ∷ ss) ∷ sss)
 
   @0 wildCompCaseInv
     : UsefulS psmat ((— ∷ ps) ∷ pss)
     → NonEmpty (Σ[ c ∈ NameCon d0 ] UsefulS (specialize c psmat) (—* ∷ ps ∷ pss))
   wildCompCaseInv hs = do
     qss , disj , sss ← hs
-    let c , h' = wildCompCaseInv' qss disj sss
-    pure (c , h' ∷ [])
+    wildCompCaseInv' qss disj sss
 
 
 module _ ⦃ sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α ⦄ {d}
@@ -293,7 +327,7 @@ module _
   decPUseful' : (psmat : PatternStackMatrix αss) (ps : PatternStack αss)
     → @0 UsefulAcc psmat ps
     → DecP (UsefulS psmat ps)
-  decPUseful' {[]} [] [] done = Yes nilOkCase
+  decPUseful' [] pss acc = Yes (emptyMatrixCase pss)
   decPUseful' {[]} (_ ∷ _) [] done = No nilBadCase
   decPUseful' {[] ∷ αss} psmat ([] ∷ pss) (tailStep h) =
     mapDecP tailCase tailCaseInv
@@ -334,7 +368,7 @@ module _
   decUseful' : (psmat : PatternStackMatrix αss) (ps : PatternStack αss)
     → @0 UsefulAcc psmat ps
     → Dec (UsefulS psmat ps)
-  decUseful' {[]} [] [] done = True ⟨ nilOkCase ⟩
+  decUseful' [] pss _ = True ⟨ emptyMatrixCase pss ⟩
   decUseful' {[]} (_ ∷ _) [] done = False ⟨ nilBadCase ⟩
   decUseful' {[] ∷ αss} psmat ([] ∷ pss) (tailStep h) =
     mapDec tailCase tailCaseInv
@@ -352,10 +386,8 @@ module _
     mapDec conCase conCaseInv
       (decUseful' (specialize c psmat) (rs ∷ ps ∷ pss) h)
   decUseful' {(TyData d ∷ αs) ∷ αss} psmat ((r₁ ∣ r₂ ∷ ps) ∷ pss) (orStep h h') =
-    mapDec
-      (either orCaseL orCaseR)
-      (bimap NonEmpty.singleton NonEmpty.singleton ∘ orCaseInv' ∘ NonEmpty.head)
-      (eitherDec
+    mapDec orCase orCaseInv
+      (theseDec
         (decUseful' psmat ((r₁ ∷ ps) ∷ pss) h)
         (decUseful' psmat ((r₂ ∷ ps) ∷ pss) h'))
   {-# COMPILE AGDA2HS decUseful' #-}
