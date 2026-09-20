@@ -1,11 +1,11 @@
 {-# OPTIONS --rewriting #-}
 
-module @0 Data.Set.Rewriting where
+module @0 CoverageCheck.Data.Set.Rewriting where
 
 open import Agda.Builtin.Equality.Rewrite
 
 open import Haskell.Prelude
-open import Data.Set as Set using (Set)
+open import CoverageCheck.Data.Set as Set using (Set)
 
 --------------------------------------------------------------------------------
 -- Rewrite rules for Set operations

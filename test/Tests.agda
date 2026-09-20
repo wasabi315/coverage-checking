@@ -3,8 +3,8 @@
 module @0 Tests where
 
 open import CoverageCheck
-open import Data.Set as Set using (Set)
-open import Data.Set.Rewriting using ()
+open import CoverageCheck.Data.Set as Set using (Set)
+open import CoverageCheck.Data.Set.Rewriting using ()
 open import Haskell.Data.List.NonEmpty using (_∷_)
 
 --------------------------------------------------------------------------------

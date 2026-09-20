@@ -2,7 +2,7 @@ open import CoverageCheck.Prelude
 open import CoverageCheck.GlobalScope using (Globals)
 open import CoverageCheck.Syntax
 open import CoverageCheck.Name
-open import Data.Set as Set using (Set)
+open import CoverageCheck.Data.Set as Set using (Set)
 open import Haskell.Data.List.NonEmpty using (NonEmpty)
 
 open import CoverageCheck.Usefulness.Algorithm.Types
@@ -49,19 +49,19 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} (@0 c : NameCon d0) where
 
   memberRootConSet' : (p : Pattern (TyData d0))
     → Reflects (c ∈ p) (Set.member c (rootConSet' p))
-  memberRootConSet' — rewrite prop-member-empty c = id
+  memberRootConSet' — rewrite Set.prop-member-empty c = id
   memberRootConSet' (con c' _)
-    rewrite prop-member-singleton c c'
+    rewrite Set.prop-member-singleton c c'
     = isEquality c c'
   memberRootConSet' (p ∣ q)
-    rewrite prop-member-union c (rootConSet' p) (rootConSet' q)
+    rewrite Set.prop-member-union c (rootConSet' p) (rootConSet' q)
     = eitherReflects (memberRootConSet' p) (memberRootConSet' q)
 
   memberRootConSet : (psmat : PatternStackMatrix ((TyData d0 ∷ αs0) ∷ αss0))
     → Reflects (c ∈ˢᵐ psmat) (Set.member c (rootConSet psmat))
-  memberRootConSet [] rewrite prop-member-empty c = λ ()
+  memberRootConSet [] rewrite Set.prop-member-empty c = λ ()
   memberRootConSet (pss ∷ psss)
-    rewrite prop-member-union c (rootConSet' (headAll (headAll pss))) (rootConSet psss)
+    rewrite Set.prop-member-union c (rootConSet' (headAll (headAll pss))) (rootConSet psss)
     = mapReflects
         (either here there)
         (λ where (here h) → Left h; (there h) → Right h)
@@ -79,7 +79,7 @@ module @0 _ ⦃ @0 sig : Signature ⦄
 
   notMemberMissConSet : Reflects (c ∈ˢᵐ psmat) (not (Set.member c missConSet))
   notMemberMissConSet
-    rewrite prop-member-difference c (nameConSet (dataDefs sig d0)) conSet
+    rewrite Set.prop-member-difference c (nameConSet (dataDefs sig d0)) conSet
     | nameConSet-universal (dataDefs sig d0) c
     | not-not (Set.member c conSet)
     = memberRootConSet c psmat
@@ -94,13 +94,13 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} where
   nullRootConSet' : (p : Pattern (TyData d0))
     → Reflects (∀ c → c ∉ p) (Set.null (rootConSet' p))
   nullRootConSet' —
-    rewrite prop-null-empty {NameCon d0} ⦃ iOrdNameIn ⦄
+    rewrite Set.prop-null-empty {NameCon d0} ⦃ iOrdNameIn ⦄
     = λ _ → id
   nullRootConSet' (con c _)
-    rewrite prop-null-insert c Set.empty
+    rewrite Set.prop-null-insert c Set.empty
     = λ h → h c refl
   nullRootConSet' (p ∣ q)
-    rewrite prop-null-union (rootConSet' p) (rootConSet' q)
+    rewrite Set.prop-null-union (rootConSet' p) (rootConSet' q)
     = mapReflects
         {a = (∀ c → c ∉ p) × (∀ c → c ∉ q)}
         {b = (∀ c → c ∉ (p ∣ q))}
@@ -112,10 +112,10 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} where
     : (psmat : PatternStackMatrix ((TyData d0 ∷ αs0) ∷ αss0))
     → Reflects (∀ c → c ∉ˢᵐ psmat) (Set.null (rootConSet psmat))
   nullRootConSet []
-    rewrite prop-null-empty {NameCon d0} ⦃ iOrdNameIn ⦄
+    rewrite Set.prop-null-empty {NameCon d0} ⦃ iOrdNameIn ⦄
     = λ _ → []
   nullRootConSet (pss ∷ psmat)
-    rewrite prop-null-union (rootConSet' (headAll (headAll pss))) (rootConSet psmat)
+    rewrite Set.prop-null-union (rootConSet' (headAll (headAll pss))) (rootConSet psmat)
     = mapReflects
         {a = (∀ c → c ∉ˢ pss) × (∀ c → c ∉ˢᵐ psmat)}
         {b = (∀ c → c ∉ˢᵐ (pss ∷ psmat))}
@@ -140,7 +140,7 @@ module _ ⦃ sig : Signature ⦄ {d : NameData} where
         (Either
           (Erase (∀ c → c ∉ˢᵐ psmat))
           (NonEmpty (∃[ c ∈ NameCon d ] c ∉ˢᵐ psmat)))
-  decExistMissCon psmat = case toAscNonEmptyW missConSet of λ where
+  decExistMissCon psmat = case Set.toAscNonEmptyW missConSet of λ where
       (Left (Erased empty)) →
         Left (Erased λ c →
           extractTrue ⦃ cong not (empty c) ⦄ (notMemberMissConSet c psmat))

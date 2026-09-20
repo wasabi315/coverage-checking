@@ -1,5 +1,5 @@
 open import CoverageCheck.Prelude
-open import Data.Set as Set using (Set)
+open import CoverageCheck.Data.Set as Set using (Set)
 open import Haskell.Data.List.NonEmpty as NonEmpty using (NonEmpty; _∷_; _<|_)
 
 module CoverageCheck.Name where
@@ -95,12 +95,12 @@ nameInSet xs = nameInSet' xs id
   → Set.member (y ⟨ inj h ⟩) (nameInSet' xs inj) ≡ True
 nameInSet-universal' (x ∷# xs) inj (x ⟨ InHere ⟩) =
   trans
-    (prop-member-insert (x ⟨ inj InHere ⟩) (x ⟨ inj InHere ⟩) _)
+    (Set.prop-member-insert (x ⟨ inj InHere ⟩) (x ⟨ inj InHere ⟩) _)
     (cong (_|| Set.member (x ⟨ inj InHere ⟩)
       (nameInSet' xs (inj ∘ InThere))) (eqReflexivity x))
 nameInSet-universal' (x ∷# xs) inj (y ⟨ InThere h ⟩) =
   trans
-    (prop-member-insert (y ⟨ inj (InThere h) ⟩) (x ⟨ inj InHere ⟩) _)
+    (Set.prop-member-insert (y ⟨ inj (InThere h) ⟩) (x ⟨ inj InHere ⟩) _)
     (trans
       (cong (y == x ||_) (nameInSet-universal' xs (inj ∘ InThere) (y ⟨ h ⟩)))
       (prop-x-||-True (y == x)))
