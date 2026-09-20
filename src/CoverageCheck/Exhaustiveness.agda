@@ -6,7 +6,7 @@ open import CoverageCheck.Syntax
 open import CoverageCheck.Name
 open import CoverageCheck.Usefulness
 
-open import Haskell.Data.List.NonEmpty as NonEmpty using (NonEmpty; _∷_)
+open import Haskell.Data.List.NonEmpty as NonEmpty using (NonEmpty)
 
 module CoverageCheck.Exhaustiveness
   ⦃ @0 globals : Globals ⦄
@@ -30,7 +30,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
   -- There is a list of patterns that has at least one instance and whose instances do not match any row in P
   NonExhaustive' : PatternMatrix αs0 → Type
-  NonExhaustive' pmat = ∃[ ps ∈ _ ] ∀ {vs} → vs ≼* ps → ¬ FirstMatch vs pmat
+  NonExhaustive' pmat = ∃ _ λ ps → ∀ {vs} → vs ≼* ps → ¬ FirstMatch vs pmat
   {-# COMPILE AGDA2HS NonExhaustive' inline #-}
 
   NonExhaustive : PatternMatrix αs0 → Type

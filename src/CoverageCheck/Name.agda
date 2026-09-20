@@ -1,6 +1,6 @@
 open import CoverageCheck.Prelude
 open import CoverageCheck.Data.Set as Set using (Set)
-open import Haskell.Data.List.NonEmpty as NonEmpty using (NonEmpty; _∷_; _<|_)
+open import Haskell.Data.List.NonEmpty as NonEmpty using (NonEmpty; _<|_)
 
 module CoverageCheck.Name where
 
@@ -35,8 +35,8 @@ data In (x : Name) : Scope → Type where
 
 -- Name in scope
 NameIn : @0 Scope → Type
-NameIn xs = ∃[ x ∈ Name ] In x xs
-{-# COMPILE AGDA2HS NameIn inline #-}
+NameIn xs = ∃ Name λ x → In x xs
+{-# COMPILE AGDA2HS NameIn #-}
 
 --------------------------------------------------------------------------------
 -- Eq/Ord instances for NameIn
@@ -85,7 +85,7 @@ nameInSet' (x ∷# xs) inj =
 
 nameInSet : ∀ xs → Set (NameIn xs)
 nameInSet xs = nameInSet' xs id
-{-# COMPILE AGDA2HS nameInSet inline #-}
+{-# COMPILE AGDA2HS nameInSet #-}
 
 -- nameInSet is indeed universal
 
@@ -124,7 +124,7 @@ anyNameIn' (x ∷# ys) f inj =
 
 anyNameIn : ∀ xs → (NameIn xs → Bool) → Bool
 anyNameIn xs f = anyNameIn' xs f id
-{-# COMPILE AGDA2HS anyNameIn inline #-}
+{-# COMPILE AGDA2HS anyNameIn #-}
 
 -- Evidence-producing version
 

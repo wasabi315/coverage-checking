@@ -5,7 +5,7 @@ open import CoverageCheck.Subsumption
 open import CoverageCheck.Syntax
 open import CoverageCheck.Name
 open import Data.Set as Set using (Set)
-open import Haskell.Data.List.NonEmpty as NonEmpty using (NonEmpty; _∷_)
+open import Haskell.Data.List.NonEmpty as NonEmpty using (NonEmpty)
 
 open import CoverageCheck.Usefulness.Definition
 open import CoverageCheck.Usefulness.Algorithm.Types
@@ -276,7 +276,7 @@ module _ ⦃ sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α �
   wildMissCase'
     : Either
         (Erase (∀ c → c ∉ˢᵐ psmat))
-        (NonEmpty (∃[ c ∈ NameCon d ] c ∉ˢᵐ psmat))
+        (NonEmpty (∃ (∃ Name _) λ c → c ∉ˢᵐ psmat))
     → UsefulS' (default_ psmat) (ps ∷ pss)
     → UsefulS psmat ((— ∷ ps) ∷ pss)
   wildMissCase' (Left (Erased h)) (qs ∷ qss , disj , ss ∷ sss) =
@@ -297,7 +297,7 @@ module _ ⦃ sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α �
   wildMissCase
     : Either
         (Erase (∀ c → c ∉ˢᵐ psmat))
-        (NonEmpty (∃[ c ∈ NameCon d ] c ∉ˢᵐ psmat))
+        (NonEmpty (∃ (NameCon d) λ c → c ∉ˢᵐ psmat))
     → UsefulS (default_ psmat) (ps ∷ pss)
     → UsefulS psmat ((— ∷ ps) ∷ pss)
   wildMissCase h hs = hs >>= wildMissCase' h

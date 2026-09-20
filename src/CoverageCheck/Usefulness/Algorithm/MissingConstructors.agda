@@ -139,7 +139,7 @@ module _ ⦃ sig : Signature ⦄ {d : NameData} where
     → Either (Erase (∀ c → c ∈ˢᵐ psmat))
         (Either
           (Erase (∀ c → c ∉ˢᵐ psmat))
-          (NonEmpty (∃[ c ∈ NameCon d ] c ∉ˢᵐ psmat)))
+          (NonEmpty (∃ (∃ Name _) λ c → c ∉ˢᵐ psmat)))
   decExistMissCon psmat = case Set.toAscNonEmptyW missConSet of λ where
       (Left (Erased empty)) →
         Left (Erased λ c →

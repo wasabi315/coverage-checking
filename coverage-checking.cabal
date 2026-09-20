@@ -23,6 +23,7 @@ library
     import:           warnings
     exposed-modules:  CoverageCheck.Data.These
                     , CoverageCheck.Extra.DecP
+                    , CoverageCheck.Data.List.All.Core
                     , CoverageCheck.Prelude
                     , CoverageCheck.Syntax
                     , CoverageCheck.Instance

@@ -8,6 +8,7 @@ LIBRARIES =
 alllib: lib \
 	lib/CoverageCheck/Data/These.hs \
 	lib/CoverageCheck/Extra/DecP.hs \
+	lib/CoverageCheck/Data/List/All/Core.hs \
 	lib/CoverageCheck/Prelude.hs \
 	lib/CoverageCheck/Name.hs \
 	lib/CoverageCheck/Syntax.hs \

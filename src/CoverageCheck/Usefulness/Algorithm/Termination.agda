@@ -17,7 +17,7 @@ open import CoverageCheck.Subsumption
 open import CoverageCheck.Syntax
 open import CoverageCheck.Name
 open import Data.Set as Set using (Set)
-open import Haskell.Data.List.NonEmpty using (NonEmpty; _∷_)
+open import Haskell.Data.List.NonEmpty using (NonEmpty)
 
 open import CoverageCheck.Usefulness.Algorithm.Types hiding (_,_,_)
 open import CoverageCheck.Usefulness.Algorithm.Raw

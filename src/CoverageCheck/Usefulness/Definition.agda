@@ -3,7 +3,7 @@ open import CoverageCheck.GlobalScope using (Globals)
 open import CoverageCheck.Syntax
 open import CoverageCheck.Instance
 open import CoverageCheck.Subsumption
-open import Haskell.Data.List.NonEmpty using (NonEmpty; _∷_)
+open import Haskell.Data.List.NonEmpty using (NonEmpty)
 
 module CoverageCheck.Usefulness.Definition
   ⦃ @0 globals : Globals ⦄

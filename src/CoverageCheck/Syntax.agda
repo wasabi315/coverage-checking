@@ -49,11 +49,15 @@ record Dataty (@0 d : NameData) : Type where
     -- dataCons aligns with the global scope
     @0 isConScope : dataCons ≡ conScope d
 
+
+module _ {@0 d} (dty : Dataty d) where
+  open Dataty dty
+
   -- The complete set of constructor names of this datatype
   nameConSet : Set (NameCon d)
   nameConSet =
     subst0 (λ xs → Set (NameIn xs)) isConScope (nameInSet dataCons)
-  {-# COMPILE AGDA2HS nameConSet inline #-}
+  {-# COMPILE AGDA2HS nameConSet #-}
 
   -- nameConSet is universal
   @0 nameConSet-universal : (c : NameCon d)
@@ -64,21 +68,22 @@ record Dataty (@0 d : NameData) : Type where
   -- Any constructor name satisfies a given predicate?
   anyNameCon : (NameCon d → Bool) → Bool
   anyNameCon f = anyNameIn dataCons λ x → f (subst0 NameIn isConScope x)
-  {-# COMPILE AGDA2HS anyNameCon inline #-}
+  {-# COMPILE AGDA2HS anyNameCon #-}
 
   -- Evidence-producing version of anyNameCon
   decPAnyNameCon : {p : @0 NameCon d → Type}
     → (∀ x → DecP (p x))
     → DecP (NonEmpty (Σ[ x ∈ NameCon d ] p x))
   decPAnyNameCon = decPAnyNameIn dataCons isConScope
-  {-# COMPILE AGDA2HS decPAnyNameCon inline #-}
+  {-# COMPILE AGDA2HS decPAnyNameCon #-}
 
   -- Boolean-returning on Haskell side
   decAnyNameCon : {p : @0 NameCon d → Type}
     → (∀ x → Dec (p x))
     → Dec (NonEmpty (Σ[ x ∈ NameCon d ] p x))
   decAnyNameCon f = decAnyNameIn dataCons isConScope f
-  {-# COMPILE AGDA2HS decAnyNameCon inline #-}
+  {-# COMPILE AGDA2HS decAnyNameCon #-}
+
 
 open Dataty public
 {-# COMPILE AGDA2HS Dataty #-}
@@ -138,14 +143,8 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
   Patterns = All Pattern
 
-  -- A matrix of patterns
-  -- Each row corresponds to a clause
-  PatternMatrix : (@0 αs : Tys) → Type
-  PatternMatrix αs = List (Patterns αs)
-
-  {-# COMPILE AGDA2HS Pattern       deriving (Show, Eq) #-}
-  {-# COMPILE AGDA2HS Patterns                          #-}
-  {-# COMPILE AGDA2HS PatternMatrix inline              #-}
+  {-# COMPILE AGDA2HS Pattern deriving (Show, Eq) #-}
+  {-# COMPILE AGDA2HS Patterns                    #-}
 
   -- A list of wildcards
   pWilds : Patterns αs
@@ -202,3 +201,14 @@ module _ ⦃ sig : Signature ⦄ ⦃ nonEmptyAxiom : ∀ {α} → Value α ⦄ w
 
   examplesFor []       = []
   examplesFor (p ∷ ps) = exampleFor p ∷ examplesFor ps
+
+--------------------------------------------------------------------------------
+
+module _ ⦃ @0 sig : Signature ⦄ where
+
+  -- A matrix of patterns
+  -- Each row corresponds to a clause
+  PatternMatrix : (@0 αs : Tys) → Type
+  PatternMatrix αs = List (Patterns αs)
+
+  {-# COMPILE AGDA2HS PatternMatrix #-}

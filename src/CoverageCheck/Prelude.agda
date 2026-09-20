@@ -50,7 +50,8 @@ open import Haskell.Law.List public using (map-++)
 open import Haskell.Extra.Erase public using
   (Erase; Erased; get; Σ0; ⟨_⟩_; <_>)
 
-Σ0-syntax = Σ0
+Σ0-syntax : (@0 a : Type) (b : @0 a → Type) → Type
+Σ0-syntax a b = Σ0 a λ x → b x
 syntax Σ0-syntax A (λ x → B) = Σ0[ x ∈ A ] B
 infix 2 Σ0-syntax
 {-# COMPILE AGDA2HS Σ0-syntax inline #-}
@@ -58,7 +59,8 @@ infix 2 Σ0-syntax
 open import Haskell.Extra.Refinement public using
   (∃; _⟨_⟩; value; proof; mapRefine)
 
-∃-syntax = ∃
+∃-syntax : (a : Type) (@0 P : a → Type) → Type
+∃-syntax a P = ∃ a λ x → P x
 syntax ∃-syntax A (λ x → B) = ∃[ x ∈ A ] B
 infix 2 ∃-syntax
 {-# COMPILE AGDA2HS ∃-syntax inline #-}
@@ -111,11 +113,12 @@ mapListRefine f (x ∷ xs) = mapRefine f x ∷ mapListRefine f xs
 --------------------------------------------------------------------------------
 -- Relations on lists
 
-module _ {@0 a : Type} (p : @0 a → Type) where
+open import CoverageCheck.Data.List.All.Core as All public
 
-  data All : (@0 xs : List a) → Type where
-    Nil  : All []
-    _:>_ : ∀ {@0 x xs} → p x → All xs → All (x ∷ xs)
+pattern [] = All.Nil
+pattern _∷_ p ps = p All.:> ps
+
+module _ {@0 a : Type} (p : @0 a → Type) where
 
   data Any : (@0 xs : List a) → Type where
     Here  : ∀ {@0 x xs} → p x → Any (x ∷ xs)
@@ -125,12 +128,9 @@ module _ {@0 a : Type} (p : @0 a → Type) where
     FHere  : ∀ {@0 x xs} → p x → First (x ∷ xs)
     FThere : ∀ {@0 x xs} → @0 ¬ p x → First xs → First (x ∷ xs)
 
-{-# COMPILE AGDA2HS All   deriving (Eq, Show) #-}
 {-# COMPILE AGDA2HS Any   deriving (Eq, Show) #-}
 {-# COMPILE AGDA2HS First deriving (Eq, Show) #-}
 
-pattern []       = Nil
-pattern _∷_ p ps = p :> ps
 pattern here  p  = Here p
 pattern there p  = There p
 pattern [_] p    = FHere p
@@ -175,14 +175,6 @@ pattern [] = HNil
 pattern _∷_ rx rxs = rx :>> rxs
 
 module _ {@0 a : Type} {p : @0 a → Type} where
-
-  headAll : ∀ {@0 x xs} → All p (x ∷ xs) → p x
-  headAll (p ∷ _) = p
-  {-# COMPILE AGDA2HS headAll #-}
-
-  tailAll : ∀ {@0 x xs} → All p (x ∷ xs) → All p xs
-  tailAll (_ ∷ ps) = ps
-  {-# COMPILE AGDA2HS tailAll #-}
 
   All¬⇒¬Any : ∀ {@0 xs} → All (λ x → ¬ p x) xs → ¬ Any p xs
   All¬⇒¬Any (¬p ∷ _)   (here  p) = ¬p p
@@ -245,13 +237,6 @@ module _ {@0 a : Type} {p : @0 a → Type} where
   ¬Some⇒All¬ [] _ = []
   ¬Some⇒All¬ (x ∷ xs) ¬pxxs =
     (λ px → ¬pxxs (px ∷ trivialMany xs)) ∷ ¬Some⇒All¬ xs (¬pxxs ∘ there)
-
-
-module _ {@0 a : Type} {p q : @0 a → Type} where
-
-  mapAll : (∀ {x} → p x → q x) → (∀ {xs} → All p xs → All q xs)
-  mapAll f [] = []
-  mapAll f (p ∷ ps) = f p ∷ mapAll f ps
 
 
 module _ {@0 a b : Type} {p : @0 a → Type} {q : @0 b → Type} {f : a → b} where

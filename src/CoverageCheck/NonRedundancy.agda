@@ -7,7 +7,7 @@ open import CoverageCheck.Name
 open import CoverageCheck.Usefulness
 open import CoverageCheck.Usefulness.Algorithm
 
-open import Haskell.Data.List.NonEmpty as NonEmpty using (NonEmpty; _∷_)
+open import Haskell.Data.List.NonEmpty as NonEmpty using (NonEmpty)
 
 module CoverageCheck.NonRedundancy
   ⦃ @0 globals : Globals ⦄
