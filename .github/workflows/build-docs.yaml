@@ -42,7 +42,7 @@ jobs:
             ~/.cabal/store
             ~/.cabal/bin
             ~/.cabal/share
-          key: ${{ runner.os }}-${{ env.GHC_VERSION }}-${{ env.CABAL_VERSION }}-${{ env.AGDA_VERSION}}-${{ env.AGDA2HS_VERSION }}
+          key: ${{ runner.os }}-docs-${{ env.GHC_VERSION }}-${{ env.CABAL_VERSION }}-${{ env.AGDA_VERSION }}
 
       - name: Install ghc and cabal
         uses: haskell-actions/setup@v2
@@ -55,8 +55,7 @@ jobs:
         run: echo ~/.cabal/bin >> "${GITHUB_PATH}"
 
       - name: Install Agda
-        if: steps.cache-cabal.outputs.cache-hit != 'true'
-        run: cabal install Agda-${{ env.AGDA_VERSION }}
+        run: cabal install Agda-${{ env.AGDA_VERSION }} --overwrite-policy=always
 
       - name: Install agda-stdlib
         run: |
