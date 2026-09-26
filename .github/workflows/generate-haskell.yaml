@@ -13,12 +13,16 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
 env:
   GHC_VERSION: 9.12.2
   CABAL_VERSION: 3.12.1.0
   AGDA_VERSION: 2.8.0
   AGDA_STDLIB_VERSION: 2.3
-  AGDA2HS_VERSION: 1.4
+  AGDA2HS_COMMIT: 4e6de7ec2109b3bed6a820728b57d31ad7ffd698
   HASKELL_BRANCH: haskell
 
 jobs:
@@ -34,7 +38,7 @@ jobs:
             ~/.cabal/store
             ~/.cabal/bin
             ~/.cabal/share
-          key: ${{ runner.os }}-agda2hs-${{ env.GHC_VERSION }}-${{ env.CABAL_VERSION }}-${{ env.AGDA_VERSION }}-${{ env.AGDA2HS_VERSION }}
+          key: ${{ runner.os }}-agda2hs-${{ env.GHC_VERSION }}-${{ env.CABAL_VERSION }}-${{ env.AGDA_VERSION }}-${{ env.AGDA2HS_COMMIT }}
 
       - name: Install ghc and cabal
         uses: haskell-actions/setup@v2
@@ -45,9 +49,6 @@ jobs:
 
       - name: Put cabal programs in PATH
         run: echo ~/.cabal/bin >> "${GITHUB_PATH}"
-
-      - name: Install Agda
-        run: cabal install Agda-${{ env.AGDA_VERSION }} --overwrite-policy=always
 
       - name: Install agda-stdlib
         run: |
@@ -62,14 +63,14 @@ jobs:
           cd ~/.agda
           git clone https://github.com/agda/agda2hs.git
           cd agda2hs
-          git checkout tags/v${{ env.AGDA2HS_VERSION }}
+          git checkout ${{ env.AGDA2HS_COMMIT }}
           echo $(pwd)/lib/base/base.agda-lib >> ~/.agda/libraries
           echo $(pwd)/lib/containers/containers.agda-lib >> ~/.agda/libraries
 
       - name: Install agda2hs
         run: |
           cd ~/.agda/agda2hs
-          cabal install --overwrite-policy=always
+          cabal install --overwrite-policy=always --constraint "Agda == ${{ env.AGDA_VERSION }}"
 
       - name: Checkout coverage-checking
         uses: actions/checkout@v5
