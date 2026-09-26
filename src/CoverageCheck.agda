@@ -1,6 +1,5 @@
 module CoverageCheck where
 
-open import CoverageCheck.Prelude public
 open import CoverageCheck.Name public
 open import CoverageCheck.GlobalScope public
 open import CoverageCheck.Syntax public

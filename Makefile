@@ -1,38 +1,10 @@
 FLAGS = --config=rewrite-rules.yaml
 LIBRARIES =
 
-.PHONY: app alllib clean clean-lib clean-agdai
+.PHONY: app clean clean-lib clean-agdai
 
-# this should stay in sync with the modules defined in cabal
-# also the order is silly, we redo a lot of the work because we don't know the dependencies
-alllib: lib \
-	lib/CoverageCheck/Data/These.hs \
-	lib/CoverageCheck/Extra/DecP.hs \
-	lib/CoverageCheck/Data/List/All/Core.hs \
-	lib/CoverageCheck/Data/List/Any/Core.hs \
-	lib/CoverageCheck/Data/List/First/Core.hs \
-	lib/CoverageCheck/Data/List/First/Properties.hs \
-	lib/CoverageCheck/Data/List/Many/Core.hs \
-	lib/CoverageCheck/Data/List/Many/Properties.hs \
-	lib/CoverageCheck/Data/List/Some/Core.hs \
-	lib/CoverageCheck/Data/List/Some/Properties.hs \
-	lib/CoverageCheck/Data/List/HPointwise/Core.hs \
-	lib/CoverageCheck/Prelude.hs \
-	lib/CoverageCheck/Name.hs \
-	lib/CoverageCheck/Syntax.hs \
-	lib/CoverageCheck/Instance.hs \
-	lib/CoverageCheck/Subsumption.hs \
-	lib/CoverageCheck/Usefulness/Definition.hs \
-	lib/CoverageCheck/Usefulness/Algorithm.hs \
-	lib/CoverageCheck/Usefulness/Algorithm/Raw.hs \
-	lib/CoverageCheck/Usefulness/Algorithm/MissingConstructors.hs \
-	lib/CoverageCheck/Exhaustiveness.hs \
-	lib/CoverageCheck/NonRedundancy.hs
-
-lib:
+lib: src/CoverageCheck.agda
 	mkdir lib
-
-lib/%.hs: src/%.agda
 	agda2hs $(FLAGS) $(LIBRARIES) $< -o lib
 
 clean: clean-lib clean-agdai
@@ -44,7 +16,7 @@ clean-agdai:
 	find src -iname *.agdai -delete
 	rm -rf _build
 
-app: alllib
+app: lib
 	cabal build
 
 clean-hs:

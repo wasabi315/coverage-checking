@@ -36,7 +36,7 @@ data In (x : Name) : Scope → Type where
 -- Name in scope
 NameIn : @0 Scope → Type
 NameIn xs = ∃ Name λ x → In x xs
-{-# COMPILE AGDA2HS NameIn #-}
+{-# COMPILE AGDA2HS NameIn inline #-}
 
 --------------------------------------------------------------------------------
 -- Eq/Ord instances for NameIn

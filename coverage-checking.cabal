@@ -32,7 +32,6 @@ library
                     , CoverageCheck.Data.List.Some.Core
                     , CoverageCheck.Data.List.Some.Properties
                     , CoverageCheck.Data.List.HPointwise.Core
-                    , CoverageCheck.Prelude
                     , CoverageCheck.Syntax
                     , CoverageCheck.Instance
                     , CoverageCheck.Subsumption
