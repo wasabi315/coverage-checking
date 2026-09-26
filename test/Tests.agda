@@ -3,9 +3,10 @@
 module @0 Tests where
 
 open import CoverageCheck
+open import CoverageCheck.Prelude
 open import CoverageCheck.Data.Set as Set using (Set)
 open import CoverageCheck.Data.Set.Rewriting using ()
-open import Haskell.Data.List.NonEmpty using (_∷_)
+open import Haskell.Data.List.NonEmpty hiding (cons)
 
 --------------------------------------------------------------------------------
 -- Example from the paper
