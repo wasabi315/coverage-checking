@@ -27,9 +27,9 @@ pattern _∷_ x xs = List._∷_ x xs
 
 open import Haskell.Prim public using (⊥; the; Level; exFalso)
 
-open import Haskell.Prim.Eq public using (Eq; _==_; _/=_; iEqList; iEqChar)
+open import Haskell.Prim.Eq public using (Eq; _==_; _/=_; iEqList; iEqChar; iEqNat)
 open import Haskell.Law.Eq public using
-  (IsLawfulEq; isEquality; eqReflexivity; _≟_; iLawfulEqList; iLawfulEqChar)
+  (IsLawfulEq; isEquality; eqReflexivity; iLawfulEqList; iLawfulEqChar; iLawfulEqNat)
 
 open import Haskell.Prim.Foldable public using (iFoldableList; Foldable; any)
 
@@ -37,7 +37,7 @@ open import Haskell.Prim.List public using (scanl)
 
 open import Haskell.Prim.Num public using (iNumNat)
 
-open import Haskell.Prim.Ord public using (Ord; OrdFromLessThan; _<_; iOrdList; iOrdChar)
+open import Haskell.Prim.Ord public using (Ord; OrdFromLessThan; _<_; iOrdList; iOrdChar; iOrdNat)
 
 open import Haskell.Law.Bool public using
   (prop-x-||-True; prop-x-||-False; not-involution; not-not)
@@ -113,26 +113,11 @@ mapListRefine f (x ∷ xs) = mapRefine f x ∷ mapListRefine f xs
 --------------------------------------------------------------------------------
 -- Relations on lists
 
-open import CoverageCheck.Data.List.All as All public
-open import CoverageCheck.Data.List.Any as Any public
-open import CoverageCheck.Data.List.First as First public
-open import CoverageCheck.Data.List.Many as Many public
-open import CoverageCheck.Data.List.Some as Some public
-open import CoverageCheck.Data.List.HPointwise as HPointwise public
+open import CoverageCheck.Data.List.Relation as Rel public
+  hiding ([]; _∷_)
 
-pattern [] = All.Nil
-pattern _∷_ p ps = p All.:> ps
-pattern here p = Any.Here p
-pattern there p = Any.There p
-pattern [_] p = FHere p
-pattern _∷_ p ps = FThere p ps
-pattern [] = MNil
-pattern _∷_ p ps = MHere p ps
-pattern there ps = MThere ps
-pattern _∷_ p ps = SHere p ps
-pattern there ps = SThere ps
-pattern [] = HNil
-pattern _∷_ rx rxs = rx :>> rxs
+pattern [] = Rel.[]
+pattern _∷_ p ps = p Rel.∷ ps
 
 --------------------------------------------------------------------------------
 -- These
@@ -168,6 +153,11 @@ inits1 (x ∷ xs) = map (x ∷_) (inits xs)
 -- Reflects and Dec
 
 open import CoverageCheck.Extra.Dec public
+
+_≟_ : ∀ {a} {{_ : Eq a}} {{@0 _ : IsLawfulEq a}} → (x y : a) → Dec (x ≡ y)
+x ≟ y = (x == y) ⟨ isEquality x y ⟩
+
+{-# COMPILE AGDA2HS _≟_ inline #-}
 
 --------------------------------------------------------------------------------
 -- Decidable relation that does not erase positive information

@@ -10,6 +10,10 @@ module CoverageCheck.Usefulness.Algorithm.Raw
   ⦃ @0 globals : Globals ⦄
   where
 
+{-# FOREIGN AGDA2HS
+import Prelude
+#-}
+
 private open module @0 G = Globals globals
 
 private

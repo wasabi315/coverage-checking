@@ -185,12 +185,12 @@ specialize'-< c ((r₁ ∣ r₂ ∷ ps) ∷ pss) (Right h) =
 specialize-< : (c : NameCon d) (psmat : PatternStackMatrix ((TyData d ∷ αs) ∷ αss))
   → c ∈ˢᵐ psmat
   → ∥ specialize c psmat ∥ˢᵐ < ∥ psmat ∥ˢᵐ
-specialize-< c (pss ∷ psmat) (here h)
+specialize-< c (pss ∷ psmat) (Here h)
   rewrite ∥∥-++ (specialize' c pss) (specialize c psmat)
   = +-mono-<-≤ (specialize'-< c pss h) (specialize-≤ c psmat)
-specialize-< c (pss ∷ psmat) (there h)
+specialize-< c (pss ∷ psmat) (There h h' h'')
   rewrite ∥∥-++ (specialize' c pss) (specialize c psmat)
-  = +-mono-≤-< (specialize'-≤ c pss) (specialize-< c psmat h)
+  = +-mono-≤-< (specialize'-≤ c pss) (specialize-< c psmat < (_ ⟨ h' ⟩) CoverageCheck.Prelude., h'' >)
 
 default'-≤ : (pss : PatternStack ((TyData d ∷ αs) ∷ αss))
   → ∥ default' pss ∥ˢᵐ ≤ ∥ pss ∥ˢ

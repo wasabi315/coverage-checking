@@ -57,18 +57,17 @@ module _ {c : NameCon d}
   specialize-preserves-≼ = gconcatMapAny⁺ specialize'-preserves-≼
 
   -- Unspecialization also preserves ≼
-
   specialize'-preserves-≼⁻ : {pss : PatternStack ((TyData d ∷ βs) ∷ αss)}
     → us ∷ vs ∷ vss ≼ˢᵐ specialize' c pss
     → (con c us ∷ vs) ∷ vss ≼ˢ pss
-  specialize'-preserves-≼⁻ {(— ∷ ps) ∷ pss} (here (_ ∷ insts ∷ instss)) =
+  specialize'-preserves-≼⁻ {(— ∷ ps) ∷ pss} (Here (_ ∷ insts ∷ instss)) =
     (—≼ ∷ insts) ∷ instss
   specialize'-preserves-≼⁻ {(con c' rs ∷ ps) ∷ pss} = lem (c ≟ c')
     where
       lem : (eq : Dec (c ≡ c'))
         → us ∷ vs ∷ vss ≼ˢᵐ specializeConCase c rs ps pss eq
         → (con c us ∷ vs) ∷ vss ≼ˢ (con c' rs ∷ ps) ∷ pss
-      lem (True ⟨ refl ⟩) (here (insts' ∷ insts ∷ instss)) =
+      lem (True ⟨ refl ⟩) (Here (insts' ∷ insts ∷ instss)) =
         (con≼ insts' ∷ insts) ∷ instss
   specialize'-preserves-≼⁻ {(r₁ ∣ r₂ ∷ ps) ∷ pss} =
     either
@@ -107,10 +106,10 @@ module _ {c : NameCon d}
     → c ∉ˢᵐ psmat
     → (con c us ∷ vs) ∷ vss ≼ˢᵐ psmat
     → vs ∷ vss ≼ˢᵐ default_ psmat
-  default-preserves-≼ {pss ∷ psmat} (h ∷ _) (here instss) =
+  default-preserves-≼ {pss ∷ psmat} (h ∷ _) (Here instss) =
     ++Any⁺ˡ (default'-preserves-≼ h instss)
-  default-preserves-≼ {pss ∷ psmat} (_ ∷ h) (there instsMat) =
-    ++Any⁺ʳ (default-preserves-≼ h instsMat)
+  default-preserves-≼ {pss ∷ psmat} (_ ∷ h) (There h' h'' instsMat) =
+    ++Any⁺ʳ (default-preserves-≼ h < _ ⟨ h'' ⟩ , instsMat >)
 
 
 module _ {v : Value (TyData d)} {vs : Values αs} {vss : ValueStack αss} where
@@ -118,7 +117,7 @@ module _ {v : Value (TyData d)} {vs : Values αs} {vss : ValueStack αss} where
   default'-preserves-≼⁻ : {pss : PatternStack ((TyData d ∷ αs) ∷ αss)}
     → vs ∷ vss ≼ˢᵐ default' pss
     → (v ∷ vs) ∷ vss ≼ˢ pss
-  default'-preserves-≼⁻ {(— ∷ ps) ∷ pss} (here (insts ∷ instss)) =
+  default'-preserves-≼⁻ {(— ∷ ps) ∷ pss} (Here (insts ∷ instss)) =
     (—≼ ∷ insts) ∷ instss
   default'-preserves-≼⁻ {(r₁ ∣ r₂ ∷ ps) ∷ pss} =
     either

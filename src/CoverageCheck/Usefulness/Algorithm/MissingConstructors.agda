@@ -59,12 +59,10 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} (@0 c : NameCon d0) where
 
   memberRootConSet : (psmat : PatternStackMatrix ((TyData d0 ∷ αs0) ∷ αss0))
     → Reflects (c ∈ˢᵐ psmat) (Set.member c (rootConSet psmat))
-  memberRootConSet [] rewrite Set.prop-member-empty c = λ ()
+  memberRootConSet [] rewrite Set.prop-member-empty c = ¬Any[]
   memberRootConSet (pss ∷ psss)
     rewrite Set.prop-member-union c (rootConSet' (headAll (headAll pss))) (rootConSet psss)
-    = mapReflects
-        (either here there)
-        (λ where (here h) → Left h; (there h) → Right h)
+    = mapReflects (either here there) anyToEither
         (eitherReflects
           (memberRootConSet' (headAll (headAll pss)))
           (memberRootConSet psss))
@@ -139,7 +137,7 @@ module _ ⦃ sig : Signature ⦄ {d : NameData} where
     → Either (Erase (∀ c → c ∈ˢᵐ psmat))
         (Either
           (Erase (∀ c → c ∉ˢᵐ psmat))
-          (NonEmpty (∃ (∃ Name _) λ c → c ∉ˢᵐ psmat)))
+          (NonEmpty (∃ _ λ c → c ∉ˢᵐ psmat)))
   decExistMissCon psmat = case Set.toAscNonEmptyW missConSet of λ where
       (Left (Erased empty)) →
         Left (Erased λ c →
@@ -150,6 +148,7 @@ module _ ⦃ sig : Signature ⦄ {d : NameData} where
           else Right (mapNonEmptyRefine (λ miss →
                 extractTrue ⦃ miss ⦄ (memberMissConSet _ psmat)) misses))
     where
+      conSet missConSet : Set (NameCon d)
       conSet     = rootConSet psmat
       missConSet = Set.difference (nameConSet (dataDefs sig d)) conSet
   {-# COMPILE AGDA2HS decExistMissCon #-}

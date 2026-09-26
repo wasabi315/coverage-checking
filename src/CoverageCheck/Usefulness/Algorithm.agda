@@ -20,6 +20,7 @@ module CoverageCheck.Usefulness.Algorithm
 
 {-# FOREIGN AGDA2HS
 import CoverageCheck.Usefulness.Definition (Useful(..))
+import Prelude
 #-}
 
 private open module @0 G = Globals globals
@@ -41,7 +42,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
   -- The smallest usefulness problem
 
   nilOkCase : UsefulS [] []
-  nilOkCase = ([] , (λ ()) , []) ∷ []
+  nilOkCase = ([] , (λ h _ → ¬Any[] h) , []) ∷ []
   {-# COMPILE AGDA2HS nilOkCase #-}
 
   nilBadCase : ∀ {ps P} → ¬ UsefulS (ps ∷ P) []
@@ -59,7 +60,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
   ⊆ˢ-refl (ps ∷ pss) = ⊆*-refl ps ∷ ⊆ˢ-refl pss
 
   emptyMatrixCase : (pss : PatternStack αss0) → UsefulS [] pss
-  emptyMatrixCase pss = (pss , (λ ()) , ⊆ˢ-refl pss) ∷ []
+  emptyMatrixCase pss = (pss , (λ h _ → ¬Any[] h) , ⊆ˢ-refl pss) ∷ []
   {-# COMPILE AGDA2HS emptyMatrixCase #-}
 
 
@@ -276,7 +277,7 @@ module _ ⦃ sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α �
   wildMissCase'
     : Either
         (Erase (∀ c → c ∉ˢᵐ psmat))
-        (NonEmpty (∃ (∃ Name _) λ c → c ∉ˢᵐ psmat))
+        (NonEmpty (∃ _ λ c → c ∉ˢᵐ psmat))
     → UsefulS' (default_ psmat) (ps ∷ pss)
     → UsefulS psmat ((— ∷ ps) ∷ pss)
   wildMissCase' (Left (Erased h)) (qs ∷ qss , disj , ss ∷ sss) =
