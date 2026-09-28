@@ -108,7 +108,7 @@ module _ ⦃ sig : Signature ⦄ where
   -- The core usefulness checking algorithm 𝒰ʳᵉᶜ
   {-# TERMINATING #-}
   isUseful : PatternStackMatrix αss → PatternStack αss → Bool
-  isUseful {[]} [] [] = True
+  isUseful {[]} [] _ = True
   isUseful {[]} (_ ∷ _) [] = False
   isUseful {[] ∷ αss} psmat (_ ∷ pss) = isUseful {αss} (map tailAll psmat) pss
   isUseful {(TyData d ∷ αs) ∷ αss} psmat ((— ∷ ps) ∷ pss) =

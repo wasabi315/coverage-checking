@@ -328,8 +328,8 @@ module _
   decPUseful' : (psmat : PatternStackMatrix αss) (ps : PatternStack αss)
     → @0 UsefulAcc psmat ps
     → DecP (UsefulS psmat ps)
-  decPUseful' [] pss acc = Yes (emptyMatrixCase pss)
-  decPUseful' {[]} (_ ∷ _) [] done = No nilBadCase
+  decPUseful' [] pss _ = Yes (emptyMatrixCase pss)
+  decPUseful' {[]} (_ ∷ _) [] _ = No nilBadCase
   decPUseful' {[] ∷ αss} psmat ([] ∷ pss) (tailStep h) =
     mapDecP tailCase tailCaseInv
       (decPUseful' (map tailAll psmat) pss h)
@@ -370,7 +370,7 @@ module _
     → @0 UsefulAcc psmat ps
     → Dec (UsefulS psmat ps)
   decUseful' [] pss _ = True ⟨ emptyMatrixCase pss ⟩
-  decUseful' {[]} (_ ∷ _) [] done = False ⟨ nilBadCase ⟩
+  decUseful' {[]} (_ ∷ _) [] _ = False ⟨ nilBadCase ⟩
   decUseful' {[] ∷ αss} psmat ([] ∷ pss) (tailStep h) =
     mapDec tailCase tailCaseInv
       (decUseful' (map tailAll psmat) pss h)
