@@ -267,7 +267,7 @@ specializeConCase-< c c' rs ps pss (False ⟨ c≢c' ⟩) c≡c' = contradiction
 specializeConCase-< c c' rs ps pss (True  ⟨ refl ⟩) c≡c' = ≤-reflexive (+-identityʳ _)
 
 specialize'-< : (c : NameCon d) (pss : PatternStack ((TyData d ∷ αs) ∷ αss))
-  → c ∈ˢ pss
+  → c ∈ pss
   → ∣ specialize' c pss ∣ < ∣ pss ∣ 0
 specialize'-< c ((con c' rs ∷ ps) ∷ pss) c≡c' = specializeConCase-< c c' rs ps pss (c ≟ c') c≡c'
 specialize'-< c ((r₁ ∣ r₂ ∷ ps) ∷ pss) (Left c∈r₁) =
@@ -288,7 +288,7 @@ specialize'-< c ((r₁ ∣ r₂ ∷ ps) ∷ pss) (Right c∈r₂) =
   ∎
 
 specialize-< : (c : NameCon d) (psmat : PatternStackMatrix ((TyData d ∷ αs) ∷ αss))
-  → c ∈ˢᵐ psmat
+  → c ∈ psmat
   → ∣ specialize c psmat ∣ < ∣ psmat ∣
 specialize-< c (pss ∷ psmat) (Here h) =
   begin
@@ -310,7 +310,7 @@ specialize-< c (pss ∷ psmat) (There h) =
 specializeWild-⊏
   : (c : NameCon d) (psmat : PatternStackMatrix ((TyData d ∷ αs) ∷ αss))
   → (qs : Patterns αs) (pss : PatternStack αss)
-  → c ∈ˢᵐ psmat
+  → c ∈ psmat
   → (_ , specialize c psmat , —* ∷ qs ∷ pss) ⊏ (_ , psmat , (— ∷ qs) ∷ pss)
 specializeWild-⊏ c psmat qs pss h = inj₁ (specialize-< c psmat h)
 
@@ -352,7 +352,7 @@ data UsefulAcc : (psmat : PatternStackMatrix αss) (ps : PatternStack αss) → 
   wildStep : {psmat : PatternStackMatrix ((TyData d ∷ αs) ∷ αss)}
     → {ps : Patterns αs} {pss : PatternStack αss}
     → UsefulAcc (default_ psmat) (ps ∷ pss)
-    → (∀ c → c ∈ˢᵐ psmat → UsefulAcc (specialize c psmat) (—* ∷ ps ∷ pss))
+    → (∀ c → c ∈ psmat → UsefulAcc (specialize c psmat) (—* ∷ ps ∷ pss))
     → UsefulAcc psmat ((— ∷ ps) ∷ pss)
 
   conStep : {psmat : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)} {c : NameCon d}

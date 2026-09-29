@@ -276,8 +276,8 @@ module _ ⦃ sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α �
 
   wildMissCase'
     : Either
-        (Erase (∀ c → c ∉ˢᵐ psmat))
-        (NonEmpty (∃ _ λ c → c ∉ˢᵐ psmat))
+        (Erase (∀ c → c ∉ psmat))
+        (NonEmpty (∃ _ λ c → c ∉ psmat))
     → UsefulS' (default_ psmat) (ps ∷ pss)
     → UsefulS psmat ((— ∷ ps) ∷ pss)
   wildMissCase' (Left (Erased h)) (qs ∷ qss , disj , ss ∷ sss) =
@@ -297,8 +297,8 @@ module _ ⦃ sig : Signature ⦄ ⦃ @0 nonEmptyAxiom : ∀ {α} → Value α �
 
   wildMissCase
     : Either
-        (Erase (∀ c → c ∉ˢᵐ psmat))
-        (NonEmpty (∃ (NameCon d) λ c → c ∉ˢᵐ psmat))
+        (Erase (∀ c → c ∉ psmat))
+        (NonEmpty (∃ (NameCon d) λ c → c ∉ psmat))
     → UsefulS (default_ psmat) (ps ∷ pss)
     → UsefulS psmat ((— ∷ ps) ∷ pss)
   wildMissCase h hs = hs >>= wildMissCase' h

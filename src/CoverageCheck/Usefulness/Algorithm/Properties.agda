@@ -89,7 +89,7 @@ module _ {c : NameCon d}
   where
 
   default'-preserves-≼ : {pss : PatternStack ((TyData d ∷ βs) ∷ αss)}
-    → c ∉ˢ pss
+    → c ∉ pss
     → (con c us ∷ vs) ∷ vss ≼ˢ pss
     → vs ∷ vss ≼ˢᵐ default' pss
   default'-preserves-≼ {(— ∷ ps) ∷ pss} h ((_ ∷ insts) ∷ instss) =
@@ -103,7 +103,7 @@ module _ {c : NameCon d}
 
   -- If c does not appear in the first column of psmat, default preserves ≼
   default-preserves-≼ : {psmat : PatternStackMatrix ((TyData d ∷ βs) ∷ αss)}
-    → c ∉ˢᵐ psmat
+    → c ∉ psmat
     → (con c us ∷ vs) ∷ vss ≼ˢᵐ psmat
     → vs ∷ vss ≼ˢᵐ default_ psmat
   default-preserves-≼ {pss ∷ psmat} (h ∷ _) (Here instss) =
@@ -214,7 +214,7 @@ module _ {c : NameCon d}
   where
 
   default-preserves-#⁻
-    : c ∉ˢᵐ psmat
+    : c ∉ psmat
     → default_ psmat #ˢᵐ (rs ∷ pss)
     → psmat #ˢᵐ ((con c qs ∷ rs) ∷ pss)
   default-preserves-#⁻ h disj instsMat ((con≼ _ ∷ insts) ∷ instss) =
@@ -227,7 +227,7 @@ module _
   where
 
   default-preserves-#⁻-wild
-    : (∀ c → c ∉ˢᵐ psmat)
+    : ((c : NameCon d) → c ∉ psmat)
     → default_ psmat #ˢᵐ (qs ∷ pss)
     → psmat #ˢᵐ ((— ∷ qs) ∷ pss)
   default-preserves-#⁻-wild h disj {(con c us ∷ _) ∷ _} instsMat ((—≼ ∷ insts) ∷ instss) =

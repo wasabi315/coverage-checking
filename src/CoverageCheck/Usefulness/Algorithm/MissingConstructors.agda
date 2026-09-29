@@ -24,24 +24,34 @@ private
 
 module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} where
 
-  infix 4 _∈_ _∉_ _∈ˢ_ _∉ˢ_ _∈ˢᵐ_ _∉ˢᵐ_
+  record HasCon (p : Type) : Type₁ where
+    infix 4 _∈_ _∉_
+    field
+      _∈_ : NameCon d0 → p → Type
+      _∉_ : NameCon d0 → p → Type
 
-  -- Does c appear in the set of root constructors of p?
-  _∈_ : NameCon d0 → Pattern (TyData d0) → Type
-  c ∈ —         = ⊥
-  c ∈ con c' ps = c ≡ c'
-  c ∈ (p ∣ q)   = Either (c ∈ p) (c ∈ q)
+  open HasCon ⦃ ... ⦄ public
 
-  _∉_ : NameCon d0 → Pattern (TyData d0) → Type
-  c ∉ p = ¬ c ∈ p
+  instance
 
-  _∈ˢ_ _∉ˢ_ : NameCon d0 → PatternStack ((TyData d0 ∷ αs0) ∷ αss0) → Type
-  c ∈ˢ pss = c ∈ headAll (headAll pss)
-  c ∉ˢ pss = c ∉ headAll (headAll pss)
+    hasConPattern : HasCon (Pattern (TyData d0))
+    _∈_ ⦃ hasConPattern ⦄ c —           = ⊥
+    _∈_ ⦃ hasConPattern ⦄ c (con c' ps) = c ≡ c'
+    _∈_ ⦃ hasConPattern ⦄ c (p ∣ q)     = Either (c ∈ p) (c ∈ q)
+    _∉_ ⦃ hasConPattern ⦄ c p           = ¬ c ∈ p
 
-  _∈ˢᵐ_ _∉ˢᵐ_ : NameCon d0 → PatternStackMatrix ((TyData d0 ∷ αs0) ∷ αss0) → Type
-  c ∈ˢᵐ psmat = Any (c ∈ˢ_) psmat
-  c ∉ˢᵐ psmat = All (c ∉ˢ_) psmat
+    hasConPatterns : HasCon (Patterns (TyData d0 ∷ αs0))
+    _∈_ ⦃ hasConPatterns ⦄ c ps = c ∈ headAll ps
+    _∉_ ⦃ hasConPatterns ⦄ c ps = c ∉ headAll ps
+
+    hasConPatternStack : HasCon (PatternStack ((TyData d0 ∷ αs0) ∷ αss0))
+    _∈_ ⦃ hasConPatternStack ⦄ c pss = c ∈ headAll pss
+    _∉_ ⦃ hasConPatternStack ⦄ c pss = c ∉ headAll pss
+
+    hasConPatternStackMatrix : HasCon (PatternStackMatrix ((TyData d0 ∷ αs0) ∷ αss0))
+    _∈_ ⦃ hasConPatternStackMatrix ⦄ c psmat = Any (c ∈_) psmat
+    _∉_ ⦃ hasConPatternStackMatrix ⦄ c psmat = All (c ∉_) psmat
+
 
 -- Relation between _∈_ and operations on rootConSet
 
@@ -58,7 +68,7 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} (@0 c : NameCon d0) where
     = eitherReflects (memberRootConSet' p) (memberRootConSet' q)
 
   memberRootConSet : (psmat : PatternStackMatrix ((TyData d0 ∷ αs0) ∷ αss0))
-    → Reflects (c ∈ˢᵐ psmat) (Set.member c (rootConSet psmat))
+    → Reflects (c ∈ psmat) (Set.member c (rootConSet psmat))
   memberRootConSet [] rewrite Set.prop-member-empty c = ¬Any[]
   memberRootConSet (pss ∷ psss)
     rewrite Set.prop-member-union c (rootConSet' (headAll (headAll pss))) (rootConSet psss)
@@ -75,14 +85,14 @@ module @0 _ ⦃ @0 sig : Signature ⦄
        missConSet = Set.difference (nameConSet (dataDefs sig d0)) conSet)
   where
 
-  notMemberMissConSet : Reflects (c ∈ˢᵐ psmat) (not (Set.member c missConSet))
+  notMemberMissConSet : Reflects (c ∈ psmat) (not (Set.member c missConSet))
   notMemberMissConSet
     rewrite Set.prop-member-difference c (nameConSet (dataDefs sig d0)) conSet
     | nameConSet-universal (dataDefs sig d0) c
     | not-not (Set.member c conSet)
     = memberRootConSet c psmat
 
-  memberMissConSet : Reflects (c ∉ˢᵐ psmat) (Set.member c missConSet)
+  memberMissConSet : Reflects (c ∉ psmat) (Set.member c missConSet)
   memberMissConSet rewrite sym (not-not (Set.member c missConSet)) =
     mapReflects (¬Any⇒All¬ _) All¬⇒¬Any (negReflects notMemberMissConSet)
 
@@ -108,15 +118,15 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} where
 
   nullRootConSet
     : (psmat : PatternStackMatrix ((TyData d0 ∷ αs0) ∷ αss0))
-    → Reflects (∀ c → c ∉ˢᵐ psmat) (Set.null (rootConSet psmat))
+    → Reflects (∀ c → c ∉ psmat) (Set.null (rootConSet psmat))
   nullRootConSet []
     rewrite Set.prop-null-empty {NameCon d0} ⦃ iOrdNameIn ⦄
     = λ _ → []
   nullRootConSet (pss ∷ psmat)
     rewrite Set.prop-null-union (rootConSet' (headAll (headAll pss))) (rootConSet psmat)
     = mapReflects
-        {a = (∀ c → c ∉ˢ pss) × (∀ c → c ∉ˢᵐ psmat)}
-        {b = (∀ c → c ∉ˢᵐ (pss ∷ psmat))}
+        {a = (∀ c → c ∉ pss) × (∀ c → c ∉ psmat)}
+        {b = (∀ c → c ∉ (pss ∷ psmat))}
         (λ (h , h') c → h c ∷ h' c)
         (λ h → (λ c → headAll (h c)) , (λ c → tailAll (h c)))
         (tupleReflects
@@ -134,10 +144,10 @@ module _ ⦃ sig : Signature ⦄ {d : NameData} where
   --   3. Some constructors are missing
   decExistMissCon
     : (psmat : PatternStackMatrix ((TyData d ∷ αs0) ∷ αss0))
-    → Either (Erase (∀ c → c ∈ˢᵐ psmat))
+    → Either (Erase (∀ c → c ∈ psmat))
         (Either
-          (Erase (∀ c → c ∉ˢᵐ psmat))
-          (NonEmpty (∃ _ λ c → c ∉ˢᵐ psmat)))
+          (Erase (∀ c → c ∉ psmat))
+          (NonEmpty (∃ _ λ c → c ∉ psmat)))
   decExistMissCon psmat = case Set.toAscNonEmptyW missConSet of λ where
       (Left (Erased empty)) →
         Left (Erased λ c →
