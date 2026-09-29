@@ -103,7 +103,6 @@ anyToEither (There p) = Right p
 --------------------------------------------------------------------------------
 -- First
 
--- compiles to (Natural, a)
 data First (a : @0 e → Type) : (@0 xs : List e) → Type where
   FHere  : a x → First a (x ∷ xs)
   FThere : @0 ¬ a y → First a xs → First a (y ∷ xs)
