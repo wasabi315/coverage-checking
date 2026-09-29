@@ -31,34 +31,6 @@ data IsNth (@0 x : e) : (@0 xs : List e) → Nat → Type where
   isZero : x ≡ y → IsNth x (y ∷ xs) zero
   isSuc  : IsNth x xs n → IsNth x (y ∷ xs) (suc n)
 
-invIsZero :
-  {@0 n : Nat} →
-  @0 IsNth x xs n →
-  @0 n ≡ 0 →
-  (f : (@0 xs : List e) → Type) →
-  (∀ {@0 ys} → f (x ∷ ys)) →
-  f xs
-invIsZero {n = _} (isZero refl) refl _ x = x
-{-# COMPILE AGDA2HS invIsZero transparent #-}
-
-invIsSuc :
-  @0 IsNth x xs n →
-  @0 ¬ n ≡ 0 →
-  (f : (@0 xs : List e) (@0 n : Nat) → Type) →
-  (∀ m {@0 y ys} → @0 n ≡ suc m → @0 IsNth x ys m → f (y ∷ ys) n) →
-  f xs n
-wInvIsSuc :
-  {@0 n : Nat} →
-  @0 IsNth x xs n →
-  (∃ Nat λ m → n ≡ suc m) →
-  (f : (@0 xs : List e) (@0 n : Nat) → Type) →
-  (∀ m {@0 y ys} → @0 n ≡ suc m → @0 IsNth x ys m → f (y ∷ ys) n) →
-  f xs n
-invIsSuc p q f g = wInvIsSuc p (predNat _ q) f g
-wInvIsSuc (isSuc p) (m ⟨ refl ⟩) f g = g m refl p
-{-# COMPILE AGDA2HS invIsSuc inline #-}
-{-# COMPILE AGDA2HS wInvIsSuc #-}
-
 -- compiles to Natural
 In : (@0 x : e) (@0 xs : List e) → Type
 In x xs = ∃ Nat λ n → IsNth x xs n
@@ -116,131 +88,42 @@ mapAll f (x ∷ xs) = f x ∷ mapAll f xs
 --------------------------------------------------------------------------------
 -- Any
 
--- compiles to (Natural, a)
-Any : (a : @0 e → Type) (@0 xs : List e) → Type
-Any a xs = Σ0 _ λ x → Σ (In x xs) λ _ → a x
-{-# COMPILE AGDA2HS Any #-}
-
-pattern Here {x} h = ⟨ x ⟩ (InHere , h)
-here : a x → Any a (x ∷ xs)
-here x = Here x
-{-# COMPILE AGDA2HS here inline #-}
-
-pattern There {x} n h h' = ⟨ x ⟩ (InThere n h , h')
-there : Any a xs → Any a (x ∷ xs)
-there = λ where (< n ⟨ h ⟩ , h' >) → There n h h'
-{-# COMPILE AGDA2HS there inline #-}
+data Any (a : @0 e → Type) : (@0 xs : List e) → Type where
+  Here  : a x → Any a (x ∷ xs)
+  There : Any a xs → Any a (y ∷ xs)
+{-# COMPILE AGDA2HS Any deriving (Show, Eq, Ord) #-}
 
 ¬Any[] : ¬ Any a []
-¬Any[] _ = undefined
+¬Any[] ()
 
 anyToEither : Any a (x ∷ xs) → Either (a x) (Any a xs)
-anyToEither (< InHere      , q >) = Left q
-anyToEither (< InThere n p , q >) = Right < n ⟨ p ⟩ , q >
-
-module _
-  (f : (@0 xs : List e) → Type)
-  (h : ∀ {@0 x xs} → a x → f (x ∷ xs))
-  (t : ∀ {@0 x xs} → f xs → f (x ∷ xs))
-  where
-
-  wRecAny : (n : Nat) → @0 IsNth x xs n → a x → f xs
-  wRecAny n p q =
-    ifDec (n ≟ 0)
-      (λ ⦃ r ⦄ →
-        invIsZero p r (λ ys → f ys) (h q))
-      (λ ⦃ r ⦄ →
-        invIsSuc p r (λ ys _ → f ys) λ where n refl p → t (wRecAny n p q))
-  {-# COMPILE AGDA2HS wRecAny #-}
-
-  recAny : Any a xs → f xs
-  recAny (⟨ _ ⟩ (n ⟨ p ⟩ , q)) = wRecAny n p q
-  {-# COMPILE AGDA2HS recAny inline #-}
+anyToEither (Here  p) = Left p
+anyToEither (There p) = Right p
 
 --------------------------------------------------------------------------------
 -- First
 
-data FirstWitness (a : @0 e → Type) (@0 x : e) : (@0 xs : List e) → Nat → Type where
-  isZero : x ≡ y → FirstWitness a x (y ∷ xs) zero
-  isSuc  : @0 ¬ a y → FirstWitness a x xs n → FirstWitness a x (y ∷ xs) (suc n)
-
-invIsZeroF :
-  {@0 n : Nat} →
-  @0 FirstWitness a x xs n →
-  @0 n ≡ 0 →
-  (f : (@0 xs : List e) → Type) →
-  (∀ {@0 ys} → f (x ∷ ys)) →
-  f xs
-invIsZeroF (isZero refl) refl _ x = x
-{-# COMPILE AGDA2HS invIsZeroF transparent #-}
-
-invIsSucF :
-  @0 FirstWitness a x xs n →
-  @0 ¬ n ≡ 0 →
-  (f : (@0 xs : List e) (@0 n : Nat) → Type) →
-  (∀ m {@0 y ys} → @0 n ≡ suc m → @0 ¬ a y → @0 FirstWitness a x ys m → f (y ∷ ys) n) →
-  f xs n
-wInvIsSucF :
-  {@0 n : Nat} →
-  @0 FirstWitness a x xs n →
-  (∃ Nat λ m → n ≡ suc m) →
-  (f : (@0 xs : List e) (@0 n : Nat) → Type) →
-  (∀ m {@0 y ys} → @0 n ≡ suc m → @0 ¬ a y → @0 FirstWitness a x ys m → f (y ∷ ys) n) →
-  f xs n
-invIsSucF p q f g = wInvIsSucF p (predNat _ q) f g
-wInvIsSucF (isSuc p q) (m ⟨ refl ⟩) f g = g m refl p q
-{-# COMPILE AGDA2HS invIsSucF inline #-}
-{-# COMPILE AGDA2HS wInvIsSucF #-}
-
 -- compiles to (Natural, a)
-First : (a : @0 e → Type) (@0 xs : List e) → Type
-First a xs = Σ0 _ λ x → Σ (∃ _ λ n → FirstWitness a x xs n) λ _ → a x
-{-# COMPILE AGDA2HS First #-}
-
-pattern FHere {x} h = ⟨ x ⟩ (zero ⟨ isZero refl ⟩ , h)
-fHere : a x → First a (x ∷ xs)
-fHere x = FHere x
-{-# COMPILE AGDA2HS fHere inline #-}
-
-pattern FThere {x} h n h' h'' = ⟨ x ⟩ (suc n ⟨ isSuc h h' ⟩ , h'')
-fThere : @0 ¬ a y → First a xs → First a (y ∷ xs)
-fThere p = λ where (< n ⟨ q ⟩ , r >) → FThere p n q r
-{-# COMPILE AGDA2HS fThere inline #-}
+data First (a : @0 e → Type) : (@0 xs : List e) → Type where
+  FHere  : a x → First a (x ∷ xs)
+  FThere : @0 ¬ a y → First a xs → First a (y ∷ xs)
+{-# COMPILE AGDA2HS First deriving (Show, Eq, Ord) #-}
 
 tailFirst : ¬ a x → First a (x ∷ xs) → First a xs
-tailFirst ¬r (FHere r) = contradiction r ¬r
-tailFirst ¬r (FThere p n q r) = < n ⟨ q ⟩ , r >
+tailFirst ¬p (FHere p)    = contradiction p ¬p
+tailFirst ¬p (FThere _ p) = p
 
 ¬First[] : ¬ First a []
-¬First[] _ = undefined
+¬First[] ()
 
 firstDecP : ∀ {e} {a : @0 e → Type}
   → (∀ x → DecP (a x))
   → ∀ xs → DecP (First a xs)
 firstDecP f [] = No ¬First[]
 firstDecP f (x ∷ xs) = ifDecP (f x)
-  (λ ⦃ p ⦄ → Yes (fHere p))
-  (λ ⦃ ¬p ⦄ → mapDecP (fThere ¬p) (tailFirst ¬p) (firstDecP f xs))
+  (λ ⦃ p ⦄ → Yes (FHere p))
+  (λ ⦃ ¬p ⦄ → mapDecP (FThere ¬p) (tailFirst ¬p) (firstDecP f xs))
 {-# COMPILE AGDA2HS firstDecP #-}
-
-module _
-  (f : (@0 xs : List e) → Type)
-  (h : ∀ {@0 x xs} → a x → f (x ∷ xs))
-  (t : ∀ {@0 x xs} → @0 ¬ a x → f xs → f (x ∷ xs))
-  where
-
-  wRecFirst : (n : Nat) → @0 FirstWitness a x xs n → a x → f xs
-  wRecFirst n p q =
-    ifDec (n ≟ 0)
-      (λ ⦃ r ⦄ →
-        invIsZeroF p r (λ ys → f ys) (h q))
-      (λ ⦃ r ⦄ →
-        invIsSucF p r (λ ys _ → f ys) λ where n refl h p → t h (wRecFirst n p q))
-  {-# COMPILE AGDA2HS wRecFirst #-}
-
-  recFirst : First a xs → f xs
-  recFirst (⟨ _ ⟩ (n ⟨ p ⟩ , q)) = wRecFirst n p q
-  {-# COMPILE AGDA2HS recFirst inline #-}
 
 --------------------------------------------------------------------------------
 -- Some & Many
@@ -322,58 +205,59 @@ data HPointwise
 --------------------------------------------------------------------------------
 
 All¬⇒¬Any : All (λ x → ¬ a x) xs → ¬ Any a xs
-All¬⇒¬Any [] _ = undefined
-All¬⇒¬Any (x ∷ xs) (Here q) = x q
-All¬⇒¬Any (x ∷ xs) (There n p q) = All¬⇒¬Any xs (< n ⟨ p ⟩ , q >)
+All¬⇒¬Any []       _         = undefined
+All¬⇒¬Any (x ∷ xs) (Here p)  = x p
+All¬⇒¬Any (x ∷ xs) (There p) = All¬⇒¬Any xs p
 
 ¬Any⇒All¬ : ∀ xs → ¬ Any a xs → All (λ x → ¬ a x) xs
 ¬Any⇒All¬ []       ¬p = []
-¬Any⇒All¬ (x ∷ xs) ¬p = ¬p ∘ here ∷ ¬Any⇒All¬ xs (¬p ∘ there)
+¬Any⇒All¬ (x ∷ xs) ¬p = ¬p ∘ Here ∷ ¬Any⇒All¬ xs (¬p ∘ There)
 
 First⇒Any : First a xs → Any a xs
-First⇒Any = recFirst (Any _) here (λ _ → there)
+First⇒Any (FHere p)    = Here p
+First⇒Any (FThere _ p) = There (First⇒Any p)
 
 ¬First⇒¬Any : ¬ First a xs → ¬ Any a xs
-¬First⇒¬Any ¬p h =
-  recAny (λ xs → ¬ First _ xs → ⊥)
-    (λ p ¬p → ¬p (fHere p))
-    (λ ih ¬p → ih (¬p ∘ (fThere (¬p ∘ fHere))))
-    h ¬p
+¬First⇒¬Any ¬p (Here p)  = ¬p (FHere p)
+¬First⇒¬Any ¬p (There p) = ¬First⇒¬Any (¬p ∘ FThere (¬p ∘ FHere)) p
 
 gmapAny⁺ : {@0 f : e → e'}
   → (∀ {@0 x} → a x → b (f x))
   → Any a xs → Any b (map f xs)
-gmapAny⁺ {f = f} g = recAny (λ xs → Any _ (map f xs)) (here ∘ g) there
+gmapAny⁺ g (Here p)  = Here (g p)
+gmapAny⁺ g (There p) = There (gmapAny⁺ g p)
 
 ++Any⁺ˡ : Any a xs → Any a (xs ++ ys)
-++Any⁺ˡ {ys = ys} = recAny (λ xs → Any _ (xs ++ ys)) here there
+++Any⁺ˡ (Here p)  = Here p
+++Any⁺ˡ (There p) = There (++Any⁺ˡ p)
 
 ++Any⁺ʳ : ∀ {xs} {@0 ys} → Any a ys → Any a (xs ++ ys)
 ++Any⁺ʳ {xs = []}     p = p
-++Any⁺ʳ {xs = x ∷ xs} p = there (++Any⁺ʳ p)
+++Any⁺ʳ {xs = x ∷ xs} p = There (++Any⁺ʳ p)
 
 @0 gconcatMapAny⁺ : {@0 f : e → List e'}
   → (∀ {@0 x} → a x → Any b (f x))
   → Any a xs → Any b (concatMap f xs)
-gconcatMapAny⁺ {f = f} g = recAny (λ xs → Any _ (concatMap f xs)) (++Any⁺ˡ ∘ g) ++Any⁺ʳ
+gconcatMapAny⁺ g (Here p)  = ++Any⁺ˡ (g p)
+gconcatMapAny⁺ g (There p) = ++Any⁺ʳ (gconcatMapAny⁺ g p)
 
 ++Any⁻ : ∀ xs {@0 ys} → Any a (xs ++ ys) → Either (Any a xs) (Any a ys)
-++Any⁻ [] p = Right p
-++Any⁻ (x ∷ xs) (Here q) = Left (here q)
-++Any⁻ (x ∷ xs) (There n p q) = bimap there id (++Any⁻ xs (< n ⟨ p ⟩ , q >))
+++Any⁻ []       p         = Right p
+++Any⁻ (x ∷ xs) (Here p)  = Left (Here p)
+++Any⁻ (x ∷ xs) (There p) = bimap There id (++Any⁻ xs p)
 
 gmapAny⁻ : {@0 f : e → e'}
   → (∀ {x} → b (f x) → a x)
   → ∀ {xs} → Any b (map f xs) → Any a xs
-gmapAny⁻ g {x ∷ xs} (Here q) = here (g q)
-gmapAny⁻ g {x ∷ xs} (There n p q) = there (gmapAny⁻ g (< n ⟨ p ⟩ , q >))
+gmapAny⁻ g {x ∷ xs} (Here p)  = Here (g p)
+gmapAny⁻ g {x ∷ xs} (There p) = There (gmapAny⁻ g p)
 
 gconcatMapAny⁻ : {f : e → List e'}
   → (∀ {x} → Any b (f x) → a x)
   → ∀ {xs} → Any b (concatMap f xs) → Any a xs
 gconcatMapAny⁻ {f = f} g {x ∷ xs} p with ++Any⁻ (f x) p
-... | Left q  = here (g q)
-... | Right q = there (gconcatMapAny⁻ g q)
+... | Left q  = Here (g q)
+... | Right q = There (gconcatMapAny⁻ g q)
 
 ¬Some⇒All¬ : ∀ xs → ¬ Some a xs → All (λ x → ¬ a x) xs
 ¬Some⇒All¬ [] _ = []

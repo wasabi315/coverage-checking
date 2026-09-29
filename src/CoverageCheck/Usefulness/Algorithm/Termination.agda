@@ -298,12 +298,12 @@ specialize-< c (pss ∷ psmat) (Here h) =
   ≤⟨ +-mono-<-≤ (specialize'-< c pss h) (specialize-≤ c psmat) ⟩
     ∣ pss ∣ 0 + ∣ psmat ∣
   ∎
-specialize-< c (pss ∷ psmat) (There h h' h'') =
+specialize-< c (pss ∷ psmat) (There h) =
   begin
     suc ∣ specialize' c pss ++ specialize c psmat ∣
   ≡⟨ cong! (∣∣-homo-++ (specialize' c pss) _) ⟩
     suc (∣ specialize' c pss ∣ + ∣ specialize c psmat ∣)
-  ≤⟨ +-mono-≤-< (specialize'-≤ c pss) (specialize-< c psmat < (_ ⟨ h' ⟩) , h'' >) ⟩
+  ≤⟨ +-mono-≤-< (specialize'-≤ c pss) (specialize-< c psmat h) ⟩
     ∣ pss ∣ 0 + ∣ psmat ∣
   ∎
 

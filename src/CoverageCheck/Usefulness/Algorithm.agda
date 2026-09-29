@@ -47,7 +47,7 @@ module _ ⦃ @0 sig : Signature ⦄ where
 
   nilBadCase : ∀ {ps P} → ¬ UsefulS (ps ∷ P) []
   nilBadCase {ps = []} (([] , h , _) ∷ _) =
-    contradiction [] (h (here []))
+    contradiction [] (h (Here []))
 
 
 module _ ⦃ @0 sig : Signature ⦄ where

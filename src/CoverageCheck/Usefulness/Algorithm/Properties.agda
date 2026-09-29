@@ -36,7 +36,7 @@ module _ {c : NameCon d}
     → (con c us ∷ vs) ∷ vss ≼ˢ pss
     → us ∷ vs ∷ vss ≼ˢᵐ specialize' c pss
   specialize'-preserves-≼ {(— ∷ ps) ∷ pss} ((_ ∷ insts) ∷ instss) =
-    here (—*≼ ∷ insts ∷ instss)
+    Here (—*≼ ∷ insts ∷ instss)
   specialize'-preserves-≼ {(con c' rs ∷ ps) ∷ pss} = lem (c ≟ c')
     where
       lem : (eq : Dec (c ≡ c'))
@@ -45,7 +45,7 @@ module _ {c : NameCon d}
       lem (False ⟨ c≢c' ⟩) ((inst ∷ _) ∷ _) =
         contradiction (sym (c≼c'⇒c≡c' inst)) c≢c'
       lem (True ⟨ refl ⟩) ((con≼ insts' ∷ insts) ∷ instss) =
-        here (insts' ∷ insts ∷ instss)
+        Here (insts' ∷ insts ∷ instss)
   specialize'-preserves-≼ {(r₁ ∣ r₂ ∷ ps) ∷ pss} ((∣≼ˡ inst ∷ insts) ∷ instss) =
     ++Any⁺ˡ (specialize'-preserves-≼ ((inst ∷ insts) ∷ instss))
   specialize'-preserves-≼ {(r₁ ∣ r₂ ∷ ps) ∷ pss} ((∣≼ʳ inst ∷ insts) ∷ instss) =
@@ -93,7 +93,7 @@ module _ {c : NameCon d}
     → (con c us ∷ vs) ∷ vss ≼ˢ pss
     → vs ∷ vss ≼ˢᵐ default' pss
   default'-preserves-≼ {(— ∷ ps) ∷ pss} h ((_ ∷ insts) ∷ instss) =
-    here (insts ∷ instss)
+    Here (insts ∷ instss)
   default'-preserves-≼ {(con c' rs ∷ ps) ∷ pss} h ((inst ∷ _) ∷ _) =
     contradiction (sym (c≼c'⇒c≡c' inst)) h
   default'-preserves-≼ {(p ∣ q ∷ ps) ∷ pss} h ((∣≼ˡ inst ∷ insts) ∷ instss) =
@@ -108,8 +108,8 @@ module _ {c : NameCon d}
     → vs ∷ vss ≼ˢᵐ default_ psmat
   default-preserves-≼ {pss ∷ psmat} (h ∷ _) (Here instss) =
     ++Any⁺ˡ (default'-preserves-≼ h instss)
-  default-preserves-≼ {pss ∷ psmat} (_ ∷ h) (There h' h'' instsMat) =
-    ++Any⁺ʳ (default-preserves-≼ h < _ ⟨ h'' ⟩ , instsMat >)
+  default-preserves-≼ {pss ∷ psmat} (_ ∷ h) (There instsMat) =
+    ++Any⁺ʳ (default-preserves-≼ h instsMat)
 
 
 module _ {v : Value (TyData d)} {vs : Values αs} {vss : ValueStack αss} where

@@ -62,7 +62,7 @@ module @0 _ ⦃ @0 sig : Signature ⦄ {@0 d0} (@0 c : NameCon d0) where
   memberRootConSet [] rewrite Set.prop-member-empty c = ¬Any[]
   memberRootConSet (pss ∷ psss)
     rewrite Set.prop-member-union c (rootConSet' (headAll (headAll pss))) (rootConSet psss)
-    = mapReflects (either here there) anyToEither
+    = mapReflects (either Here There) anyToEither
         (eitherReflects
           (memberRootConSet' (headAll (headAll pss)))
           (memberRootConSet psss))
