@@ -271,19 +271,19 @@ specialize'-< : (c : NameCon d) (pss : PatternStack ((TyData d ∷ αs) ∷ αss
   → ∣ specialize' c pss ∣ < ∣ pss ∣ 0
 specialize'-< c ((con c' rs ∷ ps) ∷ pss) c≡c' = specializeConCase-< c c' rs ps pss (c ≟ c') c≡c'
 specialize'-< c ((r₁ ∣ r₂ ∷ ps) ∷ pss) (Left c∈r₁) =
-  begin
-    suc ∣ specialize' c ((r₁ ∷ ps) ∷ pss) ++ specialize' c ((r₂ ∷ ps) ∷ pss) ∣
-  ≡⟨ cong! (∣∣-homo-++ (specialize' c ((r₁ ∷ ps) ∷ pss)) _) ⟩
-    suc (∣ specialize' c ((r₁ ∷ ps) ∷ pss) ∣ + ∣ specialize' c ((r₂ ∷ ps) ∷ pss) ∣)
-  ≤⟨ +-mono-<-≤ (specialize'-< c ((r₁ ∷ ps) ∷ pss) c∈r₁) (specialize'-≤ c ((r₂ ∷ ps) ∷ pss)) ⟩
+  begin-strict
+    ∣ specialize' c ((r₁ ∷ ps) ∷ pss) ++ specialize' c ((r₂ ∷ ps) ∷ pss) ∣
+  ≡⟨ ∣∣-homo-++ (specialize' c ((r₁ ∷ ps) ∷ pss)) _ ⟩
+    ∣ specialize' c ((r₁ ∷ ps) ∷ pss) ∣ + ∣ specialize' c ((r₂ ∷ ps) ∷ pss) ∣
+  <⟨ +-mono-<-≤ (specialize'-< c ((r₁ ∷ ps) ∷ pss) c∈r₁) (specialize'-≤ c ((r₂ ∷ ps) ∷ pss)) ⟩
     ∣ (r₁ ∷ ps) ∷ pss ∣ 0 + ∣ (r₂ ∷ ps) ∷ pss ∣ 0
   ∎
 specialize'-< c ((r₁ ∣ r₂ ∷ ps) ∷ pss) (Right c∈r₂) =
-  begin
-    suc ∣ specialize' c ((r₁ ∷ ps) ∷ pss) ++ specialize' c ((r₂ ∷ ps) ∷ pss) ∣
-  ≡⟨ cong! (∣∣-homo-++ (specialize' c ((r₁ ∷ ps) ∷ pss)) _) ⟩
-    suc (∣ specialize' c ((r₁ ∷ ps) ∷ pss) ∣ + ∣ specialize' c ((r₂ ∷ ps) ∷ pss) ∣)
-  ≤⟨ +-mono-≤-< (specialize'-≤ c ((r₁ ∷ ps) ∷ pss)) (specialize'-< c ((r₂ ∷ ps) ∷ pss) c∈r₂) ⟩
+  begin-strict
+    ∣ specialize' c ((r₁ ∷ ps) ∷ pss) ++ specialize' c ((r₂ ∷ ps) ∷ pss) ∣
+  ≡⟨ ∣∣-homo-++ (specialize' c ((r₁ ∷ ps) ∷ pss)) _ ⟩
+    (∣ specialize' c ((r₁ ∷ ps) ∷ pss) ∣ + ∣ specialize' c ((r₂ ∷ ps) ∷ pss) ∣)
+  <⟨ +-mono-≤-< (specialize'-≤ c ((r₁ ∷ ps) ∷ pss)) (specialize'-< c ((r₂ ∷ ps) ∷ pss) c∈r₂) ⟩
     ∣ (r₁ ∷ ps) ∷ pss ∣ 0 + ∣ (r₂ ∷ ps) ∷ pss ∣ 0
   ∎
 
@@ -291,19 +291,19 @@ specialize-< : (c : NameCon d) (psmat : PatternStackMatrix ((TyData d ∷ αs) �
   → c ∈ psmat
   → ∣ specialize c psmat ∣ < ∣ psmat ∣
 specialize-< c (pss ∷ psmat) (Here h) =
-  begin
-    suc ∣ specialize' c pss ++ specialize c psmat ∣
-  ≡⟨ cong! (∣∣-homo-++ (specialize' c pss) _) ⟩
-    suc (∣ specialize' c pss ∣ + ∣ specialize c psmat ∣)
-  ≤⟨ +-mono-<-≤ (specialize'-< c pss h) (specialize-≤ c psmat) ⟩
+  begin-strict
+    ∣ specialize' c pss ++ specialize c psmat ∣
+  ≡⟨ ∣∣-homo-++ (specialize' c pss) _ ⟩
+    ∣ specialize' c pss ∣ + ∣ specialize c psmat ∣
+  <⟨ +-mono-<-≤ (specialize'-< c pss h) (specialize-≤ c psmat) ⟩
     ∣ pss ∣ 0 + ∣ psmat ∣
   ∎
 specialize-< c (pss ∷ psmat) (There h) =
-  begin
-    suc ∣ specialize' c pss ++ specialize c psmat ∣
-  ≡⟨ cong! (∣∣-homo-++ (specialize' c pss) _) ⟩
-    suc (∣ specialize' c pss ∣ + ∣ specialize c psmat ∣)
-  ≤⟨ +-mono-≤-< (specialize'-≤ c pss) (specialize-< c psmat h) ⟩
+  begin-strict
+    ∣ specialize' c pss ++ specialize c psmat ∣
+  ≡⟨ ∣∣-homo-++ (specialize' c pss) _ ⟩
+    (∣ specialize' c pss ∣ + ∣ specialize c psmat ∣)
+  <⟨ +-mono-≤-< (specialize'-≤ c pss) (specialize-< c psmat h) ⟩
     ∣ pss ∣ 0 + ∣ psmat ∣
   ∎
 
